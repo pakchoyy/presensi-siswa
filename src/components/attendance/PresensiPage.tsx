@@ -93,7 +93,7 @@ export function PresensiPage() {
   return (
     <>
       <RingkasanBar counts={counts} />
-      <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <DateNavigator />
 
         {loading ? (

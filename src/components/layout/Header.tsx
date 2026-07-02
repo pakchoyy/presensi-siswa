@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { Tier } from "@/types/enums";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { DropdownMenu } from "@/components/layout/DropdownMenu";
 import { SyncIndicator } from "@/components/layout/SyncIndicator";
@@ -8,7 +9,7 @@ import { Moon, Sun, Menu } from "lucide-react";
 import { formatTanggalPendek } from "@/lib/utils";
 
 export function Header() {
-  const { activePage, activeClassroom, tanggalAktif, darkMode, toggleDarkMode, setupSelesai } =
+  const { activePage, activeClassroom, tanggalAktif, darkMode, toggleDarkMode, setupSelesai, teacher } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -20,7 +21,7 @@ export function Header() {
     sub = "Selamat datang di BGY Presensi";
   } else if (activePage === "presensi") {
     subtitle = "| Presensi Siswa";
-    sub = `${activeClassroom?.nama || ""} \u2022 ${formatTanggalPendek(tanggalAktif)}`;
+    sub = activeClassroom?.nama || "";
   } else if (activePage === "rekap") {
     subtitle = "| Rekap Presensi";
     sub = activeClassroom?.nama || "";
@@ -64,6 +65,16 @@ export function Header() {
             )}
           </div>
         </div>
+
+        {setupSelesai && (
+          <span className={`text-[0.6rem] px-2 py-[3px] rounded-full font-bold flex-shrink-0 mr-2 ${
+            teacher?.tier === Tier.PRO
+              ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
+              : "bg-white/10 text-white/60 border border-white/20"
+          }`}>
+            {teacher?.tier === Tier.PRO ? "PRO" : "FREE"}
+          </span>
+        )}
 
         <div className="flex items-center gap-[6px] flex-shrink-0 relative">
           <SyncIndicator />

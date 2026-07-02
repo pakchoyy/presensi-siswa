@@ -76,7 +76,7 @@ export function SiswaPage() {
   };
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
       <div className="relative mb-3">
         <Search
           size={16}
@@ -175,12 +175,12 @@ export function SiswaPage() {
       {showModal && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end justify-center"
+            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowModal(false);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl w-full max-w-app px-4 pt-[18px] pb-[22px]">
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
               <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-[14px] text-center">
                 Tambah Siswa Baru
@@ -223,12 +223,12 @@ export function SiswaPage() {
       {deleteTarget && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end justify-center"
+            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
             onClick={(e) => {
               if (e.target === e.currentTarget) setDeleteTarget(null);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl w-full max-w-app px-4 pt-[18px] pb-[22px]">
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
               <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-2 text-center">
                 Hapus {deleteTarget.nama}?

@@ -172,7 +172,8 @@ export function BackupRestorePage() {
         </div>
       )}
 
-      {/* Restore Lokal */}
+      {/* Restore Lokal — PRO Only */}
+      {isPRO ? (
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <RotateCcw size={15} /> Pulihkan dari Backup
@@ -202,6 +203,17 @@ export function BackupRestorePage() {
           </div>
         )}
       </div>
+      ) : (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
+          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+            <RotateCcw size={15} /> Pulihkan Backup
+            <Lock size={11} className="text-[#b45309]" />
+          </div>
+          <p className="text-[var(--text-light)] text-[0.72rem]">
+            Fitur restore backup hanya tersedia untuk pengguna PRO.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

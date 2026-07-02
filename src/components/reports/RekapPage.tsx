@@ -150,7 +150,7 @@ export function RekapPage() {
   }
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
       {/* Tab selector */}
       <div className="flex gap-1 mb-3 bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-1">
         <button

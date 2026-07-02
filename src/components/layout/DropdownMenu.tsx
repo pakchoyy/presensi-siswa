@@ -1,7 +1,7 @@
 import { useApp } from "@/contexts/AppContext";
 import { PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
-import { Home, BookOpen, Info, Download, Globe, Moon, Sun, ArrowUpCircle } from "lucide-react";
+import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function DropdownMenu({ isOpen, onClose }: Props) {
-  const { setActivePage, darkMode, toggleDarkMode, setupSelesai } = useApp();
+  const { setActivePage, setupSelesai } = useApp();
 
   if (!isOpen || !setupSelesai) return null;
 
@@ -74,16 +74,6 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Globe size={16} /> bantuguruyuk.web.id
-        </button>
-
-        <div className="h-px bg-[var(--border)] mx-0" />
-
-        <button
-          onClick={() => { toggleDarkMode(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-        >
-          {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-          Mode {darkMode ? "Terang" : "Gelap"}
         </button>
 
         <div className="h-px bg-[var(--border)] mx-0" />

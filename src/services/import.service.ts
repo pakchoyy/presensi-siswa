@@ -91,11 +91,13 @@ export function parseExcel(file: File): Promise<ImportResult> {
 export function generateTemplateBlob(): Blob {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ["Nama", "NISN", "Jenis Kelamin"],
-    ["Ahmad Fauzi", "", "L"],
-    ["Bunga Citra", "", "P"],
-    ["Dewi Lestari", "1234567890", "P"],
+    ["Petunjuk: Kolom Nama wajib diisi. NISN dan Jenis Kelamin opsional. Download template ini, isi data siswa, lalu upload kembali."],
+    ["Nama", "NISN", "Jenis Kelamin", "Kelas"],
+    ["Ahmad Fauzi", "", "L", "Kelas 1A"],
+    ["Bunga Citra", "", "P", "Kelas 1A"],
+    ["Dewi Lestari", "1234567890", "P", "Kelas 1A"],
   ]);
+  ws["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, ws, "Daftar Siswa");
   const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

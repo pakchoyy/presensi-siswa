@@ -6,9 +6,22 @@
     <meta name="theme-color" content="#0ea5a0" />
     <meta name="description" content="Bantu Guru Yuk | Presensi Siswa — Aplikasi presensi sekolah paling sederhana" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/guru-cibisd2.png" type="image/png" />
     <title>Bantu Guru Yuk | Presensi Siswa</title>
+    <style>
+      #loadingScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0ea5a0,#0d7a8a,#2d6a7f);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;color:#fff;font-family:'Segoe UI',system-ui,sans-serif}
+      #loadingScreen img{width:72px;height:72px;border-radius:16px;margin-bottom:16px;animation:lsPulse 1.5s ease-in-out infinite}
+      #loadingScreen .ls-title{font-size:1.2rem;font-weight:800;letter-spacing:.3px}
+      #loadingScreen .ls-sub{font-size:.75rem;opacity:.7;margin-top:6px}
+      @keyframes lsPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
+    </style>
   </head>
   <body>
+    <div id="loadingScreen">
+      <img src="/guru-cibisd2.png" alt="BGY" />
+      <div class="ls-title">Bantu Guru Yuk</div>
+      <div class="ls-sub">Presensi Siswa</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
