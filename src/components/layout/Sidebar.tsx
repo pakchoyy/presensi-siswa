@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { page: PageName.REKAP, label: "Rekap", icon: BarChart3 },
   { page: PageName.SISWA, label: "Siswa", icon: Users },
   { page: PageName.KALENDER, label: "Kalender", icon: Calendar },
+  { page: PageName.UPGRADE, label: "Upgrade PRO", icon: ArrowUpCircle },
   { page: PageName.PETUNJUK, label: "Petunjuk", icon: BookOpen },
   { page: PageName.BACKUP, label: "Backup", icon: Database },
 ];

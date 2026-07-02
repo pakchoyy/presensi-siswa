@@ -13,6 +13,8 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
   if (!isOpen || !setupSelesai) return null;
 
+  const canInstall = !!(window as any).__bgy_deferredPrompt;
+
   return (
     <>
       {/* Overlay */}
@@ -50,9 +52,9 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <div className="h-px bg-[var(--border)] mx-0" />
 
+        {canInstall && (
         <button
           onClick={() => {
-            // Trigger PWA install if available
             const promptEv = (window as any).__bgy_deferredPrompt;
             if (promptEv) {
               promptEv.prompt();
@@ -66,6 +68,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         >
           <Download size={16} /> Install BGY
         </button>
+        )}
         <button
           onClick={() => {
             window.open("https://bantuguruyuk.web.id", "_blank", "noopener");

@@ -6,44 +6,37 @@ import { DropdownMenu } from "@/components/layout/DropdownMenu";
 import { SyncIndicator } from "@/components/layout/SyncIndicator";
 import { LicenseExpiryBadge } from "@/components/layout/LicenseExpiryBadge";
 import { Moon, Sun, Menu } from "lucide-react";
-import { formatTanggalPendek } from "@/lib/utils";
 
 export function Header() {
-  const { activePage, activeClassroom, tanggalAktif, darkMode, toggleDarkMode, setupSelesai, teacher } =
+  const { activePage, darkMode, toggleDarkMode, setupSelesai, teacher } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
 
   let subtitle = "| Presensi Siswa";
-  let sub = "";
 
   if (!setupSelesai) {
-    subtitle = "";
-    sub = "Selamat datang di BGY Presensi";
-  } else if (activePage === "presensi") {
-    subtitle = "| Presensi Siswa";
-    sub = activeClassroom?.nama || "";
+    subtitle = "Setup Awal";
   } else if (activePage === "rekap") {
-    subtitle = "| Rekap Presensi";
-    sub = activeClassroom?.nama || "";
+    subtitle = "| Rekap";
   } else if (activePage === "siswa") {
-    subtitle = "| Manajemen Siswa";
-    sub = activeClassroom?.nama || "";
+    subtitle = "| Manajemen";
   } else if (activePage === "kalender") {
-    subtitle = "| Kalender Akademik";
-    sub = activeClassroom?.nama || "";
+    subtitle = "| Kalender";
   } else if (activePage === "petunjuk") {
     subtitle = "| Petunjuk";
   } else if (activePage === "tentang") {
-    subtitle = "| Tentang & Kontak";
+    subtitle = "| Tentang";
   } else if (activePage === "pengaturan") {
     subtitle = "| Pengaturan";
   } else if (activePage === "backup") {
-    subtitle = "| Backup & Restore";
+    subtitle = "| Backup";
+  } else if (activePage === "upgrade") {
+    subtitle = "| Upgrade";
   }
 
   return (
     <header
-      className="sticky top-0 z-[300] px-4"
+      className="sticky top-0 z-[300] px-3"
       style={{
         background: darkMode
           ? "linear-gradient(135deg, #0d4a47, #1a3a4a)"
@@ -51,23 +44,18 @@ export function Header() {
         boxShadow: "0 2px 10px rgba(0,0,0,.18)",
       }}
     >
-      <div className="flex items-center justify-between h-14">
-        <div className="flex items-center gap-[10px] flex-1 min-w-0">
+      <div className="flex items-center justify-between h-[48px]">
+        <div className="flex items-center gap-[8px] flex-1 min-w-0">
           <LogoUpload />
           <div className="min-w-0">
-            <div className="text-[0.85rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
-              {setupSelesai ? `Bantu Guru Yuk ${subtitle}` : "Setup Awal"}
+            <div className="text-[0.95rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
+              {setupSelesai ? `Bantu Guru Yuk ${subtitle}` : "Setup"}
             </div>
-            {sub && (
-              <div className="text-[0.62rem] text-white/70 font-medium mt-[1px] whitespace-nowrap overflow-hidden text-ellipsis">
-                {sub}
-              </div>
-            )}
           </div>
         </div>
 
         {setupSelesai && (
-          <span className={`text-[0.6rem] px-2 py-[3px] rounded-full font-bold flex-shrink-0 mr-2 ${
+          <span className={`text-[0.62rem] px-2 py-[2px] rounded-full font-bold flex-shrink-0 mr-1 ${
             teacher?.tier === Tier.PRO
               ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
               : "bg-white/10 text-white/60 border border-white/20"
@@ -76,24 +64,24 @@ export function Header() {
           </span>
         )}
 
-        <div className="flex items-center gap-[6px] flex-shrink-0 relative">
+        <div className="flex items-center gap-[4px] flex-shrink-0 relative">
           <SyncIndicator />
           <LicenseExpiryBadge />
           <button
             onClick={toggleDarkMode}
-            className="h-8 w-[34px] rounded-lg border-[1.5px] border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
+            className="h-[30px] w-[30px] rounded-[6px] border-[1.5px] border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
             title="Mode gelap/terang"
           >
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            {darkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           {setupSelesai && (
             <>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="h-8 w-[34px] rounded-lg border-[1.5px] border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
+                className="h-[30px] w-[30px] rounded-[6px] border-[1.5px] border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
                 title="Menu"
               >
-                <Menu size={16} />
+                <Menu size={14} />
               </button>
               <DropdownMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
             </>

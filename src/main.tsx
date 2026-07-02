@@ -1,8 +1,3 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./index.css";
-
 // PWA Install — simpan deferred prompt untuk dropdown "Install BGY"
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
@@ -12,6 +7,11 @@ window.addEventListener("beforeinstallprompt", (e) => {
 window.addEventListener("appinstalled", () => {
   (window as any).__bgy_deferredPrompt = null;
 });
+
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

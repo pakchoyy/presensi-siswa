@@ -5,7 +5,7 @@ import {
   BarChart3,
   Users,
   Calendar,
-  Database,
+  ArrowUpCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItemData[] = [
   { page: PageName.REKAP, label: "Rekap", icon: BarChart3 },
   { page: PageName.SISWA, label: "Siswa", icon: Users },
   { page: PageName.KALENDER, label: "Kalender", icon: Calendar },
-  { page: PageName.BACKUP, label: "Backup", icon: Database },
+  { page: PageName.UPGRADE, label: "Upgrade", icon: ArrowUpCircle },
 ];
 
 export function BottomNav() {
@@ -35,12 +35,13 @@ export function BottomNav() {
     >
       {NAV_ITEMS.map((item) => {
         const isActive = activePage === item.page;
+        const isUpgrade = item.page === PageName.UPGRADE;
         return (
           <button
             key={item.page}
             onClick={() => setActivePage(item.page)}
             className={`flex-1 flex flex-col items-center gap-[2px] py-[6px] px-[2px] rounded-[10px] cursor-pointer bg-transparent border-none font-[inherit] ${
-              isActive ? "text-[#0ea5a0]" : "text-[var(--text-light)]"
+              isActive ? (isUpgrade ? "text-[#f59e0b]" : "text-[#0ea5a0]") : "text-[var(--text-light)]"
             }`}
           >
             <item.icon size={19} />

@@ -14,6 +14,7 @@ import { BackupRestorePage } from "@/components/backup/BackupRestorePage";
 import { PetunjukPage } from "@/components/guide/PetunjukPage";
 import { TentangKontak } from "@/components/about/TentangKontak";
 import { PengaturanPage } from "@/components/pro/PengaturanPage";
+import { UpgradePage } from "@/components/pro/UpgradePage";
 import { PageName } from "@/types/enums";
 import { ConvexProvider } from "convex/react";
 import { convexClient } from "@/lib/convex";
@@ -64,6 +65,8 @@ function PageContent() {
       return <TentangKontak />;
     case PageName.BACKUP:
       return <BackupRestorePage />;
+    case PageName.UPGRADE:
+      return <UpgradePage />;
     case PageName.PENGATURAN:
       return <PengaturanPage />;
     default:
