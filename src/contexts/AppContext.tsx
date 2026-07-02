@@ -127,10 +127,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshClassrooms = useCallback(async () => {
     const classrooms = await classroomRepo.getAll();
+    const t = await teacherRepo.get();
     setState((prev) => ({
       ...prev,
       classrooms,
       activeClassroom: classrooms[0] || null,
+      setupSelesai: true,
+      teacher: t || prev.teacher,
     }));
   }, []);
 
