@@ -161,12 +161,15 @@ export function SiswaPage() {
       }
     }
 
+    // Get updated classrooms list first
+    let updatedClassrooms = await classroomRepo.getAll();
+    
     // Auto-create classes from Excel if they exist (PRO only)
     if (result.classes.length > 0 && isPRO) {
       const ay = await academicYearRepo.getActive();
       if (ay && teacher) {
         for (const namaKelas of result.classes) {
-          const exists = classrooms.find(c => c.nama.toLowerCase() === namaKelas.toLowerCase());
+          const exists = updatedClassrooms.find(c => c.nama.toLowerCase() === namaKelas.toLowerCase());
           if (!exists) {
             const newCls: Classroom = {
               id: generateId(),
@@ -178,14 +181,12 @@ export function SiswaPage() {
               diubahPada: timestamp(),
             };
             await classroomRepo.save(newCls);
+            updatedClassrooms.push(newCls); // Update local array immediately
           }
         }
         await refreshClassrooms();
       }
     }
-
-    // Get updated classrooms list
-    const updatedClassrooms = await classroomRepo.getAll();
     
     // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
     const newStudents = siswaToImportResult(result, selectedKelas.id, isPRO ? updatedClassrooms : undefined);

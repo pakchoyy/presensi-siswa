@@ -4,7 +4,7 @@ const MESSAGES = [
   "Mau buat soal dalam lima menit?",
   "Butuh prompt LKPD menarik?",
   "Mau buat modul kokurikuler hitungan menit?",
-  "Yuk cobain semuanya di bantuguruyuk.web.id! ✨",
+  "Yuk cobain semuanya di ",
 ];
 
 export function Marquee() {
@@ -14,18 +14,25 @@ export function Marquee() {
     <div className="ticker-wrap w-full">
       <div className="ticker-badge">INFO</div>
       <div className="ticker-track">
-        <a
-          href={MAIN_SITE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ticker-content"
-        >
+        <div className="ticker-content">
           {duplicated.map((msg, i) => (
             <span key={i} className="ticker-msg">
               {msg}
+              {msg.includes("Yuk cobain") && (
+                <a
+                  href={MAIN_SITE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold underline decoration-2 hover:decoration-[3px] transition-all"
+                  style={{ color: '#1e293b' }}
+                >
+                  bantuguruyuk.web.id
+                </a>
+              )}
+              {msg.includes("Yuk cobain") && " ✨"}
             </span>
           ))}
-        </a>
+        </div>
       </div>
     </div>
   );

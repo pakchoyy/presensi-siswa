@@ -380,9 +380,8 @@ export function PengaturanPage() {
           <div className="bg-[#fee2e2] rounded-lg p-3 mb-3 border border-[#ef4444]/30 flex items-start gap-2">
             <AlertTriangle size={14} className="text-[#dc2626] flex-shrink-0 mt-[1px]" />
             <div className="text-[0.7rem] text-[#7f1d1d]">
-              <b>Status saat ini: Fase 3 (Fitur Lokal Selesai)</b><br/>
-              Fitur PRO cloud (cloud sync, multi-device, backup cloud) akan aktif di <b>Fase 4 (Q2 2026)</b>.<br/>
-              Nonaktifkan lisensi akan menghapus akses fitur PRO di masa depan.
+              <b>Fitur lokal PRO sudah aktif:</b> Unlimited kelas & siswa, kalender custom, logo laporan, update Excel.<br/>
+              <b>Coming soon (Fase 4):</b> Cloud sync, multi-device, backup otomatis.
             </div>
           </div>
 
