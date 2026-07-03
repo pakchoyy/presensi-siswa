@@ -9,7 +9,7 @@ import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
-import { Info } from "lucide-react";
+import { Info, Zap } from "lucide-react";
 
 function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
   const d = new Date(dateStr + "T00:00:00");
@@ -27,6 +27,7 @@ export function PresensiPage() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
+  const [autoFill, setAutoFill] = useState(false);
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
@@ -96,6 +97,43 @@ export function PresensiPage() {
     return records.get(siswaId)?.status;
   };
 
+  const handleAutoFill = async () => {
+    if (!sessionId || students.length === 0) return;
+
+    const updatedRecords = new Map(records);
+    let count = 0;
+
+    for (const student of students) {
+      const existing = updatedRecords.get(student.id);
+      if (!existing) {
+        await attendanceService.ubahStatus(
+          sessionId,
+          student.id,
+          AttendanceStatus.HADIR
+        );
+        updatedRecords.set(student.id, {
+          id: 0,
+          sesiId: sessionId,
+          siswaId: student.id,
+          status: AttendanceStatus.HADIR,
+          diubahPada: Date.now(),
+        });
+        count++;
+      }
+    }
+
+    setRecords(updatedRecords);
+    if (count > 0) {
+      toast(`✅ ${count} siswa ditandai hadir`);
+    }
+  };
+
+  useEffect(() => {
+    if (autoFill && students.length > 0 && sessionId) {
+      handleAutoFill();
+    }
+  }, [autoFill, students, sessionId]);
+
   const counts: Record<AttendanceStatus, number> = {
     [AttendanceStatus.HADIR]: 0,
     [AttendanceStatus.SAKIT]: 0,
@@ -114,20 +152,45 @@ export function PresensiPage() {
         <DateNavigator />
 
         {!isLibur && students.length > 0 && (
-          <div className="flex items-center justify-between gap-[6px] bg-[rgba(14,165,160,0.06)] border border-[#0ea5a0]/20 rounded-lg px-[10px] py-[7px] mb-[10px] text-[0.68rem] text-[var(--text-light)]">
-            <div className="flex items-center gap-[6px]">
-              <Info size={13} className="text-[#0ea5a0] flex-shrink-0" />
-              <span>
-                {autoHadir
-                  ? <>Semua otomatis <b className="text-[var(--text)]">Hadir</b> — klik yang Sakit/Izin/Alpha</>
-                  : <>Klik tiap siswa, pilih status <b className="text-[var(--text)]">Hadir/Sakit/Izin/Alpha</b></>
-                }
+          <>
+            <div className="flex items-center justify-between gap-[6px] bg-[rgba(14,165,160,0.06)] border border-[#0ea5a0]/20 rounded-lg px-[10px] py-[7px] mb-[10px] text-[0.68rem] text-[var(--text-light)]">
+              <div className="flex items-center gap-[6px]">
+                <Info size={13} className="text-[#0ea5a0] flex-shrink-0" />
+                <span>
+                  {autoHadir
+                    ? <>Semua otomatis <b className="text-[var(--text)]">Hadir</b> — klik yang Sakit/Izin/Alpha</>
+                    : <>Klik tiap siswa, pilih status <b className="text-[var(--text)]">Hadir/Sakit/Izin/Alpha</b></>
+                  }
+                </span>
+              </div>
+              <span className={`text-[0.62rem] font-bold px-[6px] py-[2px] rounded-full flex-shrink-0 ${autoHadir ? "bg-[#0ea5a0]/10 text-[#0ea5a0]" : "bg-[var(--border)] text-[var(--text-light)]"}` }>
+                {autoHadir ? "Auto" : "Manual"}
               </span>
             </div>
-            <span className={`text-[0.62rem] font-bold px-[6px] py-[2px] rounded-full flex-shrink-0 ${autoHadir ? "bg-[#0ea5a0]/10 text-[#0ea5a0]" : "bg-[var(--border)] text-[var(--text-light)]"}`}>
-              {autoHadir ? "Auto" : "Manual"}
-            </span>
-          </div>
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap size={16} className="text-[#f59e0b]" />
+                  <span className="text-[0.8rem] font-semibold text-[var(--text)]">
+                    Auto isi hadir
+                  </span>
+                </div>
+                <button
+                  onClick={() => setAutoFill(!autoFill)}
+                  className={`relative w-[44px] h-[24px] rounded-full transition-colors cursor-pointer border-none ${
+                    autoFill ? "bg-[#0ea5a0]" : "bg-[var(--input-bg)]"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-[2px] w-[20px] h-[20px] bg-white rounded-full transition-transform ${
+                      autoFill ? "translate-x-[22px]" : "translate-x-[2px]"
+                    }`}
+                    style={{ boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}
+                  />
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {isLibur ? (

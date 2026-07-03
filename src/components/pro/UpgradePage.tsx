@@ -1,18 +1,78 @@
+import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PRO_PRICE } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
-import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck } from "lucide-react";
+import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck, Mail } from "lucide-react";
+import { useToast } from "@/components/shared/Toast";
+import { teacherRepo } from "@/repositories/dexie/teacher.repo";
+import { Tier } from "@/types/enums";
 
 export function UpgradePage() {
-  const { teacher } = useApp();
+  const { teacher, refreshTeacher } = useApp();
+  const { toast } = useToast();
   const isPRO = teacher?.tier === "PRO";
   const manfaat = licenseService.getManfaat();
 
+  const [email, setEmail] = useState("");
+  const [checking, setChecking] = useState(false);
+
   const handleWA = () => {
     const msg = encodeURIComponent(
-      "Halo Pak Choyy, saya mau beli lisensi PRO Presensi Siswa\nEmail: " + (teacher?.email || "")
+      "Halo Pak Choyy, saya mau beli lisensi PRO Presensi Siswa\nEmail: " + (teacher?.email || email || "")
     );
     window.open(`https://wa.me/6289530713597?text=${msg}`, "_blank");
+  };
+
+  const handleCheckEmail = async () => {
+    if (!email.trim()) {
+      toast("⚠️ Masukkan email terlebih dahulu");
+      return;
+    }
+
+    if (!teacher) {
+      toast("⚠️ Data guru tidak ditemukan");
+      return;
+    }
+
+    setChecking(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_CONVEX_URL}/api/query`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "licenses:checkEmail",
+            args: { email: email.trim() },
+            format: "json",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.value?.tier === "PRO") {
+        // Update teacher tier di local
+        await teacherRepo.update(teacher.id, {
+          ...teacher,
+          tier: Tier.PRO,
+          email: email.trim(),
+        });
+
+        // Refresh context
+        await refreshTeacher();
+
+        toast("✅ Email terverifikasi! Kamu sekarang PRO");
+      } else {
+        toast("⚠️ Email belum terdaftar sebagai PRO. Hubungi admin via WhatsApp.");
+      }
+    } catch (error) {
+      console.error("Check email error:", error);
+      toast("❌ Gagal mengecek email. Coba lagi.");
+    } finally {
+      setChecking(false);
+    }
   };
 
   if (isPRO) {
@@ -31,6 +91,34 @@ export function UpgradePage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      {/* Sudah Punya Lisensi */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.85rem] font-bold text-[var(--text)] mb-2 flex items-center gap-2">
+          <Mail size={16} className="text-[#0ea5a0]" />
+          Sudah Beli PRO?
+        </div>
+        <p className="text-[0.75rem] text-[var(--text-light)] mb-3">
+          Masukkan email yang sudah terdaftar untuk aktivasi
+        </p>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@example.com"
+          className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--border)] text-[0.85rem] text-[var(--text)] mb-2"
+          style={{ outline: "none" }}
+        />
+        <button
+          onClick={handleCheckEmail}
+          disabled={checking}
+          className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer border-none"
+          style={{ background: checking ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
+        >
+          {checking ? "Mengecek..." : "Verifikasi Email"}
+        </button>
+      </div>
+
+      {/* Belum Punya Lisensi */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-center mb-3">
           <ArrowUpCircle size={32} className="text-[#f59e0b] mx-auto mb-2" />
@@ -62,7 +150,7 @@ export function UpgradePage() {
         </a>
         <button
           onClick={handleWA}
-          className="w-full flex items-center justify-center gap-[6px] py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer"
+          className="w-full flex items-center justify-center gap-[6px] py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer border-none"
           style={{ background: "#25D366" }}
         >
           <MessageCircle size={16} /> Atau via WhatsApp

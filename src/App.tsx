@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { Marquee } from "@/components/layout/Marquee";
+import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import { WizardSetup } from "@/components/wizard/WizardSetup";
 import { PresensiPage } from "@/components/attendance/PresensiPage";
 import { RekapPage } from "@/components/reports/RekapPage";
@@ -15,7 +16,7 @@ import { PetunjukPage } from "@/components/guide/PetunjukPage";
 import { TentangKontak } from "@/components/about/TentangKontak";
 import { PengaturanPage } from "@/components/pro/PengaturanPage";
 import { UpgradePage } from "@/components/pro/UpgradePage";
-import { PWAInstallPopup } from "@/components/shared/PWAInstallPopup";
+
 import { PageName } from "@/types/enums";
 import { ConvexProvider } from "convex/react";
 import { convexClient } from "@/lib/convex";
@@ -92,7 +93,7 @@ function AppContent() {
         </div>
       )}
       <BottomNav />
-      {setupSelesai && <PWAInstallPopup />}
+      {setupSelesai && <InstallPrompt />}
     </>
   );
 }
