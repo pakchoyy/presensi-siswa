@@ -9,6 +9,7 @@ import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
+import { Info } from "lucide-react";
 
 function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
   const d = new Date(dateStr + "T00:00:00");
@@ -111,6 +112,13 @@ export function PresensiPage() {
       <RingkasanBar counts={counts} />
       <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <DateNavigator />
+
+        {!isLibur && students.length > 0 && (
+          <div className="flex items-center gap-[6px] bg-[rgba(14,165,160,0.06)] border border-[#0ea5a0]/20 rounded-lg px-[10px] py-[7px] mb-[10px] text-[0.7rem] text-[var(--text-light)]">
+            <Info size={13} className="text-[#0ea5a0] flex-shrink-0" />
+            <span>Klik nama siswa yang <b className="text-[var(--text)]">Sakit</b>, <b className="text-[var(--text)]">Izin</b>, atau <b className="text-[var(--text)]">Alpha</b> untuk ubah status</span>
+          </div>
+        )}
 
         {isLibur ? (
           <div className="text-center py-[40px]">

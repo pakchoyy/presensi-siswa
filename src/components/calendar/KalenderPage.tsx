@@ -4,7 +4,7 @@ import { useToast } from "@/components/shared/Toast";
 import { db } from "@/repositories/dexie/db";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import type { AcademicCalendarEntry } from "@/types/entities";
-import { CalendarEntryType, CalendarSource, Tier } from "@/types/enums";
+import { CalendarEntryType, CalendarSource, Tier, HariAktif } from "@/types/enums";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Lock, Star } from "lucide-react";
 
 const MONTHS = [
@@ -16,6 +16,8 @@ export function KalenderPage() {
   const { activeClassroom, teacher } = useApp();
   const { toast } = useToast();
   const isPRO = teacher?.tier === Tier.PRO;
+
+  const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
 
   const [entries, setEntries] = useState<AcademicCalendarEntry[]>([]);
   const [ay, setAy] = useState<{ id: number; label: string } | null>(null);
@@ -144,15 +146,20 @@ export function KalenderPage() {
         </div>
 
         <div className="grid grid-cols-7 gap-[2px] text-center mb-2">
-          {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d, i) => (
-            <div key={d} className={`text-[0.6rem] font-bold uppercase py-1 ${i === 0 ? "text-[#dc2626]" : "text-[var(--text-light)]"}`}>{d}</div>
-          ))}
+          {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d, i) => {
+            const isRed = i === 0 || (i === 6 && hariAktif === HariAktif.SENIN_JUMAT);
+            return (
+              <div key={d} className={`text-[0.6rem] font-bold uppercase py-1 ${isRed ? "text-[#dc2626]" : "text-[var(--text-light)]"}`}>{d}</div>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-7 gap-[2px]">
           {days.map((day, i) => {
             const dayEntries = day ? getEntries(day) : [];
             const isSunday = i % 7 === 0;
+            const isSaturday = i % 7 === 6;
+            const isWeekend = isSunday || (isSaturday && hariAktif === HariAktif.SENIN_JUMAT);
             const todayClass = day && isToday(day);
             const liburEntry = dayEntries.find(e => e.jenis === CalendarEntryType.HARI_LIBUR);
             const pentingEntry = dayEntries.find(e => e.jenis === CalendarEntryType.HARI_PENTING);
@@ -168,7 +175,7 @@ export function KalenderPage() {
             } else if (todayClass) {
               bg = "bg-[#0ea5a0]";
               textColor = "text-white font-bold";
-            } else if (isSunday) {
+            } else if (isWeekend) {
               textColor = "text-[#dc2626]";
             } else {
               textColor = "text-[var(--text)]";
@@ -180,9 +187,9 @@ export function KalenderPage() {
                 onClick={() => day && handleDayClick(day, dayEntries)}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[0.7rem] transition-colors ${
                   !day ? "" :
-                  bg || (isSunday ? "" : isPRO ? "cursor-pointer hover:bg-[var(--input-bg)]" : "")
+                  bg || (isWeekend ? "" : isPRO ? "cursor-pointer hover:bg-[var(--input-bg)]" : "")
                 } ${textColor}`}
-                style={!bg && isSunday ? { backgroundColor: "var(--input-bg)" } : undefined}
+                style={!bg && isWeekend ? { backgroundColor: "var(--input-bg)" } : undefined}
                 title={liburEntry ? liburEntry.keterangan || "Hari Libur" : pentingEntry ? pentingEntry.keterangan || "Hari Penting" : isPRO ? "Klik untuk tambah" : undefined}
               >
                 {day && <span>{day}</span>}

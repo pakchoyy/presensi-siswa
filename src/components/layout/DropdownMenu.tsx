@@ -27,8 +27,6 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
       promptEv.userChoice.then(() => {
         (window as any).__bgy_deferredPrompt = null;
       });
-    } else {
-      alert("Buka halaman ini di Chrome/Edge di Android.\nLalu menu browser > Tambahkan ke Layar Utama.");
     }
     onClose();
   };
