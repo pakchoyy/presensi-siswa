@@ -12,6 +12,35 @@ import { inisial, generateId, timestamp } from "@/lib/utils";
 import { siswaToImportResult } from "@/services/import.service";
 import type { ImportResult } from "@/services/import.service";
 import { Tier } from "@/types/enums";
+import { MAX_STUDENTS_FREE } from "@/lib/constants";
+
+function formatKelasLabel(namaKelas: string): string {
+  if (namaKelas.toLowerCase().startsWith("kelas")) {
+    return namaKelas;
+  }
+  
+  const romawiMap: Record<string, string> = {
+    "7": "VII", "8": "VIII", "9": "IX",
+    "10": "X", "11": "XI", "12": "XII"
+  };
+  
+  const trimmed = namaKelas.trim();
+  
+  if (/^\d+$/.test(trimmed)) {
+    const num = parseInt(trimmed);
+    if (num >= 1 && num <= 6) {
+      return `Kelas ${num}`;
+    } else if (romawiMap[trimmed]) {
+      return `Kelas ${romawiMap[trimmed]}`;
+    }
+  }
+  
+  if (/^(VII|VIII|IX|X|XI|XII)$/i.test(trimmed)) {
+    return `Kelas ${trimmed.toUpperCase()}`;
+  }
+  
+  return `Kelas ${namaKelas}`;
+}
 
 export function SiswaPage() {
   const { activeClassroom, classrooms, teacher, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
@@ -75,6 +104,12 @@ export function SiswaPage() {
       toast("Nama siswa belum diisi");
       return;
     }
+    
+    if (!isPRO && students.length >= MAX_STUDENTS_FREE) {
+      toast("⚠️ Limit FREE: maksimal 15 siswa. Upgrade ke PRO untuk unlimited siswa.");
+      return;
+    }
+    
     const now = timestamp();
     const s: Student = {
       id: generateId(),
@@ -95,6 +130,19 @@ export function SiswaPage() {
 
   const handleImport = async (result: ImportResult) => {
     if (!selectedKelas) return;
+
+    if (!isPRO) {
+      const totalAfterImport = students.length + result.students.length;
+      if (totalAfterImport > MAX_STUDENTS_FREE) {
+        const canImport = MAX_STUDENTS_FREE - students.length;
+        if (canImport <= 0) {
+          toast("⚠️ Kelas sudah penuh (15 siswa). Upgrade ke PRO untuk unlimited siswa.");
+          return;
+        }
+        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit FREE: 15 siswa). Upgrade ke PRO untuk unlimited.`);
+        result.students = result.students.slice(0, canImport);
+      }
+    }
 
     // Auto-create classes from Excel if they exist
     if (result.classes.length > 0 && isPRO) {
@@ -169,7 +217,7 @@ export function SiswaPage() {
                     style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
                     <Users size={18} />
                   </div>
-                  <div className="text-[0.82rem] font-bold text-[var(--text)] leading-tight mb-1">{cls.nama}</div>
+                  <div className="text-[0.82rem] font-bold text-[var(--text)] leading-tight mb-1">{formatKelasLabel(cls.nama)}</div>
                   <div className="text-[0.68rem] text-[var(--text-light)]">
                     {count} siswa {isActive && <span className="text-[#0ea5a0] font-semibold">• Aktif</span>}
                   </div>
@@ -193,8 +241,12 @@ export function SiswaPage() {
         <ArrowLeft size={16} /> Kembali ke Daftar Kelas
       </button>
 
-      <div className="text-[0.85rem] font-bold mb-1">{selectedKelas?.nama}</div>
-      <div className="text-[0.7rem] text-[var(--text-light)] mb-3">{students.length} siswa terdaftar</div>
+      <div className="text-[0.85rem] font-bold mb-1">{formatKelasLabel(selectedKelas?.nama || "")}</div>
+      <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
+        {students.length} siswa terdaftar
+        {!isPRO && <span className="text-[var(--text-light)]"> • Limit: {students.length}/{MAX_STUDENTS_FREE}</span>}
+        {!isPRO && students.length >= MAX_STUDENTS_FREE && <span className="text-[#b45309] font-semibold"> • Penuh</span>}
+      </div>
 
       <div className="relative mb-3">
         <Search

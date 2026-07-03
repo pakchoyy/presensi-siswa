@@ -30,3 +30,4 @@ export const WIZARD_TOTAL_STEPS = 5;
 export const PRO_PRICE = "Rp10.000/tahun";
 
 export const MAX_KELAS_FREE = 1;
+export const MAX_STUDENTS_FREE = 15;

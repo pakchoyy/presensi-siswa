@@ -9,12 +9,17 @@ export function DateNavigator() {
   const [busy, setBusy] = useState(false);
 
   const change = (days: number) => {
+    if (busy) return;
     const now = Date.now();
-    if (now - lastRef.current < 400) return;
+    if (now - lastRef.current < 300) return;
+    
     lastRef.current = now;
     setBusy(true);
-    setTanggalAktif(addDays(tanggalAktif, days));
-    setTimeout(() => setBusy(false), 400);
+    
+    const newDate = addDays(tanggalAktif, days);
+    setTanggalAktif(newDate);
+    
+    setTimeout(() => setBusy(false), 350);
   };
 
   return (

@@ -29,7 +29,12 @@ const getHariAktif = (): HariAktif => {
 };
 
 const getAutoHadir = (): boolean => {
-  return localStorage.getItem("bgy_auto_hadir") === "1";
+  const stored = localStorage.getItem("bgy_auto_hadir");
+  if (stored === null) {
+    localStorage.setItem("bgy_auto_hadir", "1");
+    return true;
+  }
+  return stored === "1";
 };
 
 export function PengaturanPage() {
@@ -470,6 +475,7 @@ export function PengaturanPage() {
             <tbody>
               {[
                 { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
+                { fitur: "Jumlah siswa per kelas", free: "15 siswa", pro: "Unlimited" },
                 { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
                 { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
                 { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },

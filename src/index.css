@@ -119,6 +119,8 @@ body {
   overflow: hidden;
   white-space: nowrap;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 .ticker-content {
   display: inline-block;
@@ -127,9 +129,11 @@ body {
   cursor: pointer;
   text-decoration: none;
   color: #1e293b;
+  line-height: 1;
 }
 .ticker-content:hover {
   animation-play-state: paused;
+  text-decoration: underline;
 }
 @keyframes ticker-scroll {
   0% { transform: translate3d(0, 0, 0); }
