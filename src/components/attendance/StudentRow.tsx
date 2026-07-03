@@ -6,7 +6,7 @@ import { inisial } from "@/lib/utils";
 interface Props {
   student: Student;
   index: number;
-  status: AttendanceStatus;
+  status?: AttendanceStatus;
   onClick: () => void;
 }
 
@@ -15,6 +15,7 @@ const STATUS_BORDER: Record<string, string> = {
   S: "#b45309",
   I: "#1d4ed8",
   A: "#dc2626",
+  undefined: "var(--border)",
 };
 
 const STATUS_BG: Record<string, string> = {
@@ -22,14 +23,20 @@ const STATUS_BG: Record<string, string> = {
   S: "var(--sakit-bg, #fef3c7)",
   I: "var(--izin-bg, #dbeafe)",
   A: "var(--alpha-bg, #fee2e2)",
+  undefined: "var(--input-bg)",
 };
 
 export function StudentRow({ student, index, status, onClick }: Props) {
+  const color = status ? STATUS_COLOR[status] : "var(--text-light)";
+  const bg = status ? STATUS_BG[status] : "var(--input-bg)";
+  const label = status ? STATUS_LABEL[status] : "?";
+  const border = status ? STATUS_BORDER[status] : "var(--border)";
+
   return (
     <div
       onClick={onClick}
       className="flex items-center gap-[10px] px-3 py-[11px] rounded-[10px] bg-[var(--input-bg)] mb-2 cursor-pointer active:scale-[0.98] transition-transform border-l-4 select-none"
-      style={{ touchAction: "manipulation", borderLeftColor: STATUS_BORDER[status] || STATUS_BORDER.H }}
+      style={{ touchAction: "manipulation", borderLeftColor: border }}
     >
       <div
         className="w-[34px] h-[34px] rounded-full text-white flex items-center justify-center font-bold text-[0.78rem] flex-shrink-0"
@@ -47,12 +54,9 @@ export function StudentRow({ student, index, status, onClick }: Props) {
       </div>
       <div
         className="text-[11px] font-bold px-[9px] py-1 rounded-full flex-shrink-0"
-        style={{
-          background: STATUS_BG[status] || STATUS_BG.H,
-          color: STATUS_COLOR[status as AttendanceStatus] || STATUS_COLOR.H,
-        }}
+        style={{ background: bg, color }}
       >
-        {STATUS_LABEL[status as AttendanceStatus]}
+        {label}
       </div>
     </div>
   );

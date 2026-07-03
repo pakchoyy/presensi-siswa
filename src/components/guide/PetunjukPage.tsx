@@ -1,29 +1,41 @@
-import { BookOpen, ClipboardCheck, Upload, BarChart3, Database } from "lucide-react";
+import { BookOpen, ClipboardCheck, Upload, BarChart3, Database, Calendar, Settings } from "lucide-react";
 
 const GUIDES = [
   {
     num: "1",
     icon: ClipboardCheck,
     title: "Presensi Harian",
-    desc: "Buka menu Presensi — semua siswa otomatis berstatus <b>Hadir</b>. Tap nama siswa yang <b>tidak hadir</b>, lalu pilih Sakit / Izin / Alpha. Data langsung tersimpan otomatis. Tidak perlu tekan tombol simpan!",
+    desc: "Buka menu Presensi. Kalau <b>Isi Hadir Otomatis</b> ON (di Pengaturan), semua siswa otomatis berstatus <b>Hadir</b>. Tap nama siswa yang <b>tidak hadir</b>, lalu pilih Sakit/Izin/Alpha. Data langsung tersimpan.",
   },
   {
     num: "2",
-    icon: Upload,
-    title: "Import Siswa dari Excel",
-    desc: "Download template Excel dari menu Siswa atau Wizard Setup. Isi kolom <b>Nama, NISN, Jenis Kelamin</b> — lalu upload. Sistem akan membaca dan menampilkan pratinjau sebelum disimpan.",
+    icon: Settings,
+    title: "Pengaturan Hari Aktif",
+    desc: "Buka menu <b>Pengaturan</b> > <b>Hari Aktif</b>. Pilih <b>Senin - Jumat</b> (Sabtu & Minggu libur) atau <b>Senin - Sabtu</b> (hanya Minggu libur). Hari non-aktif ditandai merah di kalender dan tidak masuk presensi.",
   },
   {
     num: "3",
-    icon: BarChart3,
-    title: "Rekap & Export Laporan",
-    desc: "Buka menu Rekap — pilih <b>Bulanan</b> atau <b>Semester</b>. Lihat tabel ringkasan Hadir/Sakit/Izin/Alpha per siswa. Ekspor langsung ke <b>PDF</b> atau <b>Excel</b> untuk laporan resmi.",
+    icon: Upload,
+    title: "Import Siswa dari Excel",
+    desc: "Download template Excel dari menu Siswa. Isi kolom <b>Nama, NISN, Jenis Kelamin, Kelas</b> — lalu upload. Sistem membaca dan menampilkan pratinjau. Kolom <b>Kelas</b> otomatis membuat kelas baru (PRO).",
   },
   {
     num: "4",
+    icon: BarChart3,
+    title: "Rekap & Export Laporan",
+    desc: "Buka menu Rekap — pilih <b>Bulanan</b> atau <b>Semester</b>. Lihat tabel ringkasan Hadir/Sakit/Izin/Alpha per siswa. Ekspor langsung ke <b>PDF</b> atau <b>Excel</b> untuk laporan ke kepala sekolah.",
+  },
+  {
+    num: "5",
+    icon: Calendar,
+    title: "Kalender Akademik (PRO)",
+    desc: "Buka menu Kalender. Versi PRO bisa <b>menandai Hari Libur</b> (merah) dan <b>Hari Penting</b> (biru) — seperti penerimaan rapor, ujian, atau perayaan sekolah. Kalender membantu merencanakan semester.",
+  },
+  {
+    num: "6",
     icon: Database,
     title: "Backup & Restore Data",
-    desc: "Buka menu Backup — klik <b>Buat Backup Lokal</b> untuk menyimpan semua data ke file. Simpan file tersebut di HP atau Google Drive. Jika ganti HP, tinggal <b>Restore</b> dari file backup yang sama.",
+    desc: "Buka menu Backup — klik <b>Buat Backup Lokal</b> untuk menyimpan data ke file. Simpan di HP atau Google Drive. Kalau ganti HP, <b>Restore</b> dari file yang sama. Versi PRO bisa backup ke cloud.",
   },
 ];
 
@@ -42,8 +54,7 @@ export function PetunjukPage() {
             borderLeft: "4px solid #0ea5a0",
           }}
         >
-          <b>Bantu Guru Yuk | Presensi Siswa</b> dirancang sesederhana mungkin agar guru bisa
-          mengisi presensi <b>kurang dari 30 detik per kelas</b>, bahkan tanpa koneksi internet.
+          <b>Bantu Guru Yuk | Presensi Siswa</b> dirancang sesederhana mungkin. Guru bisa mengisi presensi <b>kurang dari 30 detik per kelas</b>, bisa online maupun offline.
         </div>
 
         <div className="flex flex-col gap-[10px]">

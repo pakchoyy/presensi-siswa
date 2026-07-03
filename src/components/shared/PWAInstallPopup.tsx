@@ -50,7 +50,7 @@ export function PWAInstallPopup() {
 
   return (
     <div
-      className="fixed bottom-[90px] left-1/2 -translate-x-1/2 w-[calc(100%-28px)] max-w-[400px] z-[600] animate-slide-up"
+      className="fixed top-[48px] left-1/2 -translate-x-1/2 w-[calc(100%-28px)] max-w-[400px] z-[600] animate-slide-down"
     >
       <div
         className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl px-[14px] py-[12px] flex items-center gap-3"

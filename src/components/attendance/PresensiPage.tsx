@@ -29,6 +29,7 @@ export function PresensiPage() {
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
+  const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
 
   const loadData = useCallback(async () => {
     if (!activeClassroom || isLibur) return;
@@ -86,7 +87,12 @@ export function PresensiPage() {
       I: "Izin",
       A: "Alpha",
     };
-    toast(`✅ Status disimpan — ${labelMap[status]}`);
+    toast(`Status disimpan — ${labelMap[status]}`);
+  };
+
+  const getStatus = (siswaId: number): AttendanceStatus | undefined => {
+    if (autoHadir) return records.get(siswaId)?.status || AttendanceStatus.HADIR;
+    return records.get(siswaId)?.status;
   };
 
   const counts: Record<AttendanceStatus, number> = {
@@ -129,7 +135,7 @@ export function PresensiPage() {
               key={s.id}
               student={s}
               index={i}
-              status={records.get(s.id)?.status || AttendanceStatus.HADIR}
+              status={getStatus(s.id)}
               onClick={() => setSelectedStudent(s)}
             />
           ))

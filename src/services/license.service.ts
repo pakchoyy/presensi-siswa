@@ -161,13 +161,13 @@ export const licenseService = {
 
   getManfaat(): string[] {
     return [
-      "Unlimited kelas — kelola semua kelas yang kamu ajar",
-      "Multi Device — data sama bisa diakses dari HP, laptop, & tablet",
-      "Cloud Sync — data aman tersimpan dan tersinkron otomatis",
-      "Kalender Akademik — tandai hari libur & hari penting sekolahmu",
-      "Import Update Excel — update data siswa tanpa duplikat",
-      "Backup & Restore Cloud — cadangkan dan pulihkan data dari cloud",
-      "Logo Sekolah — branding di laporan PDF & Excel",
+      "Kelola semua kelas yang kamu ajar (tanpa batas)",
+      "Buka data yang sama dari HP, laptop, atau tablet",
+      "Data aman tersimpan & otomatis sinkron di internet",
+      "Atur kalender sendiri: tandai libur & hari penting",
+      "Update data siswa lewat Excel tanpa duplikat",
+      "Backup & pulihkan data dari internet (cloud)",
+      "Tambah logo sekolah di laporan PDF & Excel",
     ];
   },
 };

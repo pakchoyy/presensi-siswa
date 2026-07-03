@@ -42,7 +42,7 @@ export function ImportExcel({ kelasId, existingCount, onImport, onClose }: Props
     setImporting(true);
     await onImport(result);
     setImporting(false);
-    toast(`✅ ${result.students.length} siswa berhasil diimport`);
+    toast(`${result.students.length} siswa berhasil diimport`);
     if (onClose) onClose();
   };
 

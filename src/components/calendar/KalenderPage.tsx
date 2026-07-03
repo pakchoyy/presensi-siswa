@@ -77,10 +77,10 @@ export function KalenderPage() {
 
     if (editTarget?.id) {
       await db.calendarEntries.put(entry);
-      toast("✅ Entry diperbarui");
+      toast("Entry diperbarui");
     } else {
       await db.calendarEntries.put(entry);
-      toast("✅ Entry ditambahkan");
+      toast("Entry ditambahkan");
     }
     setAddForm(false);
     setEditTarget(null);
@@ -94,7 +94,7 @@ export function KalenderPage() {
       return;
     }
     await db.calendarEntries.delete(entry.id);
-    toast("🗑️ Entry dihapus");
+    toast("Entry dihapus");
     setEditTarget(null);
     await loadEntries();
   };

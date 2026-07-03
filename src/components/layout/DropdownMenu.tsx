@@ -28,7 +28,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         (window as any).__bgy_deferredPrompt = null;
       });
     } else {
-      alert("Buka halaman ini di Chrome/Edge di Android untuk menginstall.\nAtau gunakan menu browser: Tambahkan ke Layar Utama.");
+      alert("Buka halaman ini di Chrome/Edge di Android.\nLalu menu browser > Tambahkan ke Layar Utama.");
     }
     onClose();
   };
@@ -83,7 +83,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           onClick={handleInstall}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
-          <Download size={16} /> Install BGY
+          <Download size={16} /> Install BGY Presensi
         </button>
         <button
           onClick={() => {

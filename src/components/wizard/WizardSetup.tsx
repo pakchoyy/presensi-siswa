@@ -81,7 +81,7 @@ export function WizardSetup() {
 
     await setupService.executeSetup(data);
     await refreshClassrooms();
-    toast("✅ Setup selesai! Selamat mengajar 🎉");
+    toast("Setup selesai! Selamat mengajar");
   };
 
   return (

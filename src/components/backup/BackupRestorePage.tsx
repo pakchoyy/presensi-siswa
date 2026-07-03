@@ -38,7 +38,7 @@ export function BackupRestorePage() {
     try {
       const blob = await createBackup();
       downloadBackup(blob);
-      toast("✅ Backup berhasil dibuat");
+      toast("Backup berhasil dibuat");
     } catch {
       toast("Gagal membuat backup. Coba lagi");
     } finally {
@@ -52,7 +52,7 @@ export function BackupRestorePage() {
     try {
       const ok = await backupToCloud(teacher.id);
       if (ok) {
-        toast("☁️ Backup cloud berhasil!");
+        toast("Backup cloud berhasil");
         await loadCloudBackups();
       } else {
         toast("Gagal backup ke cloud. Periksa internet.");

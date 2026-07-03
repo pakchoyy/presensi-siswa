@@ -81,7 +81,7 @@ export function Sidebar() {
       diubahPada: timestamp(),
     };
     await classroomRepo.save(classroom);
-    toast("✅ Kelas berhasil ditambahkan");
+    toast("Kelas berhasil ditambahkan");
     setNewKelasName("");
     setShowAddKelas(false);
     await refreshClassrooms();

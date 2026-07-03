@@ -39,7 +39,7 @@ export function UpgradePage() {
             Semua fitur premium, cukup
           </div>
           <div className="text-[1.8rem] font-extrabold text-[#f59e0b] mt-1">{PRO_PRICE}</div>
-          <div className="text-[0.65rem] text-[var(--text-light)] mt-[2px]">Pembayaran sekali, akses 1 tahun penuh</div>
+          <div className="text-[0.65rem] text-[var(--text-light)] mt-[2px]">Bayar sekali, akses setahun penuh</div>
         </div>
 
         <div className="mb-4">
@@ -51,37 +51,46 @@ export function UpgradePage() {
           ))}
         </div>
 
+        <a
+          href="https://lynk.id/kreacy/o9g1wgrxg7gl"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full text-center py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer mb-2 no-underline"
+          style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+        >
+          Beli Disini
+        </a>
         <button
           onClick={handleWA}
           className="w-full flex items-center justify-center gap-[6px] py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer"
           style={{ background: "#25D366" }}
         >
-          <MessageCircle size={16} /> Beli via WhatsApp
+          <MessageCircle size={16} /> Atau via WhatsApp
         </button>
       </div>
 
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-2">
-          <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan FREE vs PRO
+          <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[0.7rem] border-collapse">
             <thead>
               <tr className="border-b border-[var(--border)]">
-                <th className="py-2 px-2 text-left text-[0.65rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
-                <th className="py-2 px-2 text-center text-[0.65rem] uppercase text-[var(--text-light)] font-semibold">FREE</th>
-                <th className="py-2 px-2 text-center text-[0.65rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
+                <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
+                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Gratis</th>
+                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { fitur: "Jumlah Kelas", free: "1 Kelas", pro: "Unlimited" },
-                { fitur: "Multi Device", free: "-", pro: "Ya" },
-                { fitur: "Cloud Sync", free: "-", pro: "Ya" },
-                { fitur: "Kalender Edit", free: "-", pro: "Ya" },
-                { fitur: "Backup Cloud", free: "-", pro: "Ya" },
-                { fitur: "Logo Sekolah", free: "-", pro: "Ya" },
-                { fitur: "Import Update", free: "-", pro: "Ya" },
+                { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
+                { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
+                { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
+                { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
+                { fitur: "Backup ke internet", free: "Tidak", pro: "Bisa" },
+                { fitur: "Logo di laporan", free: "Tidak", pro: "Bisa" },
+                { fitur: "Update data Excel", free: "Tidak", pro: "Bisa" },
                 { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
               ].map((row, i) => (
                 <tr key={i} className="border-b border-[var(--border)] last:border-0">

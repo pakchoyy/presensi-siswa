@@ -23,13 +23,17 @@ export const attendanceService = {
       };
       await attendanceRepo.createSession(session);
 
-      const students = await studentRepo.getByClass(kelasId);
-      const records = buildDefaultRecords(
-        session.id,
-        students.map((s) => s.id)
-      );
-      await attendanceRepo.bulkSaveRecords(records);
-      return { session, records };
+      const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
+      if (autoHadir) {
+        const students = await studentRepo.getByClass(kelasId);
+        const records = buildDefaultRecords(
+          session.id,
+          students.map((s) => s.id)
+        );
+        await attendanceRepo.bulkSaveRecords(records);
+        return { session, records };
+      }
+      return { session, records: [] };
     }
 
     const records = await attendanceRepo.getRecords(session.id);

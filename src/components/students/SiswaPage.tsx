@@ -82,7 +82,7 @@ export function SiswaPage() {
     setShowModal(false);
     await loadStudents(selectedKelas.id);
     await loadCounts();
-    toast("✅ Siswa berhasil ditambahkan");
+    toast("Siswa berhasil ditambahkan");
   };
 
   const handleImport = async (result: ImportResult) => {
@@ -123,7 +123,7 @@ export function SiswaPage() {
     setDeleteTarget(null);
     await loadStudents(deleteTarget.kelasId);
     await loadCounts();
-    toast("🗑️ Siswa dihapus");
+    toast("Siswa dihapus");
   };
 
   // View: Daftar Kelas (Cards)
@@ -161,7 +161,7 @@ export function SiswaPage() {
                     style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
                     <Users size={18} />
                   </div>
-                  <div className="text-[0.82rem] font-bold text-[var(--text)] leading-tight mb-1">{cls.nama}</div>
+                  <div className="text-[0.82rem] font-bold text-[var(--text)] leading-tight mb-1">Kelas {cls.nama}</div>
                   <div className="text-[0.68rem] text-[var(--text-light)]">
                     {count} siswa {isActive && <span className="text-[#0ea5a0] font-semibold">• Aktif</span>}
                   </div>

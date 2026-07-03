@@ -115,7 +115,7 @@ export function RekapPage() {
   const handleExportPDF = async () => {
     try {
       setExporting("pdf");
-      toast("📄 Menyiapkan file PDF...");
+      toast("Menyiapkan file PDF...");
       await exportPDF({
         school,
         teacher,
@@ -124,9 +124,9 @@ export function RekapPage() {
         data: exportableData,
         total: { H: totalH, S: totalS, I: totalI, A: totalA },
       });
-      toast("✅ PDF berhasil diunduh");
+      toast("PDF berhasil diunduh");
     } catch {
-      toast("❌ Gagal mengekspor PDF");
+      toast("Gagal mengekspor PDF");
     } finally {
       setExporting(null);
     }
@@ -135,7 +135,7 @@ export function RekapPage() {
   const handleExportExcel = async () => {
     try {
       setExporting("excel");
-      toast("📊 Menyiapkan file Excel...");
+      toast("Menyiapkan file Excel...");
       await exportExcel({
         school,
         teacher,
@@ -144,9 +144,9 @@ export function RekapPage() {
         data: exportableData,
         total: { H: totalH, S: totalS, I: totalI, A: totalA },
       });
-      toast("✅ Excel berhasil diunduh");
+      toast("Excel berhasil diunduh");
     } catch {
-      toast("❌ Gagal mengekspor Excel");
+      toast("Gagal mengekspor Excel");
     } finally {
       setExporting(null);
     }

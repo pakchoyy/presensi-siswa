@@ -106,7 +106,7 @@ export function PengaturanPage() {
   const copyKode = () => {
     if (kode) {
       navigator.clipboard.writeText(kode);
-      toast("📋 Kode disalin!");
+      toast("Kode disalin");
     }
   };
 
@@ -161,7 +161,7 @@ export function PengaturanPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { setHariAktif(HariAktif.SENIN_JUMAT); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_JUMAT); toast("✅ Hari aktif: Senin - Jumat"); }}
+            onClick={() => { setHariAktif(HariAktif.SENIN_JUMAT); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_JUMAT); toast("Hari aktif: Senin - Jumat"); }}
             className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
               hariAktif === HariAktif.SENIN_JUMAT
                 ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
@@ -171,7 +171,7 @@ export function PengaturanPage() {
             Senin - Jumat
           </button>
           <button
-            onClick={() => { setHariAktif(HariAktif.SENIN_SABTU); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_SABTU); toast("✅ Hari aktif: Senin - Sabtu"); }}
+            onClick={() => { setHariAktif(HariAktif.SENIN_SABTU); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_SABTU); toast("Hari aktif: Senin - Sabtu"); }}
             className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
               hariAktif === HariAktif.SENIN_SABTU
                 ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
@@ -327,18 +327,30 @@ export function PengaturanPage() {
             ))}
           </div>
 
+          <div className="mb-3">
+            <a
+              href="https://lynk.id/kreacy/o9g1wgrxg7gl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer no-underline"
+              style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+            >
+              Beli Disini
+            </a>
+          </div>
+          <div className="mb-3">
+            <button
+              onClick={handleWA}
+              className="w-full flex items-center justify-center gap-[6px] py-[9px] rounded-[10px] text-white font-bold text-[0.78rem] cursor-pointer"
+              style={{ background: "#25D366" }}
+            >
+              <MessageCircle size={14} /> Atau via WhatsApp
+            </button>
+          </div>
+
           <div className="border-t border-[var(--border)] pt-3">
-            <div className="text-[0.72rem] font-bold text-[var(--text)] mb-2">
-              📥 Dapatkan Kode Lisensi
-            </div>
-            <div className="mb-3">
-              <button
-                onClick={handleWA}
-                className="w-full flex items-center justify-center gap-[6px] py-[9px] rounded-[10px] text-white font-bold text-[0.78rem] cursor-pointer"
-                style={{ background: "#25D366" }}
-              >
-                <MessageCircle size={14} /> Beli via WhatsApp
-              </button>
+            <div className="text-[0.72rem] font-bold text-[var(--text)] mb-2 flex items-center gap-[4px]">
+              <Key size={13} /> Dapatkan Kode Lisensi
             </div>
 
             <div className="mb-2">
@@ -381,26 +393,26 @@ export function PengaturanPage() {
       {/* Info Tier */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.75rem] font-bold text-[var(--text)] mb-2">
-          Perbandingan FREE vs PRO
+          Perbandingan Gratis vs PRO
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[0.7rem] border-collapse">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
-                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">FREE</th>
+                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Gratis</th>
                 <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { fitur: "Jumlah Kelas", free: "1 Kelas", pro: "Unlimited" },
-                { fitur: "Multi Device", free: "-", pro: "Ya" },
-                { fitur: "Cloud Sync", free: "-", pro: "Ya" },
-                { fitur: "Kalender Edit", free: "-", pro: "Ya" },
-                { fitur: "Backup Cloud", free: "-", pro: "Ya" },
-                { fitur: "Logo Sekolah", free: "-", pro: "Ya" },
-                { fitur: "Import Update", free: "-", pro: "Ya" },
+                { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
+                { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
+                { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
+                { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
+                { fitur: "Backup ke internet", free: "Tidak", pro: "Bisa" },
+                { fitur: "Logo di laporan", free: "Tidak", pro: "Bisa" },
+                { fitur: "Update data Excel", free: "Tidak", pro: "Bisa" },
                 { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
               ].map((row, i) => (
                 <tr key={i} className="border-b border-[var(--border)] last:border-0">
