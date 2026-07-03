@@ -34,6 +34,7 @@ export function RekapPage() {
   const [semesterIdx, setSemesterIdx] = useState(
     new Date().getMonth() >= 6 ? 0 : 1
   );
+  const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const [taStart, setTaStart] = useState(`${new Date().getFullYear()}-07-01`);
   const [taEnd, setTaEnd] = useState(`${new Date().getFullYear() + 1}-06-30`);
 
@@ -113,6 +114,8 @@ export function RekapPage() {
 
   const handleExportPDF = async () => {
     try {
+      setExporting("pdf");
+      toast("📄 Menyiapkan file PDF...");
       await exportPDF({
         school,
         teacher,
@@ -123,12 +126,16 @@ export function RekapPage() {
       });
       toast("✅ PDF berhasil diunduh");
     } catch {
-      toast("Gagal mengekspor PDF");
+      toast("❌ Gagal mengekspor PDF");
+    } finally {
+      setExporting(null);
     }
   };
 
   const handleExportExcel = async () => {
     try {
+      setExporting("excel");
+      toast("📊 Menyiapkan file Excel...");
       await exportExcel({
         school,
         teacher,
@@ -139,7 +146,9 @@ export function RekapPage() {
       });
       toast("✅ Excel berhasil diunduh");
     } catch {
-      toast("Gagal mengekspor Excel");
+      toast("❌ Gagal mengekspor Excel");
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -297,15 +306,27 @@ export function RekapPage() {
       <div className="flex gap-2">
         <button
           onClick={handleExportPDF}
-          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer active:scale-[0.98]"
+          disabled={exporting === "pdf"}
+          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer active:scale-[0.98] disabled:opacity-50"
         >
-          <FileText size={15} /> Export PDF
+          {exporting === "pdf" ? (
+            <span className="inline-block w-4 h-4 border-2 border-[var(--text-light)] border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <FileText size={15} />
+          )}
+          {exporting === "pdf" ? "Menyiapkan..." : "Export PDF"}
         </button>
         <button
           onClick={handleExportExcel}
-          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer active:scale-[0.98]"
+          disabled={exporting === "excel"}
+          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer active:scale-[0.98] disabled:opacity-50"
         >
-          <FileSpreadsheet size={15} /> Export Excel
+          {exporting === "excel" ? (
+            <span className="inline-block w-4 h-4 border-2 border-[var(--text-light)] border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <FileSpreadsheet size={15} />
+          )}
+          {exporting === "excel" ? "Menyiapkan..." : "Export Excel"}
         </button>
       </div>
     </div>

@@ -24,6 +24,12 @@ export enum Semester {
 export enum CalendarEntryType {
   HARI_LIBUR = "HariLibur",
   HARI_EFEKTIF = "HariEfektif",
+  HARI_PENTING = "HariPenting",
+}
+
+export enum HariAktif {
+  SENIN_JUMAT = "Senin-Jumat",
+  SENIN_SABTU = "Senin-Sabtu",
 }
 
 export enum CalendarSource {

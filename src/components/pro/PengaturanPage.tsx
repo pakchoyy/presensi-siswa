@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
-import { Tier } from "@/types/enums";
+import { Tier, HariAktif } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import {
   Settings,
@@ -16,7 +16,17 @@ import {
   Clock,
   Copy,
   MessageCircle,
+  Calendar,
+  UserCheck,
 } from "lucide-react";
+
+const getHariAktif = (): HariAktif => {
+  return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
+};
+
+const getAutoHadir = (): boolean => {
+  return localStorage.getItem("bgy_auto_hadir") === "1";
+};
 
 export function PengaturanPage() {
   const { teacher, school, refreshTeacher } = useApp();
@@ -31,6 +41,9 @@ export function PengaturanPage() {
   const [licenseInfo, setLicenseInfo] = useState<Awaited<
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
+
+  const [hariAktif, setHariAktif] = useState<HariAktif>(getHariAktif());
+  const [autoHadir, setAutoHadir] = useState(getAutoHadir());
 
   useEffect(() => {
     if (teacher) {
@@ -135,6 +148,71 @@ export function PengaturanPage() {
         </div>
         <div className="text-[0.72rem] text-[var(--text-light)]">
           Sekolah: {school?.nama || "-"} ({school?.jenjang || "-"})
+        </div>
+      </div>
+
+      {/* Hari Aktif */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+          <Calendar size={15} /> Hari Aktif
+        </div>
+        <div className="text-[0.72rem] text-[var(--text-light)] mb-3">
+          Hari yang tidak aktif tidak akan muncul di presensi dan ditandai merah di kalender.
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setHariAktif(HariAktif.SENIN_JUMAT); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_JUMAT); toast("✅ Hari aktif: Senin - Jumat"); }}
+            className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
+              hariAktif === HariAktif.SENIN_JUMAT
+                ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
+                : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
+            }`}
+          >
+            Senin - Jumat
+          </button>
+          <button
+            onClick={() => { setHariAktif(HariAktif.SENIN_SABTU); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_SABTU); toast("✅ Hari aktif: Senin - Sabtu"); }}
+            className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
+              hariAktif === HariAktif.SENIN_SABTU
+                ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
+                : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
+            }`}
+          >
+            Senin - Sabtu
+          </button>
+        </div>
+        <div className="mt-2 text-[0.65rem] text-[var(--text-light)]">
+          {hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu: tidak masuk presensi, merah di kalender" : "Minggu: tidak masuk presensi, merah di kalender"}
+        </div>
+      </div>
+
+      {/* Isi Hadir Otomatis */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+          <UserCheck size={15} /> Presensi Otomatis
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[0.78rem] font-semibold text-[var(--text)]">Isi Hadir Otomatis</div>
+            <div className="text-[0.68rem] text-[var(--text-light)]">Semua siswa otomatis "Hadir", guru tinggal edit yang tidak hadir</div>
+          </div>
+          <button
+            onClick={() => {
+              const newVal = !autoHadir;
+              setAutoHadir(newVal);
+              localStorage.setItem("bgy_auto_hadir", newVal ? "1" : "0");
+              toast(newVal ? "✅ Isi Hadir Otomatis: ON" : "Isi Hadir Otomatis: OFF");
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+              autoHadir ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                autoHadir ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </div>
 
@@ -303,30 +381,36 @@ export function PengaturanPage() {
       {/* Info Tier */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.75rem] font-bold text-[var(--text)] mb-2">
-          Perbandingan Tier
+          Perbandingan FREE vs PRO
         </div>
-        <div className="grid grid-cols-2 gap-2 text-[0.7rem]">
-          <div className="bg-[var(--input-bg)] rounded-lg p-2">
-            <div className="font-bold text-[var(--text)] mb-1">FREE</div>
-            <div className="text-[var(--text-light)] leading-[1.6]">
-              • 1 kelas<br />
-              • Presensi offline<br />
-              • Rekap & export<br />
-              • Backup lokal<br />
-              • Kalender bawaan
-            </div>
-          </div>
-          <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 border border-[#0ea5a0]/20">
-            <div className="font-bold text-[#0ea5a0] mb-1">PRO</div>
-            <div className="text-[var(--text-light)] leading-[1.6]">
-              • Unlimited kelas<br />
-              • Cloud sync<br />
-              • Multi device<br />
-              • Kalender editable<br />
-              • Logo sekolah<br />
-              • {PRO_PRICE}
-            </div>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[0.7rem] border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
+                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">FREE</th>
+                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { fitur: "Jumlah Kelas", free: "1 Kelas", pro: "Unlimited" },
+                { fitur: "Multi Device", free: "-", pro: "Ya" },
+                { fitur: "Cloud Sync", free: "-", pro: "Ya" },
+                { fitur: "Kalender Edit", free: "-", pro: "Ya" },
+                { fitur: "Backup Cloud", free: "-", pro: "Ya" },
+                { fitur: "Logo Sekolah", free: "-", pro: "Ya" },
+                { fitur: "Import Update", free: "-", pro: "Ya" },
+                { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
+              ].map((row, i) => (
+                <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                  <td className="py-2 px-2 font-semibold">{row.fitur}</td>
+                  <td className="py-2 px-2 text-center text-[var(--text-light)]">{row.free}</td>
+                  <td className="py-2 px-2 text-center text-[#0ea5a0] font-bold">{row.pro}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

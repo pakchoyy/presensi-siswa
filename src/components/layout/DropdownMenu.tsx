@@ -1,11 +1,16 @@
 import { useApp } from "@/contexts/AppContext";
 import { PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
-import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle } from "lucide-react";
+import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 export function DropdownMenu({ isOpen, onClose }: Props) {
@@ -14,6 +19,19 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
   if (!isOpen || !setupSelesai) return null;
 
   const canInstall = !!(window as any).__bgy_deferredPrompt;
+
+  const handleInstall = () => {
+    const promptEv = (window as any).__bgy_deferredPrompt as BeforeInstallPromptEvent | undefined;
+    if (promptEv) {
+      promptEv.prompt();
+      promptEv.userChoice.then(() => {
+        (window as any).__bgy_deferredPrompt = null;
+      });
+    } else {
+      alert("Buka halaman ini di Chrome/Edge di Android untuk menginstall.\nAtau gunakan menu browser: Tambahkan ke Layar Utama.");
+    }
+    onClose();
+  };
 
   return (
     <>
@@ -44,6 +62,15 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         <div className="h-px bg-[var(--border)] mx-0" />
 
         <button
+          onClick={() => { setActivePage(PageName.PENGATURAN); onClose(); }}
+          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+        >
+          <Settings size={16} /> Pengaturan
+        </button>
+
+        <div className="h-px bg-[var(--border)] mx-0" />
+
+        <button
           onClick={() => { setActivePage(PageName.TENTANG); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
@@ -52,23 +79,12 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <div className="h-px bg-[var(--border)] mx-0" />
 
-        {canInstall && (
         <button
-          onClick={() => {
-            const promptEv = (window as any).__bgy_deferredPrompt;
-            if (promptEv) {
-              promptEv.prompt();
-              promptEv.userChoice.then(() => {
-                (window as any).__bgy_deferredPrompt = null;
-              });
-            }
-            onClose();
-          }}
+          onClick={handleInstall}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Download size={16} /> Install BGY
         </button>
-        )}
         <button
           onClick={() => {
             window.open("https://bantuguruyuk.web.id", "_blank", "noopener");
@@ -82,7 +98,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         <div className="h-px bg-[var(--border)] mx-0" />
 
         <button
-          onClick={() => { setActivePage(PageName.PENGATURAN); onClose(); }}
+          onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[#0ea5a0] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <ArrowUpCircle size={16} /> Upgrade PRO

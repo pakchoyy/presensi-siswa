@@ -1,21 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { studentRepo } from "@/repositories/dexie/student.repo";
-import type { Student } from "@/types/entities";
+import { classroomRepo } from "@/repositories/dexie/classroom.repo";
+import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import type { Student, Classroom } from "@/types/entities";
 import { inisial, generateId, timestamp } from "@/lib/utils";
 import { siswaToImportResult } from "@/services/import.service";
 import type { ImportResult } from "@/services/import.service";
 import { Tier } from "@/types/enums";
 
 export function SiswaPage() {
-  const { activeClassroom, teacher } = useApp();
+  const { activeClassroom, classrooms, teacher, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
   const isPRO = teacher?.tier === Tier.PRO;
   const { toast } = useToast();
 
+  const [view, setView] = useState<"kelas" | "detail">("kelas");
+  const [selectedKelas, setSelectedKelas] = useState<Classroom | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -23,16 +27,35 @@ export function SiswaPage() {
   const [showImportUpdate, setShowImportUpdate] = useState(false);
   const [modalNama, setModalNama] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
+  const [kelasCounts, setKelasCounts] = useState<Record<number, number>>({});
 
-  const loadStudents = useCallback(async () => {
-    if (!activeClassroom) return;
-    const data = await studentRepo.getByClass(activeClassroom.id);
+  const loadCounts = useCallback(async () => {
+    const counts: Record<number, number> = {};
+    for (const cls of classrooms) {
+      counts[cls.id] = await studentRepo.countActiveByClass(cls.id);
+    }
+    setKelasCounts(counts);
+  }, [classrooms]);
+
+  useEffect(() => { loadCounts(); }, [loadCounts]);
+
+  const loadStudents = useCallback(async (kelasId: number) => {
+    const data = await studentRepo.getByClass(kelasId);
     setStudents(data);
-  }, [activeClassroom]);
+  }, []);
 
-  useEffect(() => {
-    loadStudents();
-  }, [loadStudents]);
+  const openKelas = (cls: Classroom) => {
+    setSelectedKelas(cls);
+    setView("detail");
+    loadStudents(cls.id);
+  };
+
+  const backToKelas = () => {
+    setView("kelas");
+    setSelectedKelas(null);
+    setSearch("");
+    loadCounts();
+  };
 
   const filtered = students.filter((s) =>
     s.nama.toLowerCase().includes(search.toLowerCase())
@@ -40,14 +63,14 @@ export function SiswaPage() {
 
   const handleSave = async () => {
     const nama = modalNama.trim();
-    if (!nama) {
+    if (!nama || !selectedKelas) {
       toast("Nama siswa belum diisi");
       return;
     }
     const now = timestamp();
     const s: Student = {
       id: generateId(),
-      kelasId: activeClassroom!.id,
+      kelasId: selectedKelas.id,
       nama,
       urutan: students.length + 1,
       statusAktif: true,
@@ -57,26 +80,114 @@ export function SiswaPage() {
     await studentRepo.save(s);
     setModalNama("");
     setShowModal(false);
-    await loadStudents();
+    await loadStudents(selectedKelas.id);
+    await loadCounts();
     toast("✅ Siswa berhasil ditambahkan");
   };
 
   const handleImport = async (result: ImportResult) => {
-    if (!activeClassroom) return;
-    const newStudents = siswaToImportResult(result, activeClassroom.id);
+    if (!selectedKelas) return;
+
+    // Auto-create classes from Excel if they exist
+    if (result.classes.length > 0 && isPRO) {
+      const ay = await academicYearRepo.getActive();
+      if (ay && teacher) {
+        for (const namaKelas of result.classes) {
+          const exists = classrooms.find(c => c.nama.toLowerCase() === namaKelas.toLowerCase());
+          if (!exists) {
+            const newCls: Classroom = {
+              id: generateId(),
+              nama: namaKelas,
+              tahunAjaranId: ay.id,
+              guruId: teacher.id,
+              statusAktif: true,
+              dibuatPada: timestamp(),
+              diubahPada: timestamp(),
+            };
+            await classroomRepo.save(newCls);
+          }
+        }
+        await refreshClassrooms();
+      }
+    }
+
+    const newStudents = siswaToImportResult(result, selectedKelas.id);
     await studentRepo.bulkSave(newStudents);
-    await loadStudents();
+    await loadStudents(selectedKelas.id);
+    await loadCounts();
   };
+
   const handleRemove = async () => {
     if (!deleteTarget) return;
     await studentRepo.softDelete(deleteTarget.id);
     setDeleteTarget(null);
-    await loadStudents();
+    await loadStudents(deleteTarget.kelasId);
+    await loadCounts();
     toast("🗑️ Siswa dihapus");
   };
 
+  // View: Daftar Kelas (Cards)
+  if (view === "kelas") {
+    return (
+      <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+          <GraduationCap size={16} /> Daftar Kelas
+        </div>
+
+        {classrooms.length === 0 ? (
+          <div className="text-center py-[40px]">
+            <Users size={40} className="text-[var(--border)] mx-auto mb-3" />
+            <div className="text-[0.85rem] font-bold text-[var(--text-light)] mb-1">Belum ada kelas</div>
+            <div className="text-[0.72rem] text-[var(--text-light)]">
+              Import Excel dengan kolom "Kelas" atau tambah kelas di sidebar
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {classrooms.map((cls) => {
+              const count = kelasCounts[cls.id] || 0;
+              const isActive = activeClassroom?.id === cls.id;
+              return (
+                <button
+                  key={cls.id}
+                  onClick={() => openKelas(cls)}
+                  className={`p-4 rounded-xl border-[1.5px] text-left cursor-pointer transition-all ${
+                    isActive
+                      ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.06)]"
+                      : "border-[var(--border)] bg-[var(--card-bg)] hover:border-[#0ea5a0]/40"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-xl mb-2 flex items-center justify-center text-white text-[1.1rem]"
+                    style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
+                    <Users size={18} />
+                  </div>
+                  <div className="text-[0.82rem] font-bold text-[var(--text)] leading-tight mb-1">{cls.nama}</div>
+                  <div className="text-[0.68rem] text-[var(--text-light)]">
+                    {count} siswa {isActive && <span className="text-[#0ea5a0] font-semibold">• Aktif</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // View: Detail Siswa per Kelas
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      {/* Back button */}
+      <button
+        onClick={backToKelas}
+        className="flex items-center gap-[6px] text-[0.78rem] font-bold text-[#0ea5a0] mb-3 bg-transparent border-none cursor-pointer"
+      >
+        <ArrowLeft size={16} /> Kembali ke Daftar Kelas
+      </button>
+
+      <div className="text-[0.85rem] font-bold mb-1">{selectedKelas?.nama}</div>
+      <div className="text-[0.7rem] text-[var(--text-light)] mb-3">{students.length} siswa terdaftar</div>
+
       <div className="relative mb-3">
         <Search
           size={16}
@@ -107,10 +218,10 @@ export function SiswaPage() {
         </button>
       </div>
 
-      {showImport && (
+      {showImport && selectedKelas && (
         <div className="mb-3">
           <ImportExcel
-            kelasId={activeClassroom?.id || 0}
+            kelasId={selectedKelas.id}
             existingCount={students.length}
             onImport={handleImport}
             onClose={() => setShowImport(false)}
@@ -118,12 +229,12 @@ export function SiswaPage() {
         </div>
       )}
 
-      {isPRO && showImportUpdate && (
+      {isPRO && showImportUpdate && selectedKelas && (
         <div className="mb-3">
           <ImportUpdateExcel
-            kelasId={activeClassroom?.id || 0}
+            kelasId={selectedKelas.id}
             existingCount={students.length}
-            onDone={() => { setShowImportUpdate(false); loadStudents(); }}
+            onDone={() => { setShowImportUpdate(false); loadStudents(selectedKelas.id); }}
           />
         </div>
       )}

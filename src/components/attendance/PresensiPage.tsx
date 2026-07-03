@@ -4,11 +4,18 @@ import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import type { Student, AttendanceRecord } from "@/types/entities";
-import { AttendanceStatus } from "@/types/enums";
+import { AttendanceStatus, HariAktif } from "@/types/enums";
 import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
+
+function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  if (hariAktif === HariAktif.SENIN_JUMAT) return day === 0 || day === 6;
+  return day === 0;
+}
 
 export function PresensiPage() {
   const { activeClassroom, tanggalAktif } = useApp();
@@ -20,8 +27,11 @@ export function PresensiPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
+  const isLibur = isWeekend(tanggalAktif, hariAktif);
+
   const loadData = useCallback(async () => {
-    if (!activeClassroom) return;
+    if (!activeClassroom || isLibur) return;
     setLoading(true);
 
     const [siswa, result] = await Promise.all([
@@ -38,7 +48,7 @@ export function PresensiPage() {
     }
     setRecords(map);
     setLoading(false);
-  }, [activeClassroom, tanggalAktif]);
+  }, [activeClassroom, tanggalAktif, isLibur]);
 
   useEffect(() => {
     loadData();
@@ -96,9 +106,18 @@ export function PresensiPage() {
       <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <DateNavigator />
 
-        {loading ? (
+        {isLibur ? (
+          <div className="text-center py-[40px]">
+            <div className="text-[2.5rem] mb-2">📅</div>
+            <div className="text-[0.95rem] font-bold text-[var(--text-light)]">Hari Libur</div>
+            <div className="text-[0.75rem] text-[var(--text-light)] mt-1">
+              {hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu tidak ada presensi" : "Minggu tidak ada presensi"}
+            </div>
+          </div>
+        ) : loading ? (
           <div className="text-center py-[30px] text-[var(--text-light)] text-[0.8rem]">
-            Memuat...
+            <div className="inline-block w-8 h-8 border-[3px] border-[var(--border)] border-t-[#0ea5a0] rounded-full animate-spin mb-2" />
+            <div>Memuat...</div>
           </div>
         ) : students.length === 0 ? (
           <div className="text-center py-[30px] text-[var(--text-light)] text-[0.8rem]">

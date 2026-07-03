@@ -28,8 +28,8 @@ export function StudentRow({ student, index, status, onClick }: Props) {
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-[10px] px-3 py-[11px] rounded-[10px] bg-[var(--input-bg)] mb-2 cursor-pointer active:scale-[0.98] transition-transform border-l-4"
-      style={{ borderLeftColor: STATUS_BORDER[status] || STATUS_BORDER.H }}
+      className="flex items-center gap-[10px] px-3 py-[11px] rounded-[10px] bg-[var(--input-bg)] mb-2 cursor-pointer active:scale-[0.98] transition-transform border-l-4 select-none"
+      style={{ touchAction: "manipulation", borderLeftColor: STATUS_BORDER[status] || STATUS_BORDER.H }}
     >
       <div
         className="w-[34px] h-[34px] rounded-full text-white flex items-center justify-center font-bold text-[0.78rem] flex-shrink-0"

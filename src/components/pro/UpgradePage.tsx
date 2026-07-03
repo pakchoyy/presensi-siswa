@@ -36,9 +36,10 @@ export function UpgradePage() {
           <ArrowUpCircle size={32} className="text-[#f59e0b] mx-auto mb-2" />
           <div className="text-[1rem] font-extrabold text-[var(--text)]">Upgrade ke PRO</div>
           <div className="text-[0.78rem] text-[var(--text-light)] mt-1">
-            Semua fitur premium, selamanya hanya
+            Semua fitur premium, cukup
           </div>
           <div className="text-[1.8rem] font-extrabold text-[#f59e0b] mt-1">{PRO_PRICE}</div>
+          <div className="text-[0.65rem] text-[var(--text-light)] mt-[2px]">Pembayaran sekali, akses 1 tahun penuh</div>
         </div>
 
         <div className="mb-4">
@@ -61,21 +62,36 @@ export function UpgradePage() {
 
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-2">
-          <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan
+          <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan FREE vs PRO
         </div>
-        <div className="grid grid-cols-2 gap-2 text-[0.7rem]">
-          <div className="bg-[var(--input-bg)] rounded-lg p-2">
-            <div className="font-bold mb-1">FREE</div>
-            <div className="text-[var(--text-light)] leading-[1.6]">
-              • 1 kelas<br />• Offline<br />• Rekap & export
-            </div>
-          </div>
-          <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 border border-[#0ea5a0]/20">
-            <div className="font-bold text-[#0ea5a0] mb-1">PRO</div>
-            <div className="text-[var(--text-light)] leading-[1.6]">
-              • Unlimited kelas<br />• Cloud sync<br />• Multi device
-            </div>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[0.7rem] border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="py-2 px-2 text-left text-[0.65rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
+                <th className="py-2 px-2 text-center text-[0.65rem] uppercase text-[var(--text-light)] font-semibold">FREE</th>
+                <th className="py-2 px-2 text-center text-[0.65rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { fitur: "Jumlah Kelas", free: "1 Kelas", pro: "Unlimited" },
+                { fitur: "Multi Device", free: "-", pro: "Ya" },
+                { fitur: "Cloud Sync", free: "-", pro: "Ya" },
+                { fitur: "Kalender Edit", free: "-", pro: "Ya" },
+                { fitur: "Backup Cloud", free: "-", pro: "Ya" },
+                { fitur: "Logo Sekolah", free: "-", pro: "Ya" },
+                { fitur: "Import Update", free: "-", pro: "Ya" },
+                { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
+              ].map((row, i) => (
+                <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                  <td className="py-2 px-2 font-semibold">{row.fitur}</td>
+                  <td className="py-2 px-2 text-center text-[var(--text-light)]">{row.free}</td>
+                  <td className="py-2 px-2 text-center text-[#0ea5a0] font-bold">{row.pro}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

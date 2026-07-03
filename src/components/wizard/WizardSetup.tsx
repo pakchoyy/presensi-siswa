@@ -5,13 +5,13 @@ import { setupService, type SetupData } from "@/services/setup.service";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
-import { Jenjang, Semester } from "@/types/enums";
+import { Jenjang, Semester, HariAktif } from "@/types/enums";
 import { APP_BRAND } from "@/lib/constants";
 import { inisial, generateId } from "@/lib/utils";
-import { School, User, Calendar, Users, Upload, Plus, Check } from "lucide-react";
+import { School, User, Calendar, Users, Upload, Plus, Check, Clock } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 
-const WIZARD_TOTAL = 5;
+const WIZARD_TOTAL = 6;
 
 export function WizardSetup() {
   const { refreshClassrooms } = useApp();
@@ -29,6 +29,7 @@ export function WizardSetup() {
   const [namaKelas, setNamaKelas] = useState("");
   const [siswaList, setSiswaList] = useState<{ id: number; nama: string }[]>([]);
   const [siswaInput, setSiswaInput] = useState("");
+  const [hariAktif, setHariAktif] = useState<HariAktif>(HariAktif.SENIN_SABTU);
 
   useEffect(() => {
     setProgress((step / WIZARD_TOTAL) * 100);
@@ -65,6 +66,8 @@ export function WizardSetup() {
   };
 
   const selesaikan = async () => {
+    localStorage.setItem("bgy_hari_aktif", hariAktif);
+
     const data: SetupData = {
       sekolah: sekolah || "Sekolahku",
       jenjang,
@@ -293,6 +296,54 @@ export function WizardSetup() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Hari Aktif */}
+        {step === 6 && (
+          <div>
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
+              <Clock size={26} />
+            </div>
+            <div className="text-[1.05rem] font-extrabold text-center mb-1">Hari Aktif Sekolah</div>
+            <div className="text-[0.78rem] text-[var(--text-light)] text-center mb-5">Pilih hari masuk sekolahmu</div>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <button
+                onClick={() => setHariAktif(HariAktif.SENIN_JUMAT)}
+                className={`p-4 rounded-[12px] border-[1.5px] text-center cursor-pointer ${
+                  hariAktif === HariAktif.SENIN_JUMAT
+                    ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.08)]"
+                    : "border-[var(--border)] bg-[var(--input-bg)]"
+                }`}
+              >
+                <div className={`text-[1.2rem] font-extrabold mb-1 ${hariAktif === HariAktif.SENIN_JUMAT ? "text-[#0ea5a0]" : "text-[var(--text)]"}`}>
+                  Senin - Jumat
+                </div>
+                <div className="text-[0.7rem] text-[var(--text-light)]">
+                  5 hari sekolah<br />Sabtu & Minggu libur
+                </div>
+              </button>
+              <button
+                onClick={() => setHariAktif(HariAktif.SENIN_SABTU)}
+                className={`p-4 rounded-[12px] border-[1.5px] text-center cursor-pointer ${
+                  hariAktif === HariAktif.SENIN_SABTU
+                    ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.08)]"
+                    : "border-[var(--border)] bg-[var(--input-bg)]"
+                }`}
+              >
+                <div className={`text-[1.2rem] font-extrabold mb-1 ${hariAktif === HariAktif.SENIN_SABTU ? "text-[#0ea5a0]" : "text-[var(--text)]"}`}>
+                  Senin - Sabtu
+                </div>
+                <div className="text-[0.7rem] text-[var(--text-light)]">
+                  6 hari sekolah<br />Minggu libur
+                </div>
+              </button>
+            </div>
+
+            <div className="bg-[var(--input-bg)] rounded-lg p-3 text-[0.72rem] text-[var(--text-light)]">
+              Bisa diubah kapan saja di menu <b>Pengaturan</b>. Hari non-aktif tidak akan masuk presensi.
             </div>
           </div>
         )}

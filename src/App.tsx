@@ -15,6 +15,7 @@ import { PetunjukPage } from "@/components/guide/PetunjukPage";
 import { TentangKontak } from "@/components/about/TentangKontak";
 import { PengaturanPage } from "@/components/pro/PengaturanPage";
 import { UpgradePage } from "@/components/pro/UpgradePage";
+import { PWAInstallPopup } from "@/components/shared/PWAInstallPopup";
 import { PageName } from "@/types/enums";
 import { ConvexProvider } from "convex/react";
 import { convexClient } from "@/lib/convex";
@@ -87,6 +88,7 @@ function AppContent() {
       {setupSelesai && <Marquee />}
       {setupSelesai && <Footer />}
       <BottomNav />
+      {setupSelesai && <PWAInstallPopup />}
     </>
   );
 }

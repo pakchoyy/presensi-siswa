@@ -5,7 +5,7 @@ import { db } from "@/repositories/dexie/db";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import type { AcademicCalendarEntry } from "@/types/entities";
 import { CalendarEntryType, CalendarSource, Tier } from "@/types/enums";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Lock, Star } from "lucide-react";
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -24,6 +24,7 @@ export function KalenderPage() {
   const [editTarget, setEditTarget] = useState<AcademicCalendarEntry | null>(null);
   const [addForm, setAddForm] = useState(false);
   const [newLiburName, setNewLiburName] = useState("");
+  const [entryType, setEntryType] = useState<CalendarEntryType>(CalendarEntryType.HARI_LIBUR);
 
   const loadEntries = useCallback(async () => {
     const a = await academicYearRepo.getActive();
@@ -46,8 +47,8 @@ export function KalenderPage() {
   const pad = (n: number) => String(n).padStart(2, "0");
   const dateStr = (day: number) => `${currentYear}-${pad(currentMonth + 1)}-${pad(day)}`;
 
-  const getEntry = (day: number) =>
-    day ? entries.find((e) => e.tanggal === dateStr(day) && e.jenis === CalendarEntryType.HARI_LIBUR) : undefined;
+  const getEntries = (day: number) =>
+    day ? entries.filter((e) => e.tanggal === dateStr(day)) : [];
 
   const isToday = (day: number) => {
     const t = new Date();
@@ -60,29 +61,26 @@ export function KalenderPage() {
   for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
-  const handleAddLibur = async () => {
+  const handleAdd = async () => {
     const nama = newLiburName.trim();
-    if (!nama) { toast("Isi nama hari libur"); return; }
+    if (!nama) { toast("Isi nama dulu"); return; }
     if (!ay) return;
 
     const entry: AcademicCalendarEntry = {
-      id: Date.now(),
+      id: editTarget?.id || Date.now(),
       tahunAjaranId: ay.id,
-      tanggal: dateStr(editTarget ? new Date(editTarget.tanggal).getDate() : new Date().getDate()),
-      jenis: CalendarEntryType.HARI_LIBUR,
+      tanggal: editTarget?.tanggal || dateStr(new Date().getDate()),
+      jenis: entryType,
       keterangan: nama,
       sumber: CalendarSource.KUSTOM,
     };
 
-    // Find which day the editTarget or addForm is for
-    if (editTarget) {
-      entry.tanggal = editTarget.tanggal;
-      entry.id = editTarget.id;
+    if (editTarget?.id) {
       await db.calendarEntries.put(entry);
-      toast("✅ Hari libur diperbarui");
+      toast("✅ Entry diperbarui");
     } else {
       await db.calendarEntries.put(entry);
-      toast("✅ Hari libur ditambahkan");
+      toast("✅ Entry ditambahkan");
     }
     setAddForm(false);
     setEditTarget(null);
@@ -90,27 +88,37 @@ export function KalenderPage() {
     await loadEntries();
   };
 
-  const handleDeleteLibur = async (entry: AcademicCalendarEntry) => {
+  const handleDelete = async (entry: AcademicCalendarEntry) => {
     if (entry.sumber === CalendarSource.BAWAAN) {
-      toast("Hari libur bawaan tidak bisa dihapus");
+      toast("Entry bawaan tidak bisa dihapus");
       return;
     }
     await db.calendarEntries.delete(entry.id);
-    toast("🗑️ Hari libur dihapus");
+    toast("🗑️ Entry dihapus");
     setEditTarget(null);
     await loadEntries();
   };
 
-  const handleDayClick = (day: number, entry?: AcademicCalendarEntry) => {
+  const handleDayClick = (day: number, dayEntries: AcademicCalendarEntry[]) => {
     if (!isPRO) return;
-    if (entry) {
-      setEditTarget(entry);
-      setNewLiburName(entry.keterangan || "");
+    const existingKustom = dayEntries.find(e => e.sumber === CalendarSource.KUSTOM);
+    if (existingKustom) {
+      setEditTarget(existingKustom);
+      setNewLiburName(existingKustom.keterangan || "");
+      setEntryType(existingKustom.jenis);
       setAddForm(true);
     } else {
       const d = dateStr(day);
-      setEditTarget({ id: 0, tahunAjaranId: ay?.id || 0, tanggal: d, jenis: CalendarEntryType.HARI_LIBUR, keterangan: "", sumber: CalendarSource.KUSTOM });
+      setEditTarget({
+        id: 0,
+        tahunAjaranId: ay?.id || 0,
+        tanggal: d,
+        jenis: CalendarEntryType.HARI_LIBUR,
+        keterangan: "",
+        sumber: CalendarSource.KUSTOM,
+      });
       setNewLiburName("");
+      setEntryType(CalendarEntryType.HARI_LIBUR);
       setAddForm(true);
     }
   };
@@ -120,7 +128,7 @@ export function KalenderPage() {
       {!isPRO && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[10px] mb-3 flex items-center gap-2 text-[0.7rem] text-[var(--text-light)]">
           <Lock size={12} className="text-[#b45309]" />
-          Kalender hanya bisa dilihat. <span className="font-semibold text-[#0ea5a0]">Upgrade ke PRO</span> untuk menambah/mengedit hari libur.
+          Kalender hanya bisa dilihat. <span className="font-semibold text-[#0ea5a0]">Upgrade ke PRO</span> untuk menambah/mengedit hari libur & hari penting.
         </div>
       )}
 
@@ -136,37 +144,59 @@ export function KalenderPage() {
         </div>
 
         <div className="grid grid-cols-7 gap-[2px] text-center mb-2">
-          {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d) => (
-            <div key={d} className="text-[0.6rem] font-bold uppercase text-[var(--text-light)] py-1">{d}</div>
+          {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d, i) => (
+            <div key={d} className={`text-[0.6rem] font-bold uppercase py-1 ${i === 0 ? "text-[#dc2626]" : "text-[var(--text-light)]"}`}>{d}</div>
           ))}
         </div>
 
         <div className="grid grid-cols-7 gap-[2px]">
           {days.map((day, i) => {
-            const entry = day ? getEntry(day) : undefined;
-            const weekendClass = i % 7 === 0;
+            const dayEntries = day ? getEntries(day) : [];
+            const isSunday = i % 7 === 0;
             const todayClass = day && isToday(day);
+            const liburEntry = dayEntries.find(e => e.jenis === CalendarEntryType.HARI_LIBUR);
+            const pentingEntry = dayEntries.find(e => e.jenis === CalendarEntryType.HARI_PENTING);
+
+            let bg = "";
+            let textColor = "";
+            if (liburEntry) {
+              bg = "bg-[#fee2e2]";
+              textColor = "text-[#dc2626] font-bold";
+            } else if (pentingEntry) {
+              bg = "bg-[#dbeafe]";
+              textColor = "text-[#1d4ed8] font-bold";
+            } else if (todayClass) {
+              bg = "bg-[#0ea5a0]";
+              textColor = "text-white font-bold";
+            } else if (isSunday) {
+              textColor = "text-[#dc2626]";
+            } else {
+              textColor = "text-[var(--text)]";
+            }
 
             return (
               <div
                 key={i}
-                onClick={() => day && handleDayClick(day, entry)}
+                onClick={() => day && handleDayClick(day, dayEntries)}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[0.7rem] transition-colors ${
                   !day ? "" :
-                  entry ? "bg-[#fee2e2] text-[#dc2626] font-bold" :
-                  todayClass ? "bg-[#0ea5a0] text-white font-bold" :
-                  weekendClass ? "bg-[var(--input-bg)] text-[var(--text-light)]" :
-                  isPRO ? "cursor-pointer hover:bg-[var(--input-bg)]" : ""
-                }`}
-                title={entry ? entry.keterangan || "Hari Libur" : isPRO ? "Klik untuk tambah hari libur" : undefined}
+                  bg || (isSunday ? "" : isPRO ? "cursor-pointer hover:bg-[var(--input-bg)]" : "")
+                } ${textColor}`}
+                style={!bg && isSunday ? { backgroundColor: "var(--input-bg)" } : undefined}
+                title={liburEntry ? liburEntry.keterangan || "Hari Libur" : pentingEntry ? pentingEntry.keterangan || "Hari Penting" : isPRO ? "Klik untuk tambah" : undefined}
               >
                 {day && <span>{day}</span>}
-                {entry && day && (
+                {liburEntry && day && (
                   <span className="text-[0.45rem] leading-tight text-center px-[1px] truncate max-w-full">
-                    {entry.keterangan?.slice(0, 8)}
+                    {liburEntry.keterangan?.slice(0, 8)}
                   </span>
                 )}
-                {isPRO && day && !entry && (
+                {pentingEntry && day && (
+                  <span className="text-[0.45rem] leading-tight text-center px-[1px] truncate max-w-full">
+                    {pentingEntry.keterangan?.slice(0, 8)}
+                  </span>
+                )}
+                {isPRO && day && !liburEntry && !pentingEntry && (
                   <span className="text-[0.45rem] text-[var(--text-light)]/40">+</span>
                 )}
               </div>
@@ -179,23 +209,48 @@ export function KalenderPage() {
       {isPRO && addForm && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mt-3">
           <div className="text-[0.78rem] font-bold mb-2">
-            {editTarget?.id ? "Edit Hari Libur" : "Tambah Hari Libur"}
+            {editTarget?.id ? "Edit Kalender" : "Tambah ke Kalender"}
             {editTarget && <span className="text-[var(--text-light)] font-normal text-[0.7rem]"> — {editTarget.tanggal}</span>}
           </div>
+
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setEntryType(CalendarEntryType.HARI_LIBUR)}
+              className={`flex-1 py-[9px] rounded-[8px] text-[0.72rem] font-bold border-[1.5px] cursor-pointer ${
+                entryType === CalendarEntryType.HARI_LIBUR
+                  ? "border-[#dc2626] bg-[#fee2e2] text-[#dc2626]"
+                  : "border-[var(--border)] bg-transparent text-[var(--text-light)]"
+              }`}
+            >
+              Hari Libur
+            </button>
+            <button
+              onClick={() => setEntryType(CalendarEntryType.HARI_PENTING)}
+              className={`flex-1 py-[9px] rounded-[8px] text-[0.72rem] font-bold border-[1.5px] cursor-pointer ${
+                entryType === CalendarEntryType.HARI_PENTING
+                  ? "border-[#1d4ed8] bg-[#dbeafe] text-[#1d4ed8]"
+                  : "border-[var(--border)] bg-transparent text-[var(--text-light)]"
+              }`}
+            >
+              <Star size={12} className="inline mr-1" />
+              Hari Penting
+            </button>
+          </div>
+
           <div className="flex gap-2 mb-2">
             <input
               type="text"
               value={newLiburName}
               onChange={(e) => setNewLiburName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddLibur()}
-              placeholder="Nama hari libur (contoh: Ulang Tahun Sekolah)"
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              placeholder={entryType === CalendarEntryType.HARI_LIBUR ? "Nama hari libur (contoh: Ulang Tahun Sekolah)" : "Nama hari penting (contoh: Penerimaan Rapor)"}
               className="flex-1 px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
               autoFocus
             />
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleAddLibur}
+              onClick={handleAdd}
               className="flex-1 flex items-center justify-center gap-[4px] py-[9px] rounded-[10px] text-white font-bold text-[0.78rem] cursor-pointer"
               style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
             >
@@ -203,7 +258,7 @@ export function KalenderPage() {
             </button>
             {editTarget?.id ? (
               <button
-                onClick={() => handleDeleteLibur(editTarget)}
+                onClick={() => handleDelete(editTarget)}
                 className="flex-1 py-[9px] rounded-[10px] border-[1.5px] border-[#ef4444] text-[#ef4444] font-bold text-[0.78rem] bg-transparent cursor-pointer flex items-center justify-center gap-[4px]"
               >
                 <Trash2 size={14} /> Hapus
@@ -227,11 +282,17 @@ export function KalenderPage() {
             <div className="w-3 h-3 rounded bg-[#dc2626]" /> Hari Libur
           </div>
           <div className="flex items-center gap-1 text-[0.7rem]">
+            <div className="w-3 h-3 rounded bg-[#1d4ed8]" /> Hari Penting
+          </div>
+          <div className="flex items-center gap-1 text-[0.7rem]">
             <div className="w-3 h-3 rounded bg-[#0ea5a0]" /> Hari Ini
+          </div>
+          <div className="flex items-center gap-1 text-[0.7rem]">
+            <span className="text-[#dc2626] font-bold">Min</span> Minggu
           </div>
           {isPRO && (
             <div className="flex items-center gap-1 text-[0.7rem]">
-              <span className="text-[0.5rem] text-[var(--text-light)]">Klik tanggal untuk tambah/edit hari libur</span>
+              <span className="text-[0.5rem] text-[var(--text-light)]">Klik tanggal untuk tambah/edit</span>
             </div>
           )}
         </div>

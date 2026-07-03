@@ -7,7 +7,7 @@ export const studentRepo = {
       .where("kelasId")
       .equals(classroomId)
       .and((s) => s.statusAktif === true)
-      .sortBy("urutan");
+      .sortBy("nama");
   },
 
   async getById(id: number): Promise<Student | undefined> {

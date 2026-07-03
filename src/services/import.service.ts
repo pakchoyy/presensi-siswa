@@ -4,8 +4,9 @@ import { timestamp, generateId } from "@/lib/utils";
 
 export interface ImportResult {
   success: boolean;
-  students: { nama: string; nisn?: string; jenisKelamin?: "L" | "P" }[];
+  students: { nama: string; nisn?: string; jenisKelamin?: "L" | "P"; kelas?: string }[];
   errors: string[];
+  classes: string[];
 }
 
 export function parseExcel(file: File): Promise<ImportResult> {
@@ -17,20 +18,21 @@ export function parseExcel(file: File): Promise<ImportResult> {
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) {
-          resolve({ success: false, students: [], errors: ["File Excel kosong"] });
+          resolve({ success: false, students: [], errors: ["File Excel kosong"], classes: [] });
           return;
         }
         const sheet = workbook.Sheets[sheetName];
         const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
         if (rows.length === 0) {
-          resolve({ success: false, students: [], errors: ["File Excel tidak memiliki data siswa"] });
+          resolve({ success: false, students: [], errors: ["File Excel tidak memiliki data siswa"], classes: [] });
           return;
         }
 
         const errors: string[] = [];
         const students: ImportResult["students"] = [];
         const namaKeys = ["nama", "nama siswa", "name"];
+        const kelasKeys = ["kelas", "class", "kode kelas"];
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
@@ -65,24 +67,31 @@ export function parseExcel(file: File): Promise<ImportResult> {
             }
           }
 
-          students.push({ nama, nisn: nisn || undefined, jenisKelamin });
+          const kelasKey = kelasKeys.find((k) => k in row);
+          const kelas = kelasKey ? String(row[kelasKey]).trim() : undefined;
+
+          students.push({ nama, nisn: nisn || undefined, jenisKelamin, kelas });
         }
+
+        const classes = [...new Set(students.map(s => s.kelas).filter(Boolean) as string[])];
 
         resolve({
           success: errors.length === 0,
           students,
           errors,
+          classes,
         });
       } catch (err) {
         resolve({
           success: false,
           students: [],
           errors: ["File tidak dapat dibaca. Pastikan file Excel (.xlsx) valid."],
+          classes: [],
         });
       }
     };
     reader.onerror = () => {
-      resolve({ success: false, students: [], errors: ["Gagal membaca file"] });
+      resolve({ success: false, students: [], errors: ["Gagal membaca file"], classes: [] });
     };
     reader.readAsArrayBuffer(file);
   });
@@ -91,7 +100,7 @@ export function parseExcel(file: File): Promise<ImportResult> {
 export function generateTemplateBlob(): Blob {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ["Petunjuk: Kolom Nama wajib diisi. NISN dan Jenis Kelamin opsional. Download template ini, isi data siswa, lalu upload kembali."],
+    ["Petunjuk: Nama wajib. NISN, JK, dan Kelas opsional. Download, isi, lalu upload kembali."],
     ["Nama", "NISN", "Jenis Kelamin", "Kelas"],
     ["Ahmad Fauzi", "", "L", "Kelas 1A"],
     ["Bunga Citra", "", "P", "Kelas 1A"],
