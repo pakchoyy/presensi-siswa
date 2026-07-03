@@ -1,4 +1,5 @@
 import { useApp } from "@/contexts/AppContext";
+import { useToast } from "@/components/shared/Toast";
 import { PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings } from "lucide-react";
@@ -15,6 +16,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function DropdownMenu({ isOpen, onClose }: Props) {
   const { setActivePage, setupSelesai } = useApp();
+  const { toast } = useToast();
 
   if (!isOpen || !setupSelesai) return null;
 
@@ -27,6 +29,8 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
       promptEv.userChoice.then(() => {
         (window as any).__bgy_deferredPrompt = null;
       });
+    } else {
+      toast("Buka di Chrome/Edge Android, lalu menu > Tambahkan ke Layar Utama");
     }
     onClose();
   };
