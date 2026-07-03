@@ -21,8 +21,10 @@ import {
   PenLine,
   School,
   Info,
+  Upload,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
+import { LogoUpload } from "@/components/shared/LogoUpload";
 
 const getHariAktif = (): HariAktif => {
   return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
@@ -234,6 +236,11 @@ export function PengaturanPage() {
             <button onClick={handleSaveSekolah} disabled={savingSekolah} className="flex-1 py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-opacity" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>{savingSekolah ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </div>
+      )}
+
+      {/* Logo Sekolah (PRO only) */}
+      {isPRO && (
+        <LogoUpload editable={true} />
       )}
 
       {/* Hari Aktif */}

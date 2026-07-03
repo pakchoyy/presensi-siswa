@@ -5,7 +5,7 @@ import { db } from "@/repositories/dexie/db";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import type { AcademicCalendarEntry } from "@/types/entities";
 import { CalendarEntryType, CalendarSource, Tier, HariAktif } from "@/types/enums";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Lock, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Lock, Star, Eye, PenLine } from "lucide-react";
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -27,6 +27,10 @@ export function KalenderPage() {
   const [addForm, setAddForm] = useState(false);
   const [newLiburName, setNewLiburName] = useState("");
   const [entryType, setEntryType] = useState<CalendarEntryType>(CalendarEntryType.HARI_LIBUR);
+  const [isEditMode, setIsEditMode] = useState(() => {
+    const stored = localStorage.getItem("calendar_edit_mode");
+    return stored === "true";
+  });
 
   const loadEntries = useCallback(async () => {
     const a = await academicYearRepo.getActive();
@@ -103,6 +107,17 @@ export function KalenderPage() {
 
   const handleDayClick = (day: number, dayEntries: AcademicCalendarEntry[]) => {
     if (!isPRO) return;
+    
+    // Mode Baca: hanya tampilkan info, tidak bisa edit
+    if (!isEditMode) {
+      if (dayEntries.length > 0) {
+        const info = dayEntries.map(e => `${e.jenis === CalendarEntryType.HARI_LIBUR ? '🔴' : '🔵'} ${e.keterangan}`).join('\n');
+        toast(info);
+      }
+      return;
+    }
+    
+    // Mode Edit: bisa tambah/edit entry
     const existingKustom = dayEntries.find(e => e.sumber === CalendarSource.KUSTOM);
     if (existingKustom) {
       setEditTarget(existingKustom);
@@ -125,12 +140,53 @@ export function KalenderPage() {
     }
   };
 
+  const toggleEditMode = () => {
+    const newMode = !isEditMode;
+    setIsEditMode(newMode);
+    localStorage.setItem("calendar_edit_mode", String(newMode));
+    toast(newMode ? "Mode Edit: Klik tanggal untuk tambah/edit" : "Mode Baca: Klik tanggal untuk lihat info");
+  };
+
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
       {!isPRO && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[10px] mb-3 flex items-center gap-2 text-[0.7rem] text-[var(--text-light)]">
           <Lock size={12} className="text-[#b45309]" />
           Kalender hanya bisa dilihat. <span className="font-semibold text-[#0ea5a0]">Upgrade ke PRO</span> untuk menambah/mengedit hari libur & hari penting.
+        </div>
+      )}
+
+      {isPRO && (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[10px] mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[0.7rem] text-[var(--text)]">
+            {isEditMode ? (
+              <>
+                <PenLine size={13} className="text-[#0ea5a0]" />
+                <span><b className="text-[#0ea5a0]">Mode Edit:</b> Klik tanggal untuk tambah/edit event</span>
+              </>
+            ) : (
+              <>
+                <Eye size={13} className="text-[var(--text-light)]" />
+                <span><b>Mode Baca:</b> Klik tanggal untuk lihat info</span>
+              </>
+            )}
+          </div>
+          <button
+            onClick={toggleEditMode}
+            className="px-3 py-[6px] rounded-lg border-[1.5px] border-[var(--border)] text-[0.7rem] font-bold cursor-pointer flex items-center gap-1 bg-transparent hover:bg-[var(--input-bg)] transition-colors"
+          >
+            {isEditMode ? (
+              <>
+                <Eye size={12} />
+                Baca
+              </>
+            ) : (
+              <>
+                <PenLine size={12} />
+                Edit
+              </>
+            )}
+          </button>
         </div>
       )}
 
@@ -190,7 +246,7 @@ export function KalenderPage() {
                   bg || (isWeekend ? "" : isPRO ? "cursor-pointer hover:bg-[var(--input-bg)]" : "")
                 } ${textColor}`}
                 style={!bg && isWeekend ? { backgroundColor: "var(--input-bg)" } : undefined}
-                title={liburEntry ? liburEntry.keterangan || "Hari Libur" : pentingEntry ? pentingEntry.keterangan || "Hari Penting" : isPRO ? "Klik untuk tambah" : undefined}
+                title={liburEntry ? liburEntry.keterangan || "Hari Libur" : pentingEntry ? pentingEntry.keterangan || "Hari Penting" : isPRO ? (isEditMode ? "Klik untuk tambah/edit" : "Klik untuk lihat info") : undefined}
               >
                 {day && <span>{day}</span>}
                 {liburEntry && day && (
@@ -203,7 +259,7 @@ export function KalenderPage() {
                     {pentingEntry.keterangan?.slice(0, 8)}
                   </span>
                 )}
-                {isPRO && day && !liburEntry && !pentingEntry && (
+                {isPRO && isEditMode && day && !liburEntry && !pentingEntry && (
                   <span className="text-[0.45rem] text-[var(--text-light)]/40">+</span>
                 )}
               </div>
