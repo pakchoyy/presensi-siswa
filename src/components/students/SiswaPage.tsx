@@ -513,6 +513,105 @@ export function SiswaPage() {
         </>
       )}
 
+      {/* Modal Edit Siswa */}
+      {editTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setEditTarget(null);
+            }}
+          >
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
+              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+              <div className="text-[0.85rem] font-bold mb-[14px] text-center">
+                Edit Siswa
+              </div>
+              
+              {/* Input Nama */}
+              <div className="mb-3">
+                <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={editNama}
+                  onChange={(e) => setEditNama(e.target.value)}
+                  placeholder="Nama siswa"
+                  className="w-full px-[11px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                />
+              </div>
+
+              {/* Input NISN */}
+              <div className="mb-3">
+                <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">
+                  NISN (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={editNisn}
+                  onChange={(e) => setEditNisn(e.target.value)}
+                  placeholder="10 digit NISN"
+                  maxLength={10}
+                  className="w-full px-[11px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                />
+              </div>
+
+              {/* Jenis Kelamin */}
+              <div className="mb-4">
+                <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">
+                  Jenis Kelamin (Opsional)
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditJK("L")}
+                    className={`flex-1 py-[10px] rounded-[8px] border-[1.5px] text-[0.78rem] font-bold cursor-pointer ${
+                      editJK === "L" ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]" : "border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-light)]"
+                    }`}
+                  >
+                    Laki-laki
+                  </button>
+                  <button
+                    onClick={() => setEditJK("P")}
+                    className={`flex-1 py-[10px] rounded-[8px] border-[1.5px] text-[0.78rem] font-bold cursor-pointer ${
+                      editJK === "P" ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]" : "border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-light)]"
+                    }`}
+                  >
+                    Perempuan
+                  </button>
+                  <button
+                    onClick={() => setEditJK(undefined)}
+                    className={`flex-1 py-[10px] rounded-[8px] border-[1.5px] text-[0.78rem] font-bold cursor-pointer ${
+                      !editJK ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]" : "border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-light)]"
+                    }`}
+                  >
+                    Tidak diisi
+                  </button>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditTarget(null)}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleEdit}
+                  disabled={editing}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+                >
+                  {editing ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Modal Hapus */}
       {deleteTarget && (
         <>
@@ -543,6 +642,44 @@ export function SiswaPage() {
                   className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {deleting ? "Menghapus..." : "Hapus"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Hapus Semua */}
+      {showDeleteAll && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowDeleteAll(false);
+            }}
+          >
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
+              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+              <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
+                Hapus Semua Siswa?
+              </div>
+              <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+                <b className="text-[var(--text)]">{students.length} siswa</b> akan dihapus dari <b className="text-[var(--text)]">{selectedKelas?.nama}</b>.<br/>
+                Riwayat presensi tetap tersimpan sebagai data historis.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDeleteAll(false)}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={deletingAll}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {deletingAll ? "Menghapus..." : "Hapus Semua"}
                 </button>
               </div>
             </div>
