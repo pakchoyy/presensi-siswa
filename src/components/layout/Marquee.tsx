@@ -9,7 +9,7 @@ export function Marquee() {
   const duplicated = [...MESSAGES, ...MESSAGES];
 
   return (
-    <div className="ticker-wrap sticky bottom-[56px] lg:static w-full z-[95] lg:flex-shrink-0">
+    <div className="ticker-wrap w-full">
       <div className="ticker-badge">INFO</div>
       <div className="ticker-track">
         <a

@@ -18,8 +18,8 @@ export function SiswaPage() {
   const isPRO = teacher?.tier === Tier.PRO;
   const { toast } = useToast();
 
-  const [view, setView] = useState<"kelas" | "detail">("kelas");
-  const [selectedKelas, setSelectedKelas] = useState<Classroom | null>(null);
+  const [view, setView] = useState<"kelas" | "detail">(classrooms.length <= 1 ? "detail" : "kelas");
+  const [selectedKelas, setSelectedKelas] = useState<Classroom | null>(classrooms.length <= 1 ? activeClassroom : null);
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -43,6 +43,14 @@ export function SiswaPage() {
     const data = await studentRepo.getByClass(kelasId);
     setStudents(data);
   }, []);
+
+  useEffect(() => {
+    if (classrooms.length <= 1 && activeClassroom) {
+      setSelectedKelas(activeClassroom);
+      setView("detail");
+      loadStudents(activeClassroom.id);
+    }
+  }, [classrooms.length, activeClassroom?.id]);
 
   const openKelas = (cls: Classroom) => {
     setSelectedKelas(cls);

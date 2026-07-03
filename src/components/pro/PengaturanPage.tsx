@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
-import { Tier, HariAktif } from "@/types/enums";
+import { Tier, HariAktif, Jenjang } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import {
   Settings,
@@ -18,7 +18,11 @@ import {
   MessageCircle,
   Calendar,
   UserCheck,
+  PenLine,
+  School,
+  Info,
 } from "lucide-react";
+import { schoolRepo } from "@/repositories/dexie/school.repo";
 
 const getHariAktif = (): HariAktif => {
   return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
@@ -44,6 +48,10 @@ export function PengaturanPage() {
 
   const [hariAktif, setHariAktif] = useState<HariAktif>(getHariAktif());
   const [autoHadir, setAutoHadir] = useState(getAutoHadir());
+
+  const [editSekolah, setEditSekolah] = useState(false);
+  const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
+  const [editJenjang, setEditJenjang] = useState<Jenjang>(school?.jenjang || Jenjang.SD);
 
   useEffect(() => {
     if (teacher) {
@@ -112,6 +120,13 @@ export function PengaturanPage() {
 
   const manfaat = licenseService.getManfaat();
 
+  const handleSaveSekolah = async () => {
+    if (!school || !editNamaSekolah.trim()) return;
+    await schoolRepo.save({ ...school, nama: editNamaSekolah.trim(), jenjang: editJenjang, diubahPada: Date.now() });
+    toast("Nama sekolah diperbarui");
+    setEditSekolah(false);
+  };
+
   const isExpiring = licenseInfo?.isExpiring;
   const daysRemaining = licenseInfo?.daysRemaining;
 
@@ -146,10 +161,53 @@ export function PengaturanPage() {
             )}
           </div>
         </div>
-        <div className="text-[0.72rem] text-[var(--text-light)]">
+        <div className="text-[0.72rem] text-[var(--text-light)] flex items-center gap-2">
           Sekolah: {school?.nama || "-"} ({school?.jenjang || "-"})
+          <button
+            onClick={() => { setEditSekolah(true); setEditNamaSekolah(school?.nama || ""); setEditJenjang(school?.jenjang || Jenjang.SD); }}
+            className="text-[#0ea5a0] bg-transparent border-none cursor-pointer p-0"
+          >
+            <PenLine size={13} />
+          </button>
         </div>
       </div>
+
+      {editSekolah && (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+          <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-[10px]">
+            <School size={15} /> Edit Sekolah
+          </div>
+          <div className="mb-3">
+            <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">Nama Sekolah</label>
+            <input
+              type="text"
+              value={editNamaSekolah}
+              onChange={(e) => setEditNamaSekolah(e.target.value)}
+              className="w-full px-[11px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+            />
+          </div>
+          <div className="mb-3">
+            <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">Jenjang</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[Jenjang.SD, Jenjang.SMP, Jenjang.SMA].map((j) => (
+                <button
+                  key={j}
+                  onClick={() => setEditJenjang(j)}
+                  className={`py-[10px] rounded-[8px] border-[1.5px] text-[0.78rem] font-bold cursor-pointer ${
+                    editJenjang === j ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]" : "border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-light)]"
+                  }`}
+                >
+                  {j}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setEditSekolah(false)} className="flex-1 py-[10px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.8rem] cursor-pointer">Batal</button>
+            <button onClick={handleSaveSekolah} className="flex-1 py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>Simpan</button>
+          </div>
+        </div>
+      )}
 
       {/* Hari Aktif */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
@@ -312,6 +370,11 @@ export function PengaturanPage() {
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
           <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
             <ArrowUpCircle size={15} className="text-[#0ea5a0]" /> Upgrade ke PRO
+          </div>
+
+          <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 mb-3 text-[0.72rem] text-[var(--text)] flex items-start gap-2">
+            <Info size={13} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
+            <span>Sudah pernah beli? Masukkan email & kode yang sama untuk aktivasi ulang.</span>
           </div>
 
           <div className="text-[0.78rem] text-[var(--text-light)] mb-3">

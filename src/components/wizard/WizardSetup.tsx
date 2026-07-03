@@ -81,7 +81,7 @@ export function WizardSetup() {
 
     await setupService.executeSetup(data);
     await refreshClassrooms();
-    toast("Setup selesai! Selamat mengajar");
+    toast("Setup selesai! Buka Pengaturan untuk aktivasi PRO");
   };
 
   return (
@@ -344,6 +344,10 @@ export function WizardSetup() {
 
             <div className="bg-[var(--input-bg)] rounded-lg p-3 text-[0.72rem] text-[var(--text-light)]">
               Bisa diubah kapan saja di menu <b>Pengaturan</b>. Hari non-aktif tidak akan masuk presensi.
+            </div>
+            <div className="bg-[rgba(14,165,160,0.05)] rounded-lg p-3 mt-2 text-[0.72rem] text-[var(--text-light)] flex items-start gap-2">
+              <span>💡</span>
+              <span>Punya lisensi <b className="text-[#0ea5a0]">PRO</b>? Buka <b>Pengaturan</b> setelah setup untuk aktivasi. Kelola banyak kelas, cloud sync, dan fitur premium lainnya.</span>
             </div>
           </div>
         )}

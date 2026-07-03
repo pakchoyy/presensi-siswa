@@ -117,7 +117,12 @@ export function PresensiPage() {
           <div className="flex items-center justify-between gap-[6px] bg-[rgba(14,165,160,0.06)] border border-[#0ea5a0]/20 rounded-lg px-[10px] py-[7px] mb-[10px] text-[0.68rem] text-[var(--text-light)]">
             <div className="flex items-center gap-[6px]">
               <Info size={13} className="text-[#0ea5a0] flex-shrink-0" />
-              <span>Klik siswa untuk ubah status <b className="text-[var(--text)]">Sakit/Izin/Alpha</b></span>
+              <span>
+                {autoHadir
+                  ? <>Semua otomatis <b className="text-[var(--text)]">Hadir</b> — klik yang Sakit/Izin/Alpha</>
+                  : <>Klik tiap siswa, pilih status <b className="text-[var(--text)]">Hadir/Sakit/Izin/Alpha</b></>
+                }
+              </span>
             </div>
             <span className={`text-[0.62rem] font-bold px-[6px] py-[2px] rounded-full flex-shrink-0 ${autoHadir ? "bg-[#0ea5a0]/10 text-[#0ea5a0]" : "bg-[var(--border)] text-[var(--text-light)]"}`}>
               {autoHadir ? "Auto" : "Manual"}
