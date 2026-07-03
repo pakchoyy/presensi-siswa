@@ -70,6 +70,11 @@ export function parseExcel(file: File): Promise<ImportResult> {
           const kelasKey = kelasKeys.find((k) => k in row);
           const kelas = kelasKey ? String(row[kelasKey]).trim() : undefined;
 
+          // Add warning if kelas empty
+          if (!kelas && nama) {
+            errors.push(`⚠️ Peringatan baris ${i + 2}: Siswa "${nama}" tidak memiliki kelas (akan masuk ke kelas saat ini)`);
+          }
+
           students.push({ nama, nisn: nisn || undefined, jenisKelamin, kelas });
         }
 
@@ -100,13 +105,13 @@ export function parseExcel(file: File): Promise<ImportResult> {
 export function generateTemplateBlob(): Blob {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ["Petunjuk: Nama wajib. NISN, JK, dan Kelas opsional. Download, isi, lalu upload kembali."],
-    ["Nama", "NISN", "Jenis Kelamin", "Kelas"],
-    ["Ahmad Fauzi", "", "L", "Kelas 1A"],
-    ["Bunga Citra", "", "P", "Kelas 1A"],
-    ["Dewi Lestari", "1234567890", "P", "Kelas 1A"],
+    ["Petunjuk: Nama dan Kelas WAJIB diisi. Jenis Kelamin dan NISN opsional. Download, isi, lalu upload kembali."],
+    ["Nama", "Kelas", "Jenis Kelamin", "NISN"],
+    ["Ahmad Fauzi", "7A", "L", ""],
+    ["Bunga Citra", "7A", "P", ""],
+    ["Dewi Lestari", "7B", "P", "1234567890"],
   ]);
-  ws["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 }];
+  ws["!cols"] = [{ wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 15 }];
   XLSX.utils.book_append_sheet(wb, ws, "Daftar Siswa");
   const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -124,18 +129,33 @@ export function downloadTemplate() {
 
 export function siswaToImportResult(
   result: ImportResult,
-  kelasId: number
+  defaultKelasId: number,
+  classrooms?: Array<{ id: number; nama: string }>
 ): Student[] {
   const now = timestamp();
-  return result.students.map((s, i) => ({
-    id: generateId() + i,
-    kelasId,
-    nama: s.nama,
-    nisn: s.nisn || undefined,
-    jenisKelamin: s.jenisKelamin,
-    urutan: i + 1,
-    statusAktif: true,
-    dibuatPada: now,
-    diubahPada: now,
-  }));
+  return result.students.map((s, i) => {
+    // Try to find matching classroom by name
+    let kelasId = defaultKelasId;
+    
+    if (s.kelas && classrooms) {
+      const matchedClass = classrooms.find(
+        c => c.nama.toLowerCase().trim() === s.kelas!.toLowerCase().trim()
+      );
+      if (matchedClass) {
+        kelasId = matchedClass.id;
+      }
+    }
+    
+    return {
+      id: generateId() + i,
+      kelasId,
+      nama: s.nama,
+      nisn: s.nisn || undefined,
+      jenisKelamin: s.jenisKelamin,
+      urutan: i + 1,
+      statusAktif: true,
+      dibuatPada: now,
+      diubahPada: now,
+    };
+  });
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { studentRepo } from "@/repositories/dexie/student.repo";
@@ -59,6 +59,13 @@ export function SiswaPage() {
   const [kelasCounts, setKelasCounts] = useState<Record<number, number>>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editTarget, setEditTarget] = useState<Student | null>(null);
+  const [editNama, setEditNama] = useState("");
+  const [editNisn, setEditNisn] = useState("");
+  const [editJK, setEditJK] = useState<"L" | "P" | undefined>(undefined);
+  const [editing, setEditing] = useState(false);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -154,7 +161,7 @@ export function SiswaPage() {
       }
     }
 
-    // Auto-create classes from Excel if they exist
+    // Auto-create classes from Excel if they exist (PRO only)
     if (result.classes.length > 0 && isPRO) {
       const ay = await academicYearRepo.getActive();
       if (ay && teacher) {
@@ -177,10 +184,61 @@ export function SiswaPage() {
       }
     }
 
-    const newStudents = siswaToImportResult(result, selectedKelas.id);
+    // Get updated classrooms list
+    const updatedClassrooms = await classroomRepo.getAll();
+    
+    // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
+    const newStudents = siswaToImportResult(result, selectedKelas.id, isPRO ? updatedClassrooms : undefined);
+    
     await studentRepo.bulkSave(newStudents);
-    await loadStudents(selectedKelas.id);
+    
+    // Reload all classes' student counts
     await loadCounts();
+    
+    // Show success with breakdown
+    const classCounts: Record<string, number> = {};
+    result.students.forEach(s => {
+      const kls = s.kelas || selectedKelas.nama;
+      classCounts[kls] = (classCounts[kls] || 0) + 1;
+    });
+    
+    const summary = Object.entries(classCounts)
+      .map(([kelas, count]) => `${kelas}: ${count} siswa`)
+      .join(', ');
+    
+    toast(`✅ Import berhasil! ${summary}`);
+    
+    if (!isPRO && result.classes.length > 0) {
+      setTimeout(() => toast('💡 Upgrade ke PRO untuk auto-assign siswa ke kelas yang sesuai'), 1000);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editTarget || !editNama.trim()) {
+      toast("Nama siswa tidak boleh kosong");
+      return;
+    }
+    
+    setEditing(true);
+    
+    try {
+      const updated: Student = {
+        ...editTarget,
+        nama: editNama.trim(),
+        nisn: editNisn.trim() || undefined,
+        jenisKelamin: editJK,
+        diubahPada: timestamp(),
+      };
+      
+      await studentRepo.save(updated);
+      setEditTarget(null);
+      await loadStudents(editTarget.kelasId);
+      toast("✅ Data siswa diperbarui");
+    } catch (error) {
+      toast("❌ Gagal mengupdate siswa");
+    } finally {
+      setEditing(false);
+    }
   };
 
   const handleRemove = async () => {
@@ -199,6 +257,27 @@ export function SiswaPage() {
       toast("❌ Gagal menghapus siswa");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!selectedKelas) return;
+    
+    setDeletingAll(true);
+    
+    try {
+      for (const student of students) {
+        await studentRepo.softDelete(student.id);
+      }
+      
+      setShowDeleteAll(false);
+      await loadStudents(selectedKelas.id);
+      await loadCounts();
+      toast(`✅ ${students.length} siswa berhasil dihapus`);
+    } catch (error) {
+      toast("❌ Gagal menghapus siswa");
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -298,6 +377,16 @@ export function SiswaPage() {
         </button>
       </div>
 
+      {students.length > 0 && (
+        <button
+          onClick={() => setShowDeleteAll(true)}
+          className="w-full flex items-center justify-center gap-[6px] py-[8px] rounded-[10px] border-[1.5px] border-dashed border-[#ef4444]/40 text-[#ef4444] font-bold text-[0.76rem] cursor-pointer bg-transparent hover:bg-[#ef4444]/5 transition-colors mb-3"
+        >
+          <Trash2 size={14} />
+          Hapus Semua Siswa ({students.length})
+        </button>
+      )}
+
       {showImport && selectedKelas && (
         <div className="mb-3">
           <ImportExcel
@@ -351,7 +440,19 @@ export function SiswaPage() {
               <div className="text-[0.86rem] font-bold whitespace-nowrap overflow-hidden text-ellipsis">
                 {s.nama}
               </div>
+              {s.nisn && <div className="text-[0.7rem] text-[var(--text-light)]">NISN: {s.nisn}</div>}
             </div>
+            <button
+              onClick={() => {
+                setEditTarget(s);
+                setEditNama(s.nama);
+                setEditNisn(s.nisn || "");
+                setEditJK(s.jenisKelamin);
+              }}
+              className="h-8 w-[34px] rounded-lg border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] flex items-center justify-center bg-transparent cursor-pointer flex-shrink-0"
+            >
+              <PenLine size={15} />
+            </button>
             <button
               onClick={() => setDeleteTarget(s)}
               className="h-8 w-[34px] rounded-lg border-[1.5px] border-[#ef4444] text-[#ef4444] flex items-center justify-center bg-transparent cursor-pointer flex-shrink-0"

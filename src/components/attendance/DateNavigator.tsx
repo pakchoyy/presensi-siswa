@@ -1,25 +1,26 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { formatTanggalPanjang, addDays } from "@/lib/utils";
 
 export function DateNavigator() {
   const { tanggalAktif, setTanggalAktif } = useApp();
-  const lastRef = useRef(0);
   const [busy, setBusy] = useState(false);
 
   const change = (days: number) => {
     if (busy) return;
-    const now = Date.now();
-    if (now - lastRef.current < 300) return;
     
-    lastRef.current = now;
     setBusy(true);
     
-    const newDate = addDays(tanggalAktif, days);
+    // Direct calculation to avoid stale state issues
+    const d = new Date(tanggalAktif + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    const newDate = d.toISOString().slice(0, 10);
+    
     setTanggalAktif(newDate);
     
-    setTimeout(() => setBusy(false), 350);
+    // Longer timeout to prevent rapid clicks
+    setTimeout(() => setBusy(false), 600);
   };
 
   return (
