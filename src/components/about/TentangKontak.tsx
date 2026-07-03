@@ -1,4 +1,5 @@
 import { Info, MessageCircle, ExternalLink } from "lucide-react";
+import { APP_URL, MAIN_SITE_URL } from "@/lib/constants";
 
 export function TentangKontak() {
   return (
@@ -24,10 +25,10 @@ export function TentangKontak() {
             <span className="font-semibold text-[#0ea5a0]">Visi:</span>
             <span>Presensi 1 kelas selesai dalam <b>&lt;30 detik</b></span>
           </div>
-          <div className="flex gap-2 mb-1">
-            <span className="font-semibold text-[#0ea5a0]">FREE:</span>
-            <span>1 kelas, offline penuh, rekap & export lengkap</span>
-          </div>
+        <div className="flex gap-2 mb-1">
+          <span className="font-semibold text-[#0ea5a0]">FREE:</span>
+          <span>1 kelas (15 siswa), offline penuh, rekap & export lengkap</span>
+        </div>
           <div className="flex gap-2">
             <span className="font-semibold text-[#0ea5a0]">PRO:</span>
             <span>Unlimited kelas, cloud sync, multi-device — Rp10.000/tahun</span>
@@ -69,7 +70,20 @@ export function TentangKontak() {
           </a>
 
           <a
-            href="https://bantuguruyuk.web.id"
+            href={APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-[11px] rounded-[10px] bg-[#0ea5a0]/10 border-2 border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.82rem] no-underline hover:bg-[#0ea5a0]/20 transition-colors"
+          >
+            <ExternalLink size={18} />
+            <div className="flex-1 text-left">
+              <div className="text-[0.85rem] font-extrabold">Presensi Siswa</div>
+              <div className="text-[0.65rem] opacity-80">presensiswa.bantuguruyuk.web.id</div>
+            </div>
+          </a>
+
+          <a
+            href={MAIN_SITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-[11px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] no-underline hover:border-[#0ea5a0] transition-colors"

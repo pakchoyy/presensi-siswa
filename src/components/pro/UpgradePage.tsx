@@ -15,6 +15,7 @@ export function UpgradePage() {
 
   const [email, setEmail] = useState("");
   const [checking, setChecking] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleWA = () => {
     const msg = encodeURIComponent(
@@ -91,104 +92,103 @@ export function UpgradePage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
-      {/* Sudah Punya Lisensi */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-[0.85rem] font-bold text-[var(--text)] mb-2 flex items-center gap-2">
-          <Mail size={16} className="text-[#0ea5a0]" />
-          Sudah Beli PRO?
-        </div>
-        <p className="text-[0.75rem] text-[var(--text-light)] mb-3">
-          Masukkan email yang sudah terdaftar untuk aktivasi
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-br from-[#0ea5a0] to-[#2d6a7f] rounded-2xl p-6 mb-3 text-white text-center">
+        <ArrowUpCircle size={48} className="mx-auto mb-3 opacity-90" />
+        <h2 className="text-[1.3rem] font-extrabold mb-2">Upgrade ke PRO</h2>
+        <p className="text-[0.85rem] opacity-90 mb-3">
+          Semua fitur premium, selamanya
         </p>
+        <div className="text-[2.5rem] font-extrabold mb-4">{PRO_PRICE}</div>
+        <a
+          href="https://lynk.id/kreacy/o9g1wgrxg7gl"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block w-full max-w-[280px] py-3 rounded-xl bg-white text-[#0ea5a0] font-extrabold text-[0.95rem] no-underline hover:bg-white/90 transition-all"
+        >
+          🛒 Beli Sekarang
+        </a>
+        <button
+          onClick={handleWA}
+          className="w-full max-w-[280px] mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-white/30 text-white font-bold text-[0.85rem] hover:bg-white/10 transition-all bg-transparent cursor-pointer mx-auto"
+        >
+          <MessageCircle size={16} />
+          <span>Atau Chat WhatsApp</span>
+        </button>
+      </div>
+
+      {/* Sudah Beli PRO */}
+      <div className="bg-[rgba(14,165,160,0.08)] border-2 border-[#0ea5a0] rounded-xl p-4 mb-3">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-10 h-10 rounded-full bg-[#0ea5a0] flex items-center justify-center">
+            <Mail size={20} className="text-white" />
+          </div>
+          <div>
+            <div className="text-[0.9rem] font-extrabold text-[var(--text)]">
+              Sudah Beli PRO?
+            </div>
+            <div className="text-[0.7rem] text-[var(--text-light)]">
+              Verifikasi email untuk aktivasi
+            </div>
+          </div>
+        </div>
+        
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="email@example.com"
-          className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--border)] text-[0.85rem] text-[var(--text)] mb-2"
+          className="w-full px-4 py-3 rounded-lg border-2 border-[#0ea5a0]/30 bg-white text-[0.85rem] mb-3 focus:border-[#0ea5a0] outline-none"
           style={{ outline: "none" }}
         />
+        
         <button
           onClick={handleCheckEmail}
           disabled={checking}
-          className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer border-none"
+          className="w-full py-3 rounded-lg font-bold text-[0.9rem] text-white border-none cursor-pointer disabled:opacity-60 transition-opacity"
           style={{ background: checking ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
         >
-          {checking ? "Mengecek..." : "Verifikasi Email"}
+          {checking ? "⏳ Mengecek..." : "✅ Verifikasi Email"}
         </button>
       </div>
 
-      {/* Belum Punya Lisensi */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-center mb-3">
-          <ArrowUpCircle size={32} className="text-[#f59e0b] mx-auto mb-2" />
-          <div className="text-[1rem] font-extrabold text-[var(--text)]">Upgrade ke PRO</div>
-          <div className="text-[0.78rem] text-[var(--text-light)] mt-1">
-            Semua fitur premium, cukup
-          </div>
-          <div className="text-[1.8rem] font-extrabold text-[#f59e0b] mt-1">{PRO_PRICE}</div>
-          <div className="text-[0.65rem] text-[var(--text-light)] mt-[2px]">Bayar sekali, akses setahun penuh</div>
+      {/* Fitur PRO */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-4 mb-3">
+        <div className="text-[0.85rem] font-bold mb-3 flex items-center gap-2">
+          <Crown size={16} className="text-[#f59e0b]" />
+          Fitur PRO
         </div>
-
-        <div className="mb-4">
+        
+        <div className="space-y-2">
           {manfaat.map((m, i) => (
-            <div key={i} className="flex items-start gap-2 mb-[6px] text-[0.76rem] text-[var(--text)]">
-              <Check size={14} className="text-[#16a34a] flex-shrink-0 mt-[2px]" />
-              <span>{m}</span>
+            <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-[var(--input-bg)] transition-colors">
+              <div className="w-6 h-6 rounded-full bg-[#16a34a]/10 flex items-center justify-center flex-shrink-0 mt-[1px]">
+                <Check size={14} className="text-[#16a34a]" />
+              </div>
+              <span className="text-[0.78rem] text-[var(--text)] leading-relaxed">{m}</span>
             </div>
           ))}
         </div>
-
-        <a
-          href="https://lynk.id/kreacy/o9g1wgrxg7gl"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full text-center py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer mb-2 no-underline"
-          style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-        >
-          Beli Disini
-        </a>
-        <button
-          onClick={handleWA}
-          className="w-full flex items-center justify-center gap-[6px] py-[12px] rounded-[10px] text-white font-bold text-[0.85rem] cursor-pointer border-none"
-          style={{ background: "#25D366" }}
-        >
-          <MessageCircle size={16} /> Atau via WhatsApp
-        </button>
       </div>
 
+      {/* Perbandingan */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-2">
           <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[0.7rem] border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
-                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Gratis</th>
-                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
-                { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
-                { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
-                { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
-                { fitur: "Backup ke internet", free: "Tidak", pro: "Bisa" },
-                { fitur: "Logo di laporan", free: "Tidak", pro: "Bisa" },
-                { fitur: "Update data Excel", free: "Tidak", pro: "Bisa" },
-                { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
-              ].map((row, i) => (
-                <tr key={i} className="border-b border-[var(--border)] last:border-0">
-                  <td className="py-2 px-2 font-semibold">{row.fitur}</td>
-                  <td className="py-2 px-2 text-center text-[var(--text-light)]">{row.free}</td>
-                  <td className="py-2 px-2 text-center text-[#0ea5a0] font-bold">{row.pro}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-2 gap-2 text-[0.7rem]">
+          <div className="bg-[var(--input-bg)] rounded-lg p-2">
+            <div className="font-bold mb-1">FREE</div>
+            <div className="text-[var(--text-light)] leading-[1.6]">
+              • 1 kelas<br />• 15 siswa<br />• Offline<br />• Rekap & export
+            </div>
+          </div>
+          <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 border border-[#0ea5a0]/20">
+            <div className="font-bold text-[#0ea5a0] mb-1">PRO</div>
+            <div className="text-[var(--text-light)] leading-[1.6]">
+              • Unlimited kelas<br />• Unlimited siswa<br />• Cloud sync<br />• Multi device
+            </div>
+          </div>
         </div>
       </div>
     </div>

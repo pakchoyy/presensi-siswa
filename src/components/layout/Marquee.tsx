@@ -1,8 +1,10 @@
+import { MAIN_SITE_URL } from "@/lib/constants";
+
 const MESSAGES = [
   "Mau buat soal dalam lima menit?",
   "Butuh prompt LKPD menarik?",
   "Mau buat modul kokurikuler hitungan menit?",
-  "Yuk cobain semuanya di Bantu Guru Yuk! ✨",
+  "Yuk cobain semuanya di bantuguruyuk.web.id! ✨",
 ];
 
 export function Marquee() {
@@ -13,7 +15,7 @@ export function Marquee() {
       <div className="ticker-badge">INFO</div>
       <div className="ticker-track">
         <a
-          href="https://bantuguruyuk.web.id"
+          href={MAIN_SITE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="ticker-content"

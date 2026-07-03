@@ -57,6 +57,8 @@ export function SiswaPage() {
   const [modalNama, setModalNama] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [kelasCounts, setKelasCounts] = useState<Record<number, number>>({});
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -110,22 +112,30 @@ export function SiswaPage() {
       return;
     }
     
-    const now = timestamp();
-    const s: Student = {
-      id: generateId(),
-      kelasId: selectedKelas.id,
-      nama,
-      urutan: students.length + 1,
-      statusAktif: true,
-      dibuatPada: now,
-      diubahPada: now,
-    };
-    await studentRepo.save(s);
-    setModalNama("");
-    setShowModal(false);
-    await loadStudents(selectedKelas.id);
-    await loadCounts();
-    toast("Siswa berhasil ditambahkan");
+    setSaving(true);
+    
+    try {
+      const now = timestamp();
+      const s: Student = {
+        id: generateId(),
+        kelasId: selectedKelas.id,
+        nama,
+        urutan: students.length + 1,
+        statusAktif: true,
+        dibuatPada: now,
+        diubahPada: now,
+      };
+      await studentRepo.save(s);
+      setModalNama("");
+      setShowModal(false);
+      await loadStudents(selectedKelas.id);
+      await loadCounts();
+      toast("Siswa berhasil ditambahkan");
+    } catch (error) {
+      toast("❌ Gagal menambahkan siswa");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleImport = async (result: ImportResult) => {
@@ -175,11 +185,21 @@ export function SiswaPage() {
 
   const handleRemove = async () => {
     if (!deleteTarget) return;
-    await studentRepo.softDelete(deleteTarget.id);
-    setDeleteTarget(null);
-    await loadStudents(deleteTarget.kelasId);
-    await loadCounts();
-    toast("Siswa dihapus");
+    
+    setDeleting(true);
+    
+    try {
+      await studentRepo.softDelete(deleteTarget.id);
+      const kelasId = deleteTarget.kelasId;
+      setDeleteTarget(null);
+      await loadStudents(kelasId);
+      await loadCounts();
+      toast("Siswa dihapus");
+    } catch (error) {
+      toast("❌ Gagal menghapus siswa");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // View: Daftar Kelas (Cards)
@@ -379,10 +399,11 @@ export function SiswaPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
                 >
-                  Simpan
+                  {saving ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
             </div>
@@ -416,9 +437,10 @@ export function SiswaPage() {
                 </button>
                 <button
                   onClick={handleRemove}
-                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer"
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Hapus
+                  {deleting ? "Menghapus..." : "Hapus"}
                 </button>
               </div>
             </div>

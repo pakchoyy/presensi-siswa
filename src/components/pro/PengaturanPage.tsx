@@ -57,6 +57,7 @@ export function PengaturanPage() {
   const [editSekolah, setEditSekolah] = useState(false);
   const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
   const [editJenjang, setEditJenjang] = useState<Jenjang>(school?.jenjang || Jenjang.SD);
+  const [savingSekolah, setSavingSekolah] = useState(false);
 
   useEffect(() => {
     if (teacher) {
@@ -126,10 +127,31 @@ export function PengaturanPage() {
   const manfaat = licenseService.getManfaat();
 
   const handleSaveSekolah = async () => {
-    if (!school || !editNamaSekolah.trim()) return;
-    await schoolRepo.save({ ...school, nama: editNamaSekolah.trim(), jenjang: editJenjang, diubahPada: Date.now() });
-    toast("Nama sekolah diperbarui");
-    setEditSekolah(false);
+    if (!school || !editNamaSekolah.trim()) {
+      toast("Nama sekolah tidak boleh kosong");
+      return;
+    }
+    
+    setSavingSekolah(true);
+    
+    try {
+      await schoolRepo.save({
+        ...school,
+        nama: editNamaSekolah.trim(),
+        jenjang: editJenjang,
+        diubahPada: Date.now()
+      });
+      
+      toast("✅ Nama sekolah diperbarui");
+      setEditSekolah(false);
+      
+      // Reload to reflect changes
+      setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+      toast("❌ Gagal menyimpan. Coba lagi.");
+    } finally {
+      setSavingSekolah(false);
+    }
   };
 
   const isExpiring = licenseInfo?.isExpiring;
@@ -209,7 +231,7 @@ export function PengaturanPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setEditSekolah(false)} className="flex-1 py-[10px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.8rem] cursor-pointer">Batal</button>
-            <button onClick={handleSaveSekolah} className="flex-1 py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>Simpan</button>
+            <button onClick={handleSaveSekolah} disabled={savingSekolah} className="flex-1 py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-opacity" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>{savingSekolah ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </div>
       )}
