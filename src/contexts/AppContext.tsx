@@ -15,6 +15,7 @@ import { studentRepo } from "@/repositories/dexie/student.repo";
 import { setupService } from "@/services/setup.service";
 import { licenseService } from "@/services/license.service";
 import { syncService } from "@/services/sync.service";
+import { useAuth } from "@/contexts/AuthContext";
 import { Tier } from "@/types/enums";
 import { todayStr } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
   const [state, setState] = useState<AppState>({
     setupSelesai: false,
     school: null,
@@ -75,9 +77,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
 
         // Start sync loop for PRO users
-        if (teacher?.tier === Tier.PRO) {
+        if (teacher?.tier === Tier.PRO && token) {
           setTimeout(() => {
-            syncService.syncAll(teacher.id).catch(() => {});
+            syncService.syncAll(token).catch(() => {});
           }, 3000);
         }
       } else {
@@ -85,20 +87,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     init();
-  }, []);
+  }, [token]);
 
   // Periodic sync for PRO users
   useEffect(() => {
-    if (!state.setupSelesai || !state.teacher || state.teacher.tier !== Tier.PRO) return;
+    if (!state.setupSelesai || !state.teacher || state.teacher.tier !== Tier.PRO || !token) return;
 
     const interval = setInterval(() => {
       if (navigator.onLine) {
-        syncService.syncAll(state.teacher!.id).catch(() => {});
+        syncService.syncAll(token).catch(() => {});
       }
     }, 60000); // Sync every 60 seconds
 
     return () => clearInterval(interval);
-  }, [state.setupSelesai, state.teacher?.tier, state.teacher?.id]);
+  }, [state.setupSelesai, state.teacher?.tier, token]);
 
   useEffect(() => {
     if (state.darkMode) {
