@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
-import { Tier, HariAktif, Jenjang } from "@/types/enums";
+import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import {
   Settings,
@@ -41,9 +41,9 @@ const getAutoHadir = (): boolean => {
 };
 
 export function PengaturanPage() {
-  const { teacher, school, refreshTeacher } = useApp();
+  const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
-  const { isAuthenticated, user, login } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -256,7 +256,7 @@ export function PengaturanPage() {
                 Data Anda tersinkronisasi ke cloud. Anda bisa login dari perangkat lain (max 3 perangkat).
               </div>
               <button
-                onClick={() => window.location.href = '/#/cloud-settings'}
+                onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
                 className="w-full py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
               >
                 Kelola Device & Backup
@@ -274,14 +274,15 @@ export function PengaturanPage() {
               </div>
               <button
                 onClick={() => {
-                  // TODO: Open cloud sync setup modal
-                  toast('Fitur Cloud Sync segera hadir!');
+                  // Open external login page (auth is handled separately)
+                  window.open('https://presiswa.bantuguruyuk.web.id/#/login', '_blank');
+                  toast('Login di tab baru untuk aktifkan cloud sync');
                 }}
                 className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
                 style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
               >
                 <Upload size={14} />
-                Aktifkan Cloud Sync
+                Login untuk Cloud Sync
               </button>
             </div>
           )}
@@ -434,11 +435,10 @@ export function PengaturanPage() {
             </button>
           </div>
 
-          <div className="bg-[#fee2e2] rounded-lg p-3 mb-3 border border-[#ef4444]/30 flex items-start gap-2">
-            <AlertTriangle size={14} className="text-[#dc2626] flex-shrink-0 mt-[1px]" />
-            <div className="text-[0.7rem] text-[#7f1d1d]">
-              <b>Fitur lokal PRO sudah aktif:</b> Unlimited kelas & siswa, kalender custom, logo laporan, update Excel.<br/>
-              <b>Coming soon (Fase 4):</b> Cloud sync, multi-device, backup otomatis.
+          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-800 flex items-start gap-2">
+            <Info size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-[1px]" />
+            <div className="text-[0.7rem] text-blue-900 dark:text-blue-100">
+              <b>Fitur PRO Aktif:</b> Unlimited kelas & siswa, kalender custom, logo laporan, update Excel, cloud sync otomatis, multi-device (max 3), backup cloud harian.
             </div>
           </div>
 

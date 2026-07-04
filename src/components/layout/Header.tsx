@@ -32,6 +32,8 @@ export function Header() {
     subtitle = "| Backup";
   } else if (activePage === "upgrade") {
     subtitle = "| Upgrade";
+  } else if (activePage === "cloud-settings") {
+    subtitle = "| Cloud Settings";
   }
 
   return (

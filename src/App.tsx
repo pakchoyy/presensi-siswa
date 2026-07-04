@@ -18,6 +18,7 @@ import { PetunjukPage } from "@/components/guide/PetunjukPage";
 import { TentangKontak } from "@/components/about/TentangKontak";
 import { PengaturanPage } from "@/components/pro/PengaturanPage";
 import { UpgradePage } from "@/components/pro/UpgradePage";
+import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
 import { PageName } from "@/types/enums";
 import { ConvexProvider } from "convex/react";
@@ -73,6 +74,8 @@ function PageContent() {
       return <UpgradePage />;
     case PageName.PENGATURAN:
       return <PengaturanPage />;
+    case PageName.CLOUD_SETTINGS:
+      return <CloudSettingsPage />;
     default:
       return <PresensiPage />;
   }

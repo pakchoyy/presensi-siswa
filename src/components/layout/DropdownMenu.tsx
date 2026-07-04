@@ -1,8 +1,9 @@
 import { useApp } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
-import { PageName } from "@/types/enums";
+import { PageName, Tier } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
-import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings } from "lucide-react";
+import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -15,10 +16,13 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function DropdownMenu({ isOpen, onClose }: Props) {
-  const { setActivePage, setupSelesai } = useApp();
+  const { setActivePage, setupSelesai, teacher } = useApp();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
 
   if (!isOpen || !setupSelesai) return null;
+
+  const isPRO = teacher?.tier === Tier.PRO;
 
   const canInstall = !!(window as any).__bgy_deferredPrompt;
 
@@ -69,6 +73,15 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         >
           <Settings size={16} /> Pengaturan
         </button>
+
+        {isPRO && isAuthenticated && (
+          <button
+            onClick={() => { setActivePage(PageName.CLOUD_SETTINGS); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          >
+            <Cloud size={16} /> Cloud Settings
+          </button>
+        )}
 
         <div className="h-px bg-[var(--border)] mx-0" />
 

@@ -47,6 +47,7 @@ export enum PageName {
   UPGRADE = "upgrade",
   PENGATURAN = "pengaturan",
   BACKUP = "backup",
+  CLOUD_SETTINGS = "cloud-settings",
 }
 
 export enum WizStep {

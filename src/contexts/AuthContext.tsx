@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { syncService } from "@/services/sync.service";
 
 interface User {
   id: string;
@@ -133,6 +134,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(result.token);
       setUser(result.user as User);
       setDeviceLimitError(null); // Clear any previous error
+
+      // Trigger auto upload for PRO users after successful login
+      if (result.user.tier === "PRO") {
+        setTimeout(async () => {
+          try {
+            const uploaded = await syncService.initialUpload(result.token);
+            if (uploaded > 0) {
+              console.log(`Initial cloud upload completed: ${uploaded} records`);
+            }
+          } catch (error) {
+            console.error("Initial upload failed:", error);
+          }
+        }, 1000); // Delay 1 second to let UI settle
+      }
     } catch (error: any) {
       // Check if it's a device limit error
       const errorMessage = error.message || "";
