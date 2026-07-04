@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
+import { syncService } from "@/services/sync.service";
 import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import {
@@ -22,6 +23,7 @@ import {
   School,
   Info,
   Upload,
+  LogOut,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { LogoUpload } from "@/components/shared/LogoUpload";
@@ -83,14 +85,27 @@ export function PengaturanPage() {
       const status = await licenseService.getStatus(teacher.id);
       setLicenseInfo(status);
       
-      // Show cloud sync activated
+      // Auto upload existing local data to cloud
       if (result.cloudEmail) {
-        setTimeout(() => {
-          toast("☁️ Cloud sync otomatis aktif!");
+        setTimeout(async () => {
+          try {
+            toast("⏳ Mengupload data ke cloud...");
+            const uploaded = await syncService.initialUpload(result.cloudEmail);
+            if (uploaded > 0) {
+              toast(`✅ ${uploaded} data berhasil di-upload ke cloud`);
+            } else {
+              toast("☁️ Cloud sync aktif (tidak ada data untuk di-upload)");
+            }
+          } catch (error) {
+            console.error("Initial upload failed:", error);
+            toast("⚠️ Upload gagal, gunakan Sync Now nanti");
+          }
+          
+          // Reload to show connected status
           setTimeout(() => {
             window.location.reload();
-          }, 1000);
-        }, 500);
+          }, 1500);
+        }, 1000);
       }
     } else {
       toast(result.message);
@@ -271,12 +286,27 @@ export function PengaturanPage() {
                   ⚠️ <b>Penting:</b> Jangan share email lisensi Anda dengan orang lain. Siapapun dengan email yang sama bisa mengakses data Anda.
                 </div>
               </div>
-              <button
-                onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
-                className="w-full py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
-              >
-                Kelola Backup Cloud
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
+                  className="flex-1 py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
+                >
+                  Kelola Backup
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Logout dari cloud sync?\n\nData lokal tetap aman, tapi tidak akan sync otomatis.')) {
+                      localStorage.removeItem('presensi_cloud_email');
+                      toast('⚠️ Logout berhasil. Cloud sync dinonaktifkan.');
+                      setTimeout(() => window.location.reload(), 1000);
+                    }
+                  }}
+                  className="px-4 py-[9px] rounded-[10px] border-[1.5px] border-red-500 text-red-500 font-bold text-[0.78rem] cursor-pointer bg-transparent flex items-center gap-1"
+                >
+                  <LogOut size={14} />
+                  Logout
+                </button>
+              </div>
             </div>
           ) : (
             <div>
@@ -288,10 +318,32 @@ export function PengaturanPage() {
               </div>
               {licenseInfo?.email && (
                 <button
-                  onClick={() => {
-                    localStorage.setItem("presensi_cloud_email", licenseInfo.email!);
-                    toast("☁️ Cloud sync berhasil diaktifkan!");
-                    setTimeout(() => window.location.reload(), 1000);
+                  onClick={async () => {
+                    const email = licenseInfo.email!;
+                    localStorage.setItem("presensi_cloud_email", email);
+                    
+                    toast("⏳ Menghubungkan ke cloud...");
+                    
+                    // Check if there's data in cloud and download
+                    try {
+                      const downloaded = await syncService.downloadAll(email);
+                      if (downloaded > 0) {
+                        toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
+                      } else {
+                        // No data in cloud, upload local data
+                        const uploaded = await syncService.initialUpload(email);
+                        if (uploaded > 0) {
+                          toast(`✅ ${uploaded} data di-upload ke cloud`);
+                        } else {
+                          toast("☁️ Cloud sync aktif");
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Cloud sync error:", error);
+                      toast("⚠️ Sync gagal, gunakan Sync Now nanti");
+                    }
+                    
+                    setTimeout(() => window.location.reload(), 1500);
                   }}
                   className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
                   style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}

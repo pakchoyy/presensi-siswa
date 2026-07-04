@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { Marquee } from "@/components/layout/Marquee";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
+import { useAutoSync } from "@/hooks/useAutoSync";
 import { WizardSetup } from "@/components/wizard/WizardSetup";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { PresensiPage } from "@/components/attendance/PresensiPage";
@@ -85,6 +86,9 @@ function PageContent() {
 function AppContent() {
   const { setupSelesai } = useApp();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
+  
+  // Enable auto-sync for cloud-connected users
+  useAutoSync();
 
   // Show login page only for PRO users or users trying to use cloud features
   // For now, make auth optional - users can use app without login (local only)

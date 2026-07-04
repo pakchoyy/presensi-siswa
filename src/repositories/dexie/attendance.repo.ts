@@ -1,6 +1,7 @@
 import { db } from "./db";
 import type { AttendanceSession, AttendanceRecord } from "@/types/entities";
 import { AttendanceStatus } from "@/types/enums";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const attendanceRepo = {
   async getSession(kelasId: number, tanggal: string): Promise<AttendanceSession | undefined> {
@@ -11,7 +12,9 @@ export const attendanceRepo = {
   },
 
   async createSession(session: AttendanceSession): Promise<number> {
-    return db.attendanceSessions.put(session);
+    const result = await db.attendanceSessions.put(session);
+    triggerAutoSync();
+    return result;
   },
 
   async getRecords(sesiId: number): Promise<AttendanceRecord[]> {
@@ -19,15 +22,20 @@ export const attendanceRepo = {
   },
 
   async saveRecord(record: AttendanceRecord): Promise<number> {
-    return db.attendanceRecords.put(record);
+    const result = await db.attendanceRecords.put(record);
+    triggerAutoSync();
+    return result;
   },
 
   async updateSessionTimestamp(sesiId: number): Promise<void> {
     await db.attendanceSessions.update(sesiId, { diubahPada: Date.now() });
+    triggerAutoSync();
   },
 
   async bulkSaveRecords(records: AttendanceRecord[]): Promise<number> {
-    return db.attendanceRecords.bulkPut(records);
+    const result = await db.attendanceRecords.bulkPut(records);
+    triggerAutoSync();
+    return result;
   },
 
   async getRecordBySiswa(sesiId: number, siswaId: number): Promise<AttendanceRecord | undefined> {

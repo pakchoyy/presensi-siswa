@@ -464,20 +464,20 @@ export const incrementalSync = query({
  */
 export const downloadAll = query({
   args: {
-    token: v.string(),
+    email: v.string(),
   },
-  handler: async (ctx, { token }) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  handler: async (ctx, { email }) => {
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const userId = session.userId;
+    const userId = user._id;
 
     // Download all data
     const schools = await ctx.db

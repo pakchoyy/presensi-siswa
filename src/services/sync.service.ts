@@ -80,9 +80,9 @@ export const syncService = {
   /**
    * Download all data from cloud and merge with local
    */
-  async downloadAll(token: string): Promise<number> {
+  async downloadAll(email: string): Promise<number> {
     try {
-      const cloudData = await (convexClient as any).query("sync:downloadAll", { token });
+      const cloudData = await (convexClient as any).query("sync:downloadAll", { email });
 
       let count = 0;
       const tables = [
@@ -143,9 +143,9 @@ export const syncService = {
   /**
    * Get sync status from cloud
    */
-  async getSyncStatus(token: string) {
+  async getSyncStatus(email: string) {
     try {
-      return await (convexClient as any).query("sync:getSyncStatus", { token });
+      return await (convexClient as any).query("sync:getSyncStatus", { email });
     } catch (error) {
       console.error("Get sync status failed:", error);
       return null;

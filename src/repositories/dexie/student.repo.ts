@@ -1,5 +1,6 @@
 import { db } from "./db";
 import type { Student } from "@/types/entities";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const studentRepo = {
   async getByClass(classroomId: number): Promise<Student[]> {
@@ -15,19 +16,25 @@ export const studentRepo = {
   },
 
   async save(student: Student): Promise<number> {
-    return db.students.put(student);
+    const result = await db.students.put(student);
+    triggerAutoSync();
+    return result;
   },
 
   async bulkSave(students: Student[]): Promise<number> {
-    return db.students.bulkPut(students);
+    const result = await db.students.bulkPut(students);
+    triggerAutoSync();
+    return result;
   },
 
   async delete(id: number): Promise<void> {
     await db.students.delete(id);
+    triggerAutoSync();
   },
 
   async softDelete(id: number): Promise<void> {
     await db.students.update(id, { statusAktif: false, diubahPada: Date.now() });
+    triggerAutoSync();
   },
 
   async countActiveByClass(classroomId: number): Promise<number> {
