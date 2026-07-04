@@ -2,20 +2,39 @@ import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PRO_PRICE } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
-import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck, Mail } from "lucide-react";
+import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck, Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { Tier } from "@/types/enums";
+import Confetti from "react-confetti";
+import { PageName } from "@/types/enums";
 
 export function UpgradePage() {
-  const { teacher, refreshTeacher } = useApp();
+  const { teacher, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
   const isPRO = teacher?.tier === "PRO";
   const manfaat = licenseService.getManfaat();
 
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const validateEmail = (email: string) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      setEmailError("Email tidak boleh kosong");
+      return false;
+    }
+    if (!regex.test(email)) {
+      setEmailError("Format email tidak valid");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
 
   const handleWA = () => {
     const msg = encodeURIComponent(
@@ -25,13 +44,14 @@ export function UpgradePage() {
   };
 
   const handleCheckEmail = async () => {
-    if (!email.trim()) {
-      toast("⚠️ Masukkan email terlebih dahulu");
+    setErrorMessage("");
+    
+    if (!validateEmail(email)) {
       return;
     }
 
     if (!teacher) {
-      toast("⚠️ Data guru tidak ditemukan");
+      setErrorMessage("Data guru tidak ditemukan");
       return;
     }
 
@@ -64,13 +84,23 @@ export function UpgradePage() {
         // Refresh context
         await refreshTeacher();
 
-        toast("✅ Email terverifikasi! Kamu sekarang PRO");
+        toast("✅ Email terverifikasi! Kamu sekarang PRO 🎉");
+        setErrorMessage("");
+        
+        // Show confetti
+        setShowConfetti(true);
+        
+        // Redirect to Pengaturan after 2 seconds
+        setTimeout(() => {
+          setShowConfetti(false);
+          setActivePage(PageName.PENGATURAN);
+        }, 2000);
       } else {
-        toast("⚠️ Email belum terdaftar sebagai PRO. Hubungi admin via WhatsApp.");
+        setErrorMessage("Email belum terdaftar sebagai PRO. Silakan hubungi admin via WhatsApp.");
       }
     } catch (error) {
       console.error("Check email error:", error);
-      toast("❌ Gagal mengecek email. Coba lagi.");
+      setErrorMessage("Gagal mengecek email. Periksa koneksi internet dan coba lagi.");
     } finally {
       setChecking(false);
     }
@@ -136,20 +166,45 @@ export function UpgradePage() {
         <input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setEmailError("");
+            setErrorMessage("");
+          }}
           placeholder="email@example.com"
-          className="w-full px-4 py-3 rounded-lg border-2 border-[#0ea5a0]/30 bg-white text-[0.85rem] mb-3 focus:border-[#0ea5a0] outline-none"
-          style={{ outline: "none" }}
+          className={`w-full px-4 py-3 rounded-lg border-2 bg-white text-[0.85rem] mb-1 outline-none ${
+            emailError ? "border-red-500" : "border-[#0ea5a0]/30 focus:border-[#0ea5a0]"
+          }`}
         />
+        
+        {emailError && (
+          <p className="text-[0.7rem] text-red-500 mb-2">{emailError}</p>
+        )}
         
         <button
           onClick={handleCheckEmail}
           disabled={checking}
-          className="w-full py-3 rounded-lg font-bold text-[0.9rem] text-white border-none cursor-pointer disabled:opacity-60 transition-opacity"
+          className="w-full py-3 rounded-lg font-bold text-[0.9rem] text-white border-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2"
           style={{ background: checking ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
         >
-          {checking ? "⏳ Mengecek..." : "✅ Verifikasi Email"}
+          {checking && <Loader2 size={16} className="animate-spin" />}
+          {checking ? "Mengecek Email..." : "✅ Verifikasi Email"}
         </button>
+        
+        {errorMessage && (
+          <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-[0.75rem] text-red-600 dark:text-red-400 mb-2">
+              {errorMessage}
+            </p>
+            <button
+              onClick={handleWA}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-[0.75rem] font-bold transition-colors cursor-pointer border-none"
+            >
+              <MessageCircle size={14} />
+              Hubungi Admin via WhatsApp
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Fitur PRO */}
@@ -191,6 +246,16 @@ export function UpgradePage() {
           </div>
         </div>
       </div>
+      
+      {/* Confetti Effect */}
+      {showConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+        />
+      )}
     </div>
   );
 }

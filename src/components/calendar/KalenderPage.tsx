@@ -158,22 +158,29 @@ export function KalenderPage() {
 
       {isPRO && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[10px] mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[0.7rem] text-[var(--text)]">
-            {isEditMode ? (
-              <>
-                <PenLine size={13} className="text-[#0ea5a0]" />
-                <span><b className="text-[#0ea5a0]">Mode Edit:</b> Klik tanggal untuk tambah/edit event</span>
-              </>
-            ) : (
-              <>
-                <Eye size={13} className="text-[var(--text-light)]" />
-                <span><b>Mode Baca:</b> Klik tanggal untuk lihat info</span>
-              </>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 text-[0.7rem] text-[var(--text)]">
+              {isEditMode ? (
+                <>
+                  <PenLine size={13} className="text-[#0ea5a0]" />
+                  <span><b className="text-[#0ea5a0]">Mode Edit:</b> Klik tanggal untuk tambah/edit event</span>
+                </>
+              ) : (
+                <>
+                  <Eye size={13} className="text-[var(--text-light)]" />
+                  <span><b>Mode Baca:</b> Klik tanggal untuk lihat info</span>
+                </>
+              )}
+            </div>
+            {!isEditMode && (
+              <div className="text-[0.65rem] text-[var(--text-light)] mt-1 ml-5">
+                💡 Klik ikon pensil di kanan untuk menambah hari penting
+              </div>
             )}
           </div>
           <button
             onClick={toggleEditMode}
-            className="px-3 py-[6px] rounded-lg border-[1.5px] border-[var(--border)] text-[0.7rem] font-bold cursor-pointer flex items-center gap-1 bg-transparent hover:bg-[var(--input-bg)] transition-colors"
+            className="px-3 py-[6px] rounded-lg border-[1.5px] border-[var(--border)] text-[0.7rem] font-bold cursor-pointer flex items-center gap-1 bg-transparent hover:bg-[var(--input-bg)] transition-colors flex-shrink-0"
           >
             {isEditMode ? (
               <>

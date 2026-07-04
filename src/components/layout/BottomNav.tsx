@@ -24,16 +24,24 @@ const NAV_ITEMS: NavItemData[] = [
 ];
 
 export function BottomNav() {
-  const { activePage, setActivePage, setupSelesai } = useApp();
+  const { activePage, setActivePage, setupSelesai, teacher } = useApp();
 
   if (!setupSelesai) return null;
+
+  const isPRO = teacher?.tier === "PRO";
 
   return (
     <nav
       className="lg:hidden fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] border-t border-[var(--border)] flex z-[300] py-[6px] px-1"
       style={{ boxShadow: "0 -2px 12px rgba(0,0,0,.08)" }}
     >
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.filter(item => {
+        // Hide Upgrade menu if already PRO
+        if (item.page === PageName.UPGRADE && isPRO) {
+          return false;
+        }
+        return true;
+      }).map((item) => {
         const isActive = activePage === item.page;
         const isUpgrade = item.page === PageName.UPGRADE;
         return (

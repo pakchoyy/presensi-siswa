@@ -34,7 +34,7 @@ interface AppState {
 interface AppContextType extends AppState {
   setActivePage: (page: PageName) => void;
   setTanggalAktif: (tgl: string) => void;
-  setActiveClassroom: (cls: Classroom) => void;
+  setActiveClassroom: (cls: Classroom | null) => void;
   toggleDarkMode: () => void;
   refreshClassrooms: () => Promise<void>;
   refreshStudents: (classroomId: number) => Promise<Student[]>;
@@ -119,7 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, tanggalAktif: tgl }));
   }, []);
 
-  const setActiveClassroom = useCallback((cls: Classroom) => {
+  const setActiveClassroom = useCallback((cls: Classroom | null) => {
     setState((prev) => ({ ...prev, activeClassroom: cls }));
   }, []);
 

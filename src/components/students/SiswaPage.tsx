@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import { db } from "@/repositories/dexie/db";
 import type { Student, Classroom } from "@/types/entities";
 import { inisial, generateId, timestamp } from "@/lib/utils";
 import { siswaToImportResult } from "@/services/import.service";
@@ -101,6 +102,38 @@ export function SiswaPage() {
     setSelectedKelas(null);
     setSearch("");
     loadCounts();
+  };
+
+  const handleDeleteClass = async (cls: Classroom) => {
+    const count = kelasCounts[cls.id] || 0;
+    
+    if (!confirm(`Hapus kelas ${formatKelasLabel(cls.nama)}? Semua data siswa di kelas ini (${count} siswa) akan dihapus.`)) {
+      return;
+    }
+    
+    try {
+      // Delete all students in class
+      await db.students.where('kelasId').equals(cls.id).delete();
+      // Delete class
+      await classroomRepo.delete(cls.id);
+      // Refresh
+      await refreshClassrooms();
+      // If deleted class was active, clear selection
+      if (activeClassroom?.id === cls.id) {
+        const remainingClasses = classrooms.filter(c => c.id !== cls.id);
+        if (remainingClasses.length > 0) {
+          setActiveClassroom(remainingClasses[0]);
+        } else {
+          setActiveClassroom(null);
+        }
+      }
+      // Reload counts
+      await loadCounts();
+      toast(`✅ Kelas ${formatKelasLabel(cls.nama)} berhasil dihapus`);
+    } catch (error) {
+      console.error('Delete class error:', error);
+      toast('❌ Gagal menghapus kelas');
+    }
   };
 
   const filtered = students.filter((s) =>
@@ -299,7 +332,16 @@ export function SiswaPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <>
+            {/* Hint */}
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <Lightbulb size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <span className="text-[0.75rem] text-blue-600 dark:text-blue-400">
+                Klik card kelas untuk import siswa, edit dan hapus siswa
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
             {classrooms.map((cls) => {
               const count = kelasCounts[cls.id] || 0;
               const isActive = activeClassroom?.id === cls.id;
@@ -307,12 +349,24 @@ export function SiswaPage() {
                 <button
                   key={cls.id}
                   onClick={() => openKelas(cls)}
-                  className={`p-4 rounded-xl border-[1.5px] text-left cursor-pointer transition-all ${
+                  className={`relative p-4 rounded-xl border-[1.5px] text-left cursor-pointer transition-all ${
                     isActive
                       ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.06)]"
                       : "border-[var(--border)] bg-[var(--card-bg)] hover:border-[#0ea5a0]/40"
                   }`}
                 >
+                  {/* Delete Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClass(cls);
+                    }}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-all flex items-center justify-center group z-10"
+                    title="Hapus Kelas"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  
                   <div className="w-10 h-10 rounded-xl mb-2 flex items-center justify-center text-white text-[1.1rem]"
                     style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
                     <Users size={18} />
@@ -324,7 +378,8 @@ export function SiswaPage() {
                 </button>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
     );

@@ -17,4 +17,8 @@ export const classroomRepo = {
   async save(classroom: Classroom): Promise<number> {
     return db.classrooms.put(classroom);
   },
+
+  async delete(id: number): Promise<void> {
+    await db.classrooms.delete(id);
+  },
 };

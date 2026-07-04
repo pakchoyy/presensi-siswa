@@ -38,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { page: PageName.KALENDER, label: "Kalender", icon: Calendar },
   { page: PageName.UPGRADE, label: "Upgrade PRO", icon: ArrowUpCircle },
   { page: PageName.PETUNJUK, label: "Petunjuk", icon: BookOpen },
+  { page: PageName.PENGATURAN, label: "Pengaturan", icon: Settings },
   { page: PageName.BACKUP, label: "Backup", icon: Database },
 ];
 
@@ -205,7 +206,13 @@ export function Sidebar() {
         <div className="text-[0.6rem] font-bold uppercase tracking-[0.8px] text-[var(--text-light)] mb-2 px-1">
           Menu
         </div>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(item => {
+          // Hide Upgrade menu if already PRO
+          if (item.page === PageName.UPGRADE && isPRO) {
+            return false;
+          }
+          return true;
+        }).map((item) => {
           const isActive = activePage === item.page;
           return (
             <button
