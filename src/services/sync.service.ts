@@ -3,6 +3,46 @@ import { convexClient } from "@/lib/convex";
 
 export type SyncStatus = "tersinkron" | "menyinkronkan" | "menunggu" | "error";
 
+const LAST_SYNC_KEY = "presensi_last_sync";
+
+// Get last sync timestamp from localStorage
+function getLastSyncTimestamp(): number {
+  const stored = localStorage.getItem(LAST_SYNC_KEY);
+  return stored ? parseInt(stored) : 0;
+}
+
+// Save last sync timestamp to localStorage
+function saveLastSyncTimestamp(timestamp: number) {
+  localStorage.setItem(LAST_SYNC_KEY, timestamp.toString());
+}
+
+// Get data changed since timestamp
+async function getChangedData(since: number) {
+  const tables = [
+    "schools",
+    "teachers",
+    "academicYears",
+    "classrooms",
+    "students",
+    "attendanceSessions",
+    "attendanceRecords",
+    "calendarEntries",
+  ];
+
+  const changes: Record<string, any[]> = {};
+
+  for (const table of tables) {
+    // Get all records modified after 'since' timestamp
+    const records = await db.table(table).toArray();
+    changes[table] = records.filter((r: any) => {
+      const modifiedAt = r.diubahPada || r.dibuatPada || 0;
+      return modifiedAt > since;
+    });
+  }
+
+  return changes;
+}
+
 export const syncService = {
   /**
    * Initial upload - First time sync from local to cloud
@@ -113,11 +153,128 @@ export const syncService = {
   },
 
   /**
-   * Full sync - upload local changes then download cloud changes
+   * Incremental sync - only sync changed data
    */
-  async syncAll(token: string): Promise<{ uploaded: number; downloaded: number }> {
+  async incrementalSync(token: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean }> {
+    try {
+      const lastSync = getLastSyncTimestamp();
+      const now = Date.now();
+
+      // Get local changes since last sync
+      const localChanges = await getChangedData(lastSync);
+
+      // Upload local changes
+      const uploadResult = await (convexClient as any).mutation("sync:incrementalUpload", {
+        token,
+        changes: localChanges,
+      });
+
+      // Download cloud changes since last sync
+      const cloudData = await (convexClient as any).query("sync:incrementalSync", {
+        token,
+        lastSyncedAt: lastSync,
+      });
+
+      let downloaded = 0;
+      const tables = [
+        "schools",
+        "teachers",
+        "academicYears",
+        "classrooms",
+        "students",
+        "attendanceSessions",
+        "attendanceRecords",
+        "calendarEntries",
+      ];
+
+      // Merge cloud changes to local
+      if (cloudData.hasChanges) {
+        await db.transaction("rw", tables.map((t) => db.table(t)), async () => {
+          for (const table of tables) {
+            const cloudRows = (cloudData as any)[table] as any[];
+            if (!cloudRows || cloudRows.length === 0) continue;
+
+            for (const cloudRow of cloudRows) {
+              const localData = {
+                id: cloudRow.localId,
+                ...cloudRow,
+              };
+
+              // Remove cloud-specific fields
+              delete (localData as any).userId;
+              delete (localData as any).localId;
+              delete (localData as any).lastSyncedAt;
+              delete (localData as any).version;
+              delete (localData as any)._id;
+              delete (localData as any)._creationTime;
+
+              const existing = await db.table(table).get(localData.id);
+              if (existing) {
+                const localTime = (existing as any).diubahPada || 0;
+                const cloudTime = (localData as any).diubahPada || 0;
+                if (cloudTime >= localTime) {
+                  await db.table(table).put(localData);
+                  downloaded++;
+                }
+              } else {
+                await db.table(table).put(localData);
+                downloaded++;
+              }
+            }
+          }
+        });
+      }
+
+      // Update last sync timestamp
+      saveLastSyncTimestamp(now);
+
+      return {
+        uploaded: uploadResult.updated || 0,
+        downloaded,
+        hasChanges: cloudData.hasChanges || uploadResult.updated > 0,
+      };
+    } catch (error) {
+      console.error("Incremental sync failed:", error);
+      return { uploaded: 0, downloaded: 0, hasChanges: false };
+    }
+  },
+
+  /**
+   * Full sync - for first time or when incremental fails
+   */
+  async fullSync(token: string): Promise<{ uploaded: number; downloaded: number }> {
     const uploaded = await this.initialUpload(token);
     const downloaded = await this.downloadAll(token);
+    // Save sync timestamp after full sync
+    saveLastSyncTimestamp(Date.now());
     return { uploaded, downloaded };
+  },
+
+  /**
+   * Smart sync - use incremental if possible, fallback to full sync
+   */
+  async syncAll(token: string): Promise<{ uploaded: number; downloaded: number }> {
+    const lastSync = getLastSyncTimestamp();
+    
+    // If never synced before, do full sync
+    if (lastSync === 0) {
+      return await this.fullSync(token);
+    }
+
+    // Try incremental sync first
+    try {
+      const result = await this.incrementalSync(token);
+      return { uploaded: result.uploaded, downloaded: result.downloaded };
+    } catch (error) {
+      console.error("Incremental sync failed, falling back to full sync", error);
+      return await this.fullSync(token);
+    }
+  },
+
+  /**
+   * Reset sync state (force full sync next time)
+   */
+  resetSyncState() {
+    localStorage.removeItem(LAST_SYNC_KEY);
   },
 };

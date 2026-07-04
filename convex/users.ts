@@ -66,18 +66,34 @@ export const login = mutation({
       throw new Error("Email atau password salah");
     }
 
-    // Check device limit (max 3)
+    // Tier-based device limit
+    const deviceLimit = user.tier === "PRO" ? 3 : 1;
+
     const activeSessions = await ctx.db
       .query("sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Remove oldest session if > 3 devices
-    if (activeSessions.length >= 3) {
-      const oldestSession = activeSessions.sort(
-        (a, b) => a.lastActiveAt - b.lastActiveAt
-      )[0];
-      await ctx.db.delete(oldestSession._id);
+    // Check if same device (replace session instead of counting as new)
+    const existingSession = activeSessions.find(
+      (s) => s.deviceId === deviceId
+    );
+
+    if (existingSession) {
+      // Same device - delete old session, will create new one below
+      await ctx.db.delete(existingSession._id);
+    } else if (activeSessions.length >= deviceLimit) {
+      // Different device and limit reached - throw error with device list
+      const deviceList = activeSessions
+        .map(
+          (s, i) =>
+            `${i + 1}. ${s.deviceName} (Last active: ${new Date(s.lastActiveAt).toLocaleString("id-ID")})`
+        )
+        .join("\n");
+
+      throw new Error(
+        `Batas perangkat tercapai. Tier ${user.tier} maksimal ${deviceLimit} perangkat.\n\nPerangkat aktif:\n${deviceList}\n\nLogout dari salah satu perangkat terlebih dahulu atau upgrade ke PRO untuk 3 perangkat.`
+      );
     }
 
     // Generate token

@@ -9,6 +9,22 @@ interface User {
   tier: "FREE" | "PRO";
 }
 
+interface Device {
+  _id: string;
+  deviceName: string;
+  lastActiveAt: number;
+  createdAt: number;
+  deviceId: string;
+}
+
+interface DeviceLimitError {
+  isDeviceLimitError: boolean;
+  message: string;
+  devices: Device[];
+  tier: string;
+  deviceLimit: number;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -17,6 +33,8 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  deviceLimitError: DeviceLimitError | null;
+  clearDeviceLimitError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,8 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deviceLimitError, setDeviceLimitError] = useState<DeviceLimitError | null>(null);
 
-  // Mutations
+  // Mutations and Queries
   const loginMutation = useMutation(api.users.login);
   const registerMutation = useMutation(api.users.register);
   const logoutMutation = useMutation(api.users.logout);
@@ -101,17 +120,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const deviceId = getDeviceId();
     const deviceName = getDeviceName();
 
-    const result = await loginMutation({
-      email,
-      password,
-      deviceId,
-      deviceName,
-    });
+    try {
+      const result = await loginMutation({
+        email,
+        password,
+        deviceId,
+        deviceName,
+      });
 
-    // Store token
-    localStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
-    setUser(result.user as User);
+      // Store token
+      localStorage.setItem(TOKEN_KEY, result.token);
+      setToken(result.token);
+      setUser(result.user as User);
+      setDeviceLimitError(null); // Clear any previous error
+    } catch (error: any) {
+      // Check if it's a device limit error
+      const errorMessage = error.message || "";
+      if (errorMessage.includes("Batas perangkat tercapai")) {
+        // Parse the error message to extract tier and device limit
+        const tierMatch = errorMessage.match(/Tier (\w+)/);
+        const limitMatch = errorMessage.match(/maksimal (\d+)/);
+        
+        const tier = tierMatch ? tierMatch[1] : "FREE";
+        const deviceLimit = limitMatch ? parseInt(limitMatch[1]) : 1;
+
+        // Get active devices using direct convex query
+        try {
+          // We can't get devices without a valid token
+          // For now, parse device list from error message or show empty
+          setDeviceLimitError({
+            isDeviceLimitError: true,
+            message: errorMessage,
+            devices: [], // Will be populated by LoginPage via separate call
+            tier,
+            deviceLimit,
+          });
+        } catch {
+          // If can't get devices, still show error with empty list
+          setDeviceLimitError({
+            isDeviceLimitError: true,
+            message: errorMessage,
+            devices: [],
+            tier,
+            deviceLimit,
+          });
+        }
+      }
+      throw error; // Re-throw to let caller handle
+    }
+  };
+
+  const clearDeviceLimitError = () => {
+    setDeviceLimitError(null);
   };
 
   // Register function
@@ -139,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     isAuthenticated: !!user,
+    deviceLimitError,
+    clearDeviceLimitError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
