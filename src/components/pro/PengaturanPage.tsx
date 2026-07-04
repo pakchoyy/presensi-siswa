@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { LogoUpload } from "@/components/shared/LogoUpload";
+import { useAuth } from "@/contexts/AuthContext";
 
 const getHariAktif = (): HariAktif => {
   return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
@@ -42,6 +43,7 @@ const getAutoHadir = (): boolean => {
 export function PengaturanPage() {
   const { teacher, school, refreshTeacher } = useApp();
   const { toast } = useToast();
+  const { isAuthenticated, user, login } = useAuth();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -235,6 +237,54 @@ export function PengaturanPage() {
             <button onClick={() => setEditSekolah(false)} className="flex-1 py-[10px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.8rem] cursor-pointer">Batal</button>
             <button onClick={handleSaveSekolah} disabled={savingSekolah} className="flex-1 py-[10px] rounded-[10px] text-white font-bold text-[0.8rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-opacity" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>{savingSekolah ? "Menyimpan..." : "Simpan"}</button>
           </div>
+        </div>
+      )}
+
+      {/* Cloud Sync Status (PRO only) */}
+      {isPRO && (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+            <Upload size={15} /> Cloud Sync (PRO)
+          </div>
+          {isAuthenticated ? (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-[0.75rem] text-[var(--text)]">Terhubung sebagai <b>{user?.email}</b></span>
+              </div>
+              <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
+                Data Anda tersinkronisasi ke cloud. Anda bisa login dari perangkat lain (max 3 perangkat).
+              </div>
+              <button
+                onClick={() => window.location.href = '/#/cloud-settings'}
+                className="w-full py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
+              >
+                Kelola Device & Backup
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="text-[0.75rem] text-[var(--text)] mb-3">
+                Belum terhubung ke cloud. Aktifkan cloud sync untuk:
+              </div>
+              <div className="space-y-1 mb-3 text-[0.72rem] text-[var(--text-light)]">
+                <div>• Sinkronisasi otomatis antar perangkat</div>
+                <div>• Backup otomatis harian</div>
+                <div>• Akses dari HP & laptop (max 3 device)</div>
+              </div>
+              <button
+                onClick={() => {
+                  // TODO: Open cloud sync setup modal
+                  toast('Fitur Cloud Sync segera hadir!');
+                }}
+                className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+                style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+              >
+                <Upload size={14} />
+                Aktifkan Cloud Sync
+              </button>
+            </div>
+          )}
         </div>
       )}
 
