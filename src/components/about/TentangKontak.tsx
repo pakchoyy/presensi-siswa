@@ -78,7 +78,7 @@ export function TentangKontak() {
             <ExternalLink size={18} />
             <div className="flex-1 text-left">
               <div className="text-[0.85rem] font-extrabold">Presensi Siswa</div>
-              <div className="text-[0.65rem] opacity-80">presensiswa.bantuguruyuk.web.id</div>
+              <div className="text-[0.65rem] opacity-80">presiswa.bantuguruyuk.web.id</div>
             </div>
           </a>
 

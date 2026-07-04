@@ -32,5 +32,5 @@ export const PRO_PRICE = "Rp10.000/tahun";
 export const MAX_KELAS_FREE = 1;
 export const MAX_STUDENTS_FREE = 15;
 
-export const APP_URL = "https://presensiswa.bantuguruyuk.web.id";
+export const APP_URL = "https://presiswa.bantuguruyuk.web.id";
 export const MAIN_SITE_URL = "https://bantuguruyuk.web.id";

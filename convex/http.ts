@@ -71,7 +71,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     <div class="kode" id="kodeTeks">${kode}</div>
     <button class="btn btn-copy" onclick="copyKode(this)">📋 Salin Kode</button>
   </div>
-  <button class="btn btn-app" onclick="window.location.href='https://presensiswa.bantuguruyuk.web.id'">📲 Buka Presensi Siswa</button>
+  <button class="btn btn-app" onclick="window.location.href='https://presiswa.bantuguruyuk.web.id'">📲 Buka Presensi Siswa</button>
   <div class="steps">
     <b>Cara aktivasi:</b><br/>
     1. 📋 Copy kode di atas<br/>
@@ -91,7 +91,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 </div>
 <div class="footer">
   <a href="https://bantuguruyuk.web.id" target="_blank">Bantu Guru Yuk</a>
-  &bull; <a href="https://presensiswa.bantuguruyuk.web.id" target="_blank">Presensi Siswa</a>
+  &bull; <a href="https://presiswa.bantuguruyuk.web.id" target="_blank">Presensi Siswa</a>
 </div>
 <script>
 function copyKode(btn) {
