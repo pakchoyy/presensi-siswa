@@ -266,94 +266,33 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Cloud Sync Status (PRO only) */}
-      {isPRO && (
-        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-            <Upload size={15} /> Cloud Sync (PRO)
+      {/* Cloud Sync Status (PRO only) - Simplified */}
+      {isPRO && isCloudConnected && (
+        <div className="bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800 p-[14px] mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span className="text-[0.75rem] font-bold text-green-900 dark:text-green-100">
+              Data tersinkronisasi otomatis
+            </span>
           </div>
-          {isCloudConnected ? (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-[0.75rem] text-[var(--text)]">Terhubung sebagai <b>{cloudUser?.email}</b></span>
-              </div>
-              <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
-                Data tersinkronisasi otomatis ke cloud.
-              </div>
-              <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 mb-3 border border-yellow-200 dark:border-yellow-800">
-                <div className="text-[0.7rem] text-yellow-900 dark:text-yellow-100">
-                  ⚠️ <b>Penting:</b> Jangan share email lisensi Anda dengan orang lain. Siapapun dengan email yang sama bisa mengakses data Anda.
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
-                  className="flex-1 py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
-                >
-                  Kelola Backup
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Logout dari cloud sync?\n\nData lokal tetap aman, tapi tidak akan sync otomatis.')) {
-                      localStorage.removeItem('presensi_cloud_email');
-                      toast('⚠️ Logout berhasil. Cloud sync dinonaktifkan.');
-                      setTimeout(() => window.location.reload(), 1000);
-                    }
-                  }}
-                  className="px-4 py-[9px] rounded-[10px] border-[1.5px] border-red-500 text-red-500 font-bold text-[0.78rem] cursor-pointer bg-transparent flex items-center gap-1"
-                >
-                  <LogOut size={14} />
-                  Logout
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="text-[0.75rem] text-[var(--text)] mb-2">
-                ⏳ Cloud sync belum aktif
-              </div>
-              <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
-                Untuk user PRO yang sudah aktivasi sebelumnya, klik tombol di bawah untuk mengaktifkan cloud sync.
-              </div>
-              {licenseInfo?.email && (
-                <button
-                  onClick={async () => {
-                    const email = licenseInfo.email!;
-                    localStorage.setItem("presensi_cloud_email", email);
-                    
-                    toast("⏳ Menghubungkan ke cloud...");
-                    
-                    // Check if there's data in cloud and download
-                    try {
-                      const downloaded = await syncService.downloadAll(email);
-                      if (downloaded > 0) {
-                        toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
-                      } else {
-                        // No data in cloud, upload local data
-                        const uploaded = await syncService.initialUpload(email);
-                        if (uploaded > 0) {
-                          toast(`✅ ${uploaded} data di-upload ke cloud`);
-                        } else {
-                          toast("☁️ Cloud sync aktif");
-                        }
-                      }
-                    } catch (error) {
-                      console.error("Cloud sync error:", error);
-                      toast("⚠️ Sync gagal, gunakan Sync Now nanti");
-                    }
-                    
-                    setTimeout(() => window.location.reload(), 1500);
-                  }}
-                  className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
-                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-                >
-                  <Upload size={14} />
-                  Aktifkan Cloud Sync
-                </button>
-              )}
-            </div>
-          )}
+          <div className="text-[0.68rem] text-green-700 dark:text-green-300 mb-2">
+            Email: <b>{cloudUser?.email}</b>
+          </div>
+          <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
+            Semua perubahan data otomatis tersimpan ke cloud dan tersinkronisasi antar perangkat.
+          </div>
+          <button
+            onClick={() => {
+              if (confirm('Logout dari cloud sync?\n\nData lokal tetap aman, tapi tidak akan sync otomatis ke perangkat lain.')) {
+                localStorage.removeItem('presensi_cloud_email');
+                toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
+                setTimeout(() => window.location.reload(), 1000);
+              }
+            }}
+            className="text-[0.7rem] text-red-600 dark:text-red-400 font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
+          >
+            Logout (untuk testing)
+          </button>
         </div>
       )}
 

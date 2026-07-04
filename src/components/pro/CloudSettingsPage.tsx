@@ -125,49 +125,15 @@ export function CloudSettingsPage() {
         )}
       </div>
 
-      {/* Section 2: Sync Status */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
-          <Cloud size={15} /> Sync Status
+      {/* Auto-Sync Info */}
+      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
+          <Cloud size={15} className="text-blue-600 dark:text-blue-400" />
+          <span className="text-blue-900 dark:text-blue-100">Auto-Sync Aktif</span>
         </div>
-        
-        {syncStatus && syncStatus.length > 0 ? (
-          <div className="space-y-2 mb-3">
-            {syncStatus.map((meta: any) => (
-              <div key={meta.entityType} className="flex justify-between text-[0.72rem]">
-                <span className="text-[var(--text-light)] capitalize">{meta.entityType}:</span>
-                <span className="font-semibold">{meta.totalRecords} records</span>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 text-[0.7rem] text-[var(--text-light)] pt-2 border-t border-[var(--border)]">
-              <Clock size={12} />
-              Last synced: {formatRelativeTime(syncStatus[0]?.lastSyncedAt)}
-            </div>
-          </div>
-        ) : (
-          <p className="text-[0.75rem] text-[var(--text-light)] mb-3">
-            Belum ada sync
-          </p>
-        )}
-
-        <button
-          onClick={handleManualSync}
-          disabled={syncing || !cloudEmail}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white font-bold text-[0.78rem] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: syncing ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-        >
-          {syncing ? (
-            <>
-              <RefreshCw size={14} className="animate-spin" />
-              Syncing...
-            </>
-          ) : (
-            <>
-              <Upload size={14} />
-              Sync Now
-            </>
-          )}
-        </button>
+        <div className="text-[0.72rem] text-blue-900 dark:text-blue-100">
+          Semua perubahan data otomatis tersinkronisasi ke cloud dalam 3 detik. Tidak perlu klik tombol apapun.
+        </div>
       </div>
 
       {/* Section 3: Cloud Backups */}
