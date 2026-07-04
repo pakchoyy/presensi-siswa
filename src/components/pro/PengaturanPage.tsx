@@ -26,6 +26,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
+import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
@@ -65,6 +66,10 @@ export function PengaturanPage() {
   const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
   const [editJenjang, setEditJenjang] = useState<Jenjang>(school?.jenjang || Jenjang.SD);
   const [savingSekolah, setSavingSekolah] = useState(false);
+  
+  // Login device lain state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     if (teacher) {
@@ -155,6 +160,78 @@ export function PengaturanPage() {
   };
 
   const manfaat = licenseService.getManfaat();
+
+  const handleDeviceLogin = async () => {
+    if (!teacher) return;
+    
+    const email = loginEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      toast("❌ Email tidak valid");
+      return;
+    }
+    
+    setConnecting(true);
+    
+    try {
+      // Check if email is PRO via checkEmail query
+      const response = await fetch(
+        `${import.meta.env.VITE_CONVEX_URL}/api/query`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "licenses:checkEmail",
+            args: { email },
+            format: "json",
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.value?.tier !== "PRO") {
+        toast("❌ Email tidak ditemukan atau belum PRO");
+        setConnecting(false);
+        return;
+      }
+      
+      // Set cloud email
+      localStorage.setItem("presensi_cloud_email", email);
+      
+      toast("⏳ Menghubungkan ke cloud...");
+      
+      // Download data from cloud
+      try {
+        const downloaded = await syncService.downloadAll(email);
+        if (downloaded > 0) {
+          toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
+        } else {
+          toast("☁️ Cloud sync aktif");
+        }
+      } catch (error) {
+        console.error("Download error:", error);
+        toast("⚠️ Download gagal, tapi cloud sync tetap aktif");
+      }
+      
+      // Update local teacher to PRO
+      await teacherRepo.update(teacher.id, {
+        ...teacher,
+        tier: Tier.PRO,
+        email,
+      });
+      
+      await refreshTeacher();
+      
+      setTimeout(() => {
+        toast("✅ Device berhasil terhubung!");
+        setTimeout(() => window.location.reload(), 1000);
+      }, 1500);
+    } catch (error) {
+      console.error("Device login error:", error);
+      toast("❌ Gagal menghubungkan. Coba lagi.");
+      setConnecting(false);
+    }
+  };
 
   const handleSaveSekolah = async () => {
     if (!school || !editNamaSekolah.trim()) {
@@ -539,6 +616,36 @@ export function PengaturanPage() {
             >
               <ArrowUpCircle size={15} />
               {activating ? "Mengaktivasi..." : "Aktivasi Sekarang"}
+            </button>
+          </div>
+          
+          {/* Login Device Lain */}
+          <div className="border-t border-[var(--border)] pt-4 mt-4">
+            <div className="text-[0.72rem] font-bold text-[var(--text)] mb-2 flex items-center gap-[4px]">
+              <Upload size={13} /> Sudah PRO di Device Lain?
+            </div>
+            <div className="text-[0.68rem] text-[var(--text-light)] mb-3">
+              Hubungkan device ini dengan email yang sudah terdaftar PRO untuk sinkronisasi data.
+            </div>
+            <div className="mb-2">
+              <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">
+                <Mail size={11} className="inline mr-1" /> Email PRO Anda
+              </label>
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+              />
+            </div>
+            <button
+              onClick={handleDeviceLogin}
+              disabled={connecting || !loginEmail.trim()}
+              className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 bg-transparent"
+            >
+              <Upload size={15} />
+              {connecting ? "Menghubungkan..." : "Hubungkan Device"}
             </button>
           </div>
         </div>

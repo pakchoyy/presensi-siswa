@@ -6,13 +6,26 @@ const ADMIN_EMAILS = ["pulsachoy@gmail.com", "choiruddin2410@gmail.com"];
 export const checkEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    if (ADMIN_EMAILS.includes(args.email)) {
+    const normalizedEmail = args.email.toLowerCase().trim();
+    
+    if (ADMIN_EMAILS.includes(normalizedEmail)) {
       return { tier: "PRO", admin: true };
     }
 
+    // Check cloud user first (for multi-device sync)
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .first();
+    
+    if (user && user.tier === "PRO") {
+      return { tier: "PRO", data: user };
+    }
+
+    // Fallback to teachers table (for backward compatibility)
     const teacher = await ctx.db
       .query("teachers")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .filter((q) => q.eq(q.field("email"), normalizedEmail))
       .first();
 
     if (!teacher) return { tier: "FREE", data: null };
