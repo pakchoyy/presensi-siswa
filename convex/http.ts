@@ -1,9 +1,11 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { auth } from "./auth.config";
 
 const http = httpRouter();
 
+// Existing claim code route
 http.route({
   path: "/c2l41mpr0",
   method: "GET",
@@ -117,5 +119,8 @@ function copyKode(btn) {
     });
   }),
 });
+
+// Mount Convex Auth HTTP routes
+auth.addHttpRoutes(http);
 
 export default http;
