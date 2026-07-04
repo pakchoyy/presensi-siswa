@@ -72,7 +72,7 @@ export function PengaturanPage() {
   const handleActivate = async () => {
     if (!teacher) return;
     setActivating(true);
-    const result = await licenseService.activate(email.trim(), kode.trim(), teacher.id);
+    const result: any = await licenseService.activate(email.trim(), kode.trim(), teacher.id);
     setActivating(false);
 
     if (result.success) {
@@ -81,6 +81,29 @@ export function PengaturanPage() {
       await refreshTeacher();
       const status = await licenseService.getStatus(teacher.id);
       setLicenseInfo(status);
+      
+      // Prompt user to setup cloud sync
+      if (result.shouldAutoRegister && result.email && !isAuthenticated) {
+        setTimeout(() => {
+          const setupCloud = confirm(
+            '☁️ Cloud Sync Tersedia!\n\n' +
+            'Lisensi PRO sudah aktif. Aktifkan cloud sync untuk:\n' +
+            '• Sinkronisasi otomatis antar perangkat\n' +
+            '• Backup otomatis harian\n' +
+            '• Akses dari HP & laptop (max 3 device)\n\n' +
+            'Aktifkan sekarang?'
+          );
+          
+          if (setupCloud) {
+            // Open login page in new tab with email pre-filled
+            window.open(
+              'https://presiswa.bantuguruyuk.web.id/#/login?email=' + encodeURIComponent(result.email) + '&ref=activation',
+              '_blank'
+            );
+            toast('🔑 Login di tab baru untuk aktifkan cloud sync');
+          }
+        }, 1500);
+      }
     } else {
       toast(result.message);
     }

@@ -15,6 +15,21 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [devices, setDevices] = useState<any[]>([]);
+  
+  // Check for pre-filled email from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const emailParam = params.get('email');
+    const refParam = params.get('ref');
+    
+    if (emailParam) {
+      setEmail(emailParam);
+      // If coming from activation, suggest register mode
+      if (refParam === 'activation') {
+        setMode('register');
+      }
+    }
+  }, []);
 
   // Query active devices when device limit error occurs
   const activeDevices = useQuery(

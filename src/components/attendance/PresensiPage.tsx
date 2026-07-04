@@ -118,13 +118,13 @@ export function PresensiPage() {
         {!isLibur && !loading && students.length > 0 && (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
             <div className="text-[0.7rem] text-[var(--text-light)] mb-2">
-              💡 <b className="text-[var(--text)]">Klik nama siswa</b> untuk edit status
+              💡 <b className="text-[var(--text)]">Klik nama siswa</b> untuk edit status kehadiran siswa
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Info size={14} className="text-[var(--text-light)]" />
                 <span className="text-[0.75rem] text-[var(--text)]">
-                  Auto isi hadir: <b className={autoHadir ? "text-[#0ea5a0]" : "text-[var(--text-light)]"}>{autoHadir ? "AKTIF" : "NONAKTIF"}</b>
+                  Auto isi hadir semua siswa: <b className={autoHadir ? "text-[#0ea5a0]" : "text-[var(--text-light)]"}>{autoHadir ? "AKTIF" : "NONAKTIF"}</b>
                 </span>
               </div>
               <button

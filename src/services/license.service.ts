@@ -8,6 +8,8 @@ import { convexClient } from "@/lib/convex";
 export interface ActivationResult {
   success: boolean;
   message: string;
+  email?: string;
+  shouldAutoRegister?: boolean;
 }
 
 export const licenseService = {
@@ -61,7 +63,12 @@ export const licenseService = {
       await licenseRepo.save(license);
       await teacherRepo.updateTier(guruId, Tier.PRO);
 
-      return { success: true, message: "✅ Lisensi PRO berhasil diaktivasi!" };
+      return { 
+        success: true, 
+        message: "✅ Lisensi PRO berhasil diaktivasi!",
+        email,
+        shouldAutoRegister: true 
+      };
     } catch (err) {
       return { success: false, message: "Gagal terhubung ke server. Periksa koneksi internet." };
     }

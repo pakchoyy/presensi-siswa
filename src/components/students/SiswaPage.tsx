@@ -67,6 +67,9 @@ export function SiswaPage() {
   const [editing, setEditing] = useState(false);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [newClassName, setNewClassName] = useState("");
+  const [addingClass, setAddingClass] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -294,6 +297,54 @@ export function SiswaPage() {
     }
   };
 
+  const handleAddClass = async () => {
+    const className = newClassName.trim();
+    if (!className || !teacher) {
+      toast("Nama kelas tidak boleh kosong");
+      return;
+    }
+    
+    setAddingClass(true);
+    
+    try {
+      const ay = await academicYearRepo.getActive();
+      if (!ay) {
+        toast("❌ Tahun ajaran belum ada");
+        return;
+      }
+      
+      // Check if class already exists
+      const exists = classrooms.find(c => c.nama.toLowerCase() === className.toLowerCase());
+      if (exists) {
+        toast("❌ Kelas sudah ada");
+        setAddingClass(false);
+        return;
+      }
+      
+      const newCls: Classroom = {
+        id: generateId(),
+        nama: className,
+        tahunAjaranId: ay.id,
+        guruId: teacher.id,
+        statusAktif: true,
+        dibuatPada: timestamp(),
+        diubahPada: timestamp(),
+      };
+      
+      await classroomRepo.save(newCls);
+      await refreshClassrooms();
+      await loadCounts();
+      
+      setNewClassName("");
+      setShowAddClassModal(false);
+      toast(`✅ Kelas ${formatKelasLabel(className)} berhasil ditambahkan`);
+    } catch (error) {
+      toast("❌ Gagal menambahkan kelas");
+    } finally {
+      setAddingClass(false);
+    }
+  };
+
   const handleDeleteAll = async () => {
     if (!selectedKelas) return;
     
@@ -341,7 +392,7 @@ export function SiswaPage() {
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-3">
             {classrooms.map((cls) => {
               const count = kelasCounts[cls.id] || 0;
               const isActive = activeClassroom?.id === cls.id;
@@ -379,7 +430,64 @@ export function SiswaPage() {
               );
             })}
             </div>
+            
+            {/* Add Class Button */}
+            <button
+              onClick={() => setShowAddClassModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[#0ea5a0] text-[var(--text-light)] hover:text-[#0ea5a0] transition-colors bg-[var(--card-bg)] cursor-pointer"
+            >
+              <UserPlus size={16} />
+              <span className="text-[0.8rem] font-bold">Tambah Kelas Baru</span>
+            </button>
           </>
+        )}
+        
+        {/* Add Class Modal */}
+        {showAddClassModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAddClassModal(false)}>
+            <div className="bg-[var(--card-bg)] rounded-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="text-[0.9rem] font-bold mb-4">Tambah Kelas Baru</div>
+              
+              <div className="mb-4">
+                <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-2 uppercase">
+                  Nama Kelas
+                </label>
+                <input
+                  type="text"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  placeholder="Contoh: 7A, XII IPA 1, Kelas 5"
+                  className="w-full px-3 py-2.5 border-[1.5px] border-[var(--border)] rounded-lg text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newClassName.trim()) {
+                      handleAddClass();
+                    }
+                  }}
+                />
+                <div className="text-[0.65rem] text-[var(--text-light)] mt-1">
+                  Akan otomatis diformat: "Kelas 7A", "Kelas XII IPA 1", dll.
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowAddClassModal(false); setNewClassName(""); }}
+                  className="flex-1 py-2.5 rounded-lg border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.8rem] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleAddClass}
+                  disabled={addingClass || !newClassName.trim()}
+                  className="flex-1 py-2.5 rounded-lg text-white font-bold text-[0.8rem] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+                >
+                  {addingClass ? "Menambahkan..." : "Tambah"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
