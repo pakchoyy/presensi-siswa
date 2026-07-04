@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@convex-dev/auth": "^0.0.94",
     "clsx": "^2.1.1",
     "convex": "^1.42.1",
     "dexie": "^4.0.11",

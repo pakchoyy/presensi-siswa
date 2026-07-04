@@ -1,10 +1,29 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  // Auth tables (managed by Convex Auth)
-  ...authTables,
+  // Custom auth tables (simplified)
+  users: defineTable({
+    email: v.string(),
+    passwordHash: v.string(),
+    name: v.string(),
+    tier: v.string(), // "FREE" | "PRO"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    deviceId: v.string(),
+    deviceName: v.string(),
+    createdAt: v.number(),
+    lastActiveAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_token", ["token"]),
+
+  // Original tables...
   schools: defineTable({
     nama: v.string(),
     jenjang: v.string(),

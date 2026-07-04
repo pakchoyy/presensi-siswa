@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as auth_helpers from "../auth_helpers.js";
 import type * as http from "../http.js";
 import type * as licenses from "../licenses.js";
 import type * as schools from "../schools.js";
 import type * as sync from "../sync.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -20,10 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth_helpers: typeof auth_helpers;
   http: typeof http;
   licenses: typeof licenses;
   schools: typeof schools;
   sync: typeof sync;
+  users: typeof users;
 }>;
 
 /**
