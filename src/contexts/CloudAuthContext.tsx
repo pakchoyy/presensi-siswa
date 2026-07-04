@@ -1,0 +1,64 @@
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+
+interface CloudUser {
+  id: string;
+  email: string;
+  name: string;
+  tier: string;
+}
+
+interface CloudAuthContextType {
+  cloudEmail: string | null;
+  cloudUser: CloudUser | null;
+  isCloudConnected: boolean;
+  loading: boolean;
+  setCloudEmail: (email: string) => void;
+  clearCloudEmail: () => void;
+}
+
+const CloudAuthContext = createContext<CloudAuthContextType | undefined>(undefined);
+
+const CLOUD_EMAIL_KEY = "presensi_cloud_email";
+
+export function CloudAuthProvider({ children }: { children: ReactNode }) {
+  const [cloudEmail, setCloudEmailState] = useState<string | null>(() => {
+    return localStorage.getItem(CLOUD_EMAIL_KEY);
+  });
+
+  // Query user by email
+  const cloudUser = useQuery(
+    api.users.getUserByEmail,
+    cloudEmail ? { email: cloudEmail } : "skip"
+  );
+
+  const setCloudEmail = (email: string) => {
+    localStorage.setItem(CLOUD_EMAIL_KEY, email);
+    setCloudEmailState(email);
+  };
+
+  const clearCloudEmail = () => {
+    localStorage.removeItem(CLOUD_EMAIL_KEY);
+    setCloudEmailState(null);
+  };
+
+  const value = {
+    cloudEmail,
+    cloudUser: cloudUser || null,
+    isCloudConnected: !!cloudUser,
+    loading: cloudEmail !== null && cloudUser === undefined,
+    setCloudEmail,
+    clearCloudEmail,
+  };
+
+  return <CloudAuthContext.Provider value={value}>{children}</CloudAuthContext.Provider>;
+}
+
+export function useCloudAuth() {
+  const context = useContext(CloudAuthContext);
+  if (context === undefined) {
+    throw new Error("useCloudAuth must be used within CloudAuthProvider");
+  }
+  return context;
+}

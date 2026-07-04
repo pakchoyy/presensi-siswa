@@ -1,5 +1,6 @@
 import { AppProvider, useApp } from "@/contexts/AppContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
 import { ToastProvider } from "@/components/shared/Toast";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -112,11 +113,13 @@ export default function App() {
   return (
     <ConvexProvider client={convexClient}>
       <AuthProvider>
-        <AppProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
-        </AppProvider>
+        <CloudAuthProvider>
+          <AppProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </AppProvider>
+        </CloudAuthProvider>
       </AuthProvider>
     </ConvexProvider>
   );

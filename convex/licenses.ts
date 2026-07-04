@@ -119,10 +119,35 @@ export const validateAndActivate = mutation({
       tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
     });
 
+    // Auto-create cloud user for PRO license
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) {
+      // Create new user
+      await ctx.db.insert("users", {
+        email: args.email,
+        passwordHash: "", // Passwordless
+        name: args.email.split('@')[0],
+        tier: "PRO",
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      // Update existing user to PRO
+      await ctx.db.patch(user._id, {
+        tier: "PRO",
+        updatedAt: now,
+      });
+    }
+
     return {
       success: true,
       message: "✅ Lisensi PRO berhasil diaktivasi!",
       tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
+      cloudEmail: args.email, // Return email for cloud sync
     };
   },
 });

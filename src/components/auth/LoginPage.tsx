@@ -34,7 +34,7 @@ export function LoginPage() {
   // Query active devices when device limit error occurs
   const activeDevices = useQuery(
     api.users.getActiveDevices,
-    token && deviceLimitError ? { token } : "skip"
+    token && deviceLimitError ? { email: email } : "skip"
   );
 
   // Update devices when query completes

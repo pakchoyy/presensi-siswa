@@ -47,7 +47,7 @@ export const syncService = {
   /**
    * Initial upload - First time sync from local to cloud
    */
-  async initialUpload(token: string): Promise<number> {
+  async initialUpload(email: string): Promise<number> {
     try {
       const schools = await db.table("schools").toArray();
       const teachers = await db.table("teachers").toArray();
@@ -59,7 +59,7 @@ export const syncService = {
       const calendarEntries = await db.table("calendarEntries").toArray();
 
       const result = await (convexClient as any).mutation("sync:initialUpload", {
-        token,
+        email,
         schools,
         teachers,
         academicYears,
@@ -155,7 +155,7 @@ export const syncService = {
   /**
    * Incremental sync - only sync changed data
    */
-  async incrementalSync(token: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean }> {
+  async incrementalSync(email: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean }> {
     try {
       const lastSync = getLastSyncTimestamp();
       const now = Date.now();
@@ -165,13 +165,13 @@ export const syncService = {
 
       // Upload local changes
       const uploadResult = await (convexClient as any).mutation("sync:incrementalUpload", {
-        token,
+        email,
         changes: localChanges,
       });
 
       // Download cloud changes since last sync
       const cloudData = await (convexClient as any).query("sync:incrementalSync", {
-        token,
+        email,
         lastSyncedAt: lastSync,
       });
 
@@ -242,9 +242,9 @@ export const syncService = {
   /**
    * Full sync - for first time or when incremental fails
    */
-  async fullSync(token: string): Promise<{ uploaded: number; downloaded: number }> {
-    const uploaded = await this.initialUpload(token);
-    const downloaded = await this.downloadAll(token);
+  async fullSync(email: string): Promise<{ uploaded: number; downloaded: number }> {
+    const uploaded = await this.initialUpload(email);
+    const downloaded = await this.downloadAll(email);
     // Save sync timestamp after full sync
     saveLastSyncTimestamp(Date.now());
     return { uploaded, downloaded };
@@ -253,21 +253,21 @@ export const syncService = {
   /**
    * Smart sync - use incremental if possible, fallback to full sync
    */
-  async syncAll(token: string): Promise<{ uploaded: number; downloaded: number }> {
+  async syncAll(email: string): Promise<{ uploaded: number; downloaded: number }> {
     const lastSync = getLastSyncTimestamp();
     
     // If never synced before, do full sync
     if (lastSync === 0) {
-      return await this.fullSync(token);
+      return await this.fullSync(email);
     }
 
     // Try incremental sync first
     try {
-      const result = await this.incrementalSync(token);
+      const result = await this.incrementalSync(email);
       return { uploaded: result.uploaded, downloaded: result.downloaded };
     } catch (error) {
       console.error("Incremental sync failed, falling back to full sync", error);
-      return await this.fullSync(token);
+      return await this.fullSync(email);
     }
   },
 

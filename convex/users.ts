@@ -207,30 +207,30 @@ export const updateSessionActivity = mutation({
  */
 export const getActiveDevices = query({
   args: {
-    token: v.string(),
+    email: v.string(),
   },
-  handler: async (ctx, { token }) => {
-    // Find session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  handler: async (ctx, { email }) => {
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (!session) {
+    if (!user) {
       return [];
     }
 
     // Get all sessions for this user
     const sessions = await ctx.db
       .query("sessions")
-      .withIndex("by_user", (q) => q.eq("userId", session.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
     return sessions.map((s) => ({
       deviceId: s.deviceId,
       deviceName: s.deviceName,
       lastActiveAt: s.lastActiveAt,
-      isCurrent: s.token === token,
+      isCurrent: false, // No "current" concept in email-only auth
     }));
   },
 });
@@ -298,5 +298,29 @@ export const logoutAll = mutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Get user by email (passwordless for PRO users)
+ */
+export const getUserByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      tier: user.tier,
+    };
   },
 });

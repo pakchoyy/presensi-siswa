@@ -6,24 +6,24 @@ import { mutation, query } from "./_generated/server";
  */
 export const saveCloudBackup = mutation({
   args: {
-    token: v.string(),
+    email: v.string(),
     data: v.string(),
     label: v.string(),
     totalEntitas: v.number(),
     type: v.string(), // "auto" | "manual"
   },
   handler: async (ctx, args) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const userId = session.userId;
+    const userId = user._id;
     const now = Date.now();
     const size = new Blob([args.data]).size;
 
@@ -45,24 +45,22 @@ export const saveCloudBackup = mutation({
  * List all cloud backups for user
  */
 export const listCloudBackups = query({
-  args: { token: v.string() },
-  handler: async (ctx, { token }) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
-
-    const userId = session.userId;
 
     // Get all backups for user, sorted by creation time (newest first)
     return ctx.db
       .query("cloudBackups")
-      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
   },
@@ -73,25 +71,23 @@ export const listCloudBackups = query({
  */
 export const deleteCloudBackup = mutation({
   args: {
-    token: v.string(),
+    email: v.string(),
     backupId: v.id("cloudBackups"),
   },
   handler: async (ctx, args) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
-
-    const userId = session.userId;
 
     // Verify backup belongs to user
     const backup = await ctx.db.get(args.backupId);
-    if (!backup || backup.userId !== userId) {
+    if (!backup || backup.userId !== user._id) {
       throw new Error("Backup not found or access denied");
     }
 

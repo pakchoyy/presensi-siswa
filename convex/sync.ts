@@ -538,25 +538,23 @@ export const downloadAll = query({
  */
 export const getSyncStatus = query({
   args: {
-    token: v.string(),
+    email: v.string(),
   },
-  handler: async (ctx, { token }) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  handler: async (ctx, { email }) => {
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (!session) {
+    if (!user) {
       return null;
     }
-
-    const userId = session.userId;
 
     // Get sync metadata
     const metadata = await ctx.db
       .query("syncMetadata")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
     return metadata;

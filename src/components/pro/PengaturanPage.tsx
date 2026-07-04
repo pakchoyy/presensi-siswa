@@ -26,6 +26,7 @@ import {
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCloudAuth } from "@/contexts/CloudAuthContext";
 
 const getHariAktif = (): HariAktif => {
   return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
@@ -43,7 +44,7 @@ const getAutoHadir = (): boolean => {
 export function PengaturanPage() {
   const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
-  const { isAuthenticated, user } = useAuth();
+  const { isCloudConnected, cloudUser } = useCloudAuth();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -82,27 +83,14 @@ export function PengaturanPage() {
       const status = await licenseService.getStatus(teacher.id);
       setLicenseInfo(status);
       
-      // Prompt user to setup cloud sync
-      if (result.shouldAutoRegister && result.email && !isAuthenticated) {
+      // Show cloud sync activated
+      if (result.cloudEmail) {
         setTimeout(() => {
-          const setupCloud = confirm(
-            '☁️ Cloud Sync Tersedia!\n\n' +
-            'Lisensi PRO sudah aktif. Aktifkan cloud sync untuk:\n' +
-            '• Sinkronisasi otomatis antar perangkat\n' +
-            '• Backup otomatis harian\n' +
-            '• Akses dari HP & laptop (max 3 device)\n\n' +
-            'Aktifkan sekarang?'
-          );
-          
-          if (setupCloud) {
-            // Open login page in new tab with email pre-filled
-            window.open(
-              'https://presiswa.bantuguruyuk.web.id/#/login?email=' + encodeURIComponent(result.email) + '&ref=activation',
-              '_blank'
-            );
-            toast('🔑 Login di tab baru untuk aktifkan cloud sync');
-          }
-        }, 1500);
+          toast("☁️ Cloud sync otomatis aktif!");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }, 500);
       }
     } else {
       toast(result.message);
@@ -269,44 +257,49 @@ export function PengaturanPage() {
           <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
             <Upload size={15} /> Cloud Sync (PRO)
           </div>
-          {isAuthenticated ? (
+          {isCloudConnected ? (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-[0.75rem] text-[var(--text)]">Terhubung sebagai <b>{user?.email}</b></span>
+                <span className="text-[0.75rem] text-[var(--text)]">Terhubung sebagai <b>{cloudUser?.email}</b></span>
               </div>
               <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
-                Data Anda tersinkronisasi ke cloud. Anda bisa login dari perangkat lain (max 3 perangkat).
+                Data tersinkronisasi otomatis ke cloud.
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 mb-3 border border-yellow-200 dark:border-yellow-800">
+                <div className="text-[0.7rem] text-yellow-900 dark:text-yellow-100">
+                  ⚠️ <b>Penting:</b> Jangan share email lisensi Anda dengan orang lain. Siapapun dengan email yang sama bisa mengakses data Anda.
+                </div>
               </div>
               <button
                 onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
                 className="w-full py-[9px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.78rem] cursor-pointer bg-transparent"
               >
-                Kelola Device & Backup
+                Kelola Backup Cloud
               </button>
             </div>
           ) : (
             <div>
-              <div className="text-[0.75rem] text-[var(--text)] mb-3">
-                Belum terhubung ke cloud. Aktifkan cloud sync untuk:
+              <div className="text-[0.75rem] text-[var(--text)] mb-2">
+                ⏳ Cloud sync belum aktif
               </div>
-              <div className="space-y-1 mb-3 text-[0.72rem] text-[var(--text-light)]">
-                <div>• Sinkronisasi otomatis antar perangkat</div>
-                <div>• Backup otomatis harian</div>
-                <div>• Akses dari HP & laptop (max 3 device)</div>
+              <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
+                Untuk user PRO yang sudah aktivasi sebelumnya, klik tombol di bawah untuk mengaktifkan cloud sync.
               </div>
-              <button
-                onClick={() => {
-                  // Open external login page (auth is handled separately)
-                  window.open('https://presiswa.bantuguruyuk.web.id/#/login', '_blank');
-                  toast('Login di tab baru untuk aktifkan cloud sync');
-                }}
-                className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
-                style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-              >
-                <Upload size={14} />
-                Login untuk Cloud Sync
-              </button>
+              {licenseInfo?.email && (
+                <button
+                  onClick={() => {
+                    localStorage.setItem("presensi_cloud_email", licenseInfo.email!);
+                    toast("☁️ Cloud sync berhasil diaktifkan!");
+                    setTimeout(() => window.location.reload(), 1000);
+                  }}
+                  className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+                >
+                  <Upload size={14} />
+                  Aktifkan Cloud Sync
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -130,7 +130,7 @@ export async function restoreFromBackup(backup: BackupData): Promise<number> {
   return count;
 }
 
-export async function backupToCloud(token: string, type: "auto" | "manual" = "manual"): Promise<boolean> {
+export async function backupToCloud(email: string, type: "auto" | "manual" = "manual"): Promise<boolean> {
   try {
     const blob = await createBackup();
     const json = await blob.text();
@@ -141,7 +141,7 @@ export async function backupToCloud(token: string, type: "auto" | "manual" = "ma
     });
 
     await (convexClient as any).mutation("backup:saveCloudBackup", {
-      token,
+      email,
       data: json,
       label,
       totalEntitas: backup.totalEntitas,
@@ -154,18 +154,18 @@ export async function backupToCloud(token: string, type: "auto" | "manual" = "ma
   }
 }
 
-export async function listCloudBackups(token: string): Promise<CloudBackup[]> {
+export async function listCloudBackups(email: string): Promise<CloudBackup[]> {
   try {
-    return await (convexClient as any).query("backup:listCloudBackups", { token }) as CloudBackup[];
+    return await (convexClient as any).query("backup:listCloudBackups", { email }) as CloudBackup[];
   } catch (error) {
     console.error("List cloud backups failed:", error);
     return [];
   }
 }
 
-export async function deleteCloudBackup(token: string, backupId: string): Promise<boolean> {
+export async function deleteCloudBackup(email: string, backupId: string): Promise<boolean> {
   try {
-    await (convexClient as any).mutation("backup:deleteCloudBackup", { token, backupId });
+    await (convexClient as any).mutation("backup:deleteCloudBackup", { email, backupId });
     return true;
   } catch (error) {
     console.error("Delete cloud backup failed:", error);

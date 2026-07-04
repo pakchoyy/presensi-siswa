@@ -10,6 +10,7 @@ export interface ActivationResult {
   message: string;
   email?: string;
   shouldAutoRegister?: boolean;
+  cloudEmail?: string;
 }
 
 export const licenseService = {
@@ -63,11 +64,15 @@ export const licenseService = {
       await licenseRepo.save(license);
       await teacherRepo.updateTier(guruId, Tier.PRO);
 
+      // Store cloud email in localStorage
+      if (result.cloudEmail) {
+        localStorage.setItem("presensi_cloud_email", result.cloudEmail);
+      }
+
       return { 
         success: true, 
         message: "✅ Lisensi PRO berhasil diaktivasi!",
-        email,
-        shouldAutoRegister: true 
+        cloudEmail: result.cloudEmail,
       };
     } catch (err) {
       return { success: false, message: "Gagal terhubung ke server. Periksa koneksi internet." };

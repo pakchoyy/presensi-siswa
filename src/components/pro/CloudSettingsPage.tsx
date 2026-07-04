@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { syncService } from "@/services/sync.service";
@@ -7,39 +7,37 @@ import { useToast } from "@/components/shared/Toast";
 import { useApp } from "@/contexts/AppContext";
 import { 
   ArrowLeft, Smartphone, Cloud, Upload, 
-  Trash2, Download, Clock, RefreshCw, AlertCircle 
+  Trash2, Download, Clock, RefreshCw, AlertCircle, Info 
 } from "lucide-react";
 import { PageName } from "@/types/enums";
 
 export function CloudSettingsPage() {
-  const { user, token } = useAuth();
+  const { cloudUser, cloudEmail } = useCloudAuth();
   const { toast } = useToast();
   const { setActivePage } = useApp();
   const [syncing, setSyncing] = useState(false);
-  const [loggingOut, setLoggingOut] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Queries
   const activeDevices = useQuery(api.users.getActiveDevices, 
-    token ? { token } : "skip"
+    cloudEmail ? { email: cloudEmail } : "skip"
   );
   const syncStatus = useQuery(api.sync.getSyncStatus, 
-    token ? { token } : "skip"
+    cloudEmail ? { email: cloudEmail } : "skip"
   );
   const cloudBackups = useQuery(api.backup.listCloudBackups,
-    token ? { token } : "skip"
+    cloudEmail ? { email: cloudEmail } : "skip"
   );
 
   // Mutations
-  const logoutDevice = useMutation(api.users.logoutDevice);
   const deleteBackup = useMutation(api.backup.deleteCloudBackup);
 
   // Handlers
   const handleManualSync = async () => {
-    if (!token) return;
+    if (!cloudEmail) return;
     setSyncing(true);
     try {
-      const result = await syncService.syncAll(token);
+      const result = await syncService.syncAll(cloudEmail);
       toast(`✅ Sync selesai: ${result.uploaded} upload, ${result.downloaded} download`);
     } catch (error) {
       toast("❌ Sync gagal. Coba lagi.");
@@ -48,24 +46,11 @@ export function CloudSettingsPage() {
     }
   };
 
-  const handleLogoutDevice = async (deviceId: string) => {
-    if (!token) return;
-    setLoggingOut(deviceId);
-    try {
-      await logoutDevice({ token, deviceId });
-      toast("✅ Device berhasil logout");
-    } catch (error) {
-      toast("❌ Gagal logout device");
-    } finally {
-      setLoggingOut(null);
-    }
-  };
-
   const handleDeleteBackup = async (backupId: any) => {
-    if (!token || !confirm("Hapus backup ini?")) return;
+    if (!cloudEmail || !confirm("Hapus backup ini?")) return;
     setDeleting(backupId);
     try {
-      await deleteBackup({ token, backupId });
+      await deleteBackup({ email: cloudEmail, backupId });
       toast("✅ Backup dihapus");
     } catch (error) {
       toast("❌ Gagal hapus backup");
@@ -74,7 +59,7 @@ export function CloudSettingsPage() {
     }
   };
 
-  if (!token || !user) {
+  if (!cloudEmail || !cloudUser) {
     return (
       <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] text-center">
@@ -127,19 +112,9 @@ export function CloudSettingsPage() {
                     Last active: {formatRelativeTime(device.lastActiveAt)}
                   </div>
                 </div>
-                {device.isCurrent ? (
-                  <span className="text-[0.65rem] text-[#0ea5a0] font-bold flex-shrink-0">
-                    Device Ini
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleLogoutDevice(device.deviceId)}
-                    disabled={loggingOut !== null}
-                    className="px-3 py-1.5 text-[0.7rem] bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 flex-shrink-0"
-                  >
-                    {loggingOut === device.deviceId ? "..." : "Logout"}
-                  </button>
-                )}
+                <span className="text-[0.65rem] text-[var(--text-light)] flex-shrink-0">
+                  {device.deviceId.substring(0, 8)}...
+                </span>
               </div>
             ))}
           </div>
@@ -177,7 +152,7 @@ export function CloudSettingsPage() {
 
         <button
           onClick={handleManualSync}
-          disabled={syncing || !token}
+          disabled={syncing || !cloudEmail}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white font-bold text-[0.78rem] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: syncing ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
         >
@@ -233,6 +208,37 @@ export function CloudSettingsPage() {
             Belum ada backup
           </p>
         )}
+      </div>
+
+      {/* Multi-Device Instructions */}
+      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px]">
+        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
+          <Info size={15} className="text-blue-600 dark:text-blue-400" />
+          <span className="text-blue-900 dark:text-blue-100">
+            Cara Sync ke Perangkat Lain
+          </span>
+        </div>
+        
+        <div className="space-y-2 text-[0.72rem] text-blue-900 dark:text-blue-100">
+          <div>
+            <b>1. Buka aplikasi di perangkat baru</b> (HP/laptop kedua)
+          </div>
+          <div>
+            <b>2. Masuk ke menu Pengaturan → Lisensi PRO</b>
+          </div>
+          <div>
+            <b>3. Aktivasi lisensi dengan email yang SAMA:</b>
+            <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded font-mono text-[0.7rem]">
+              {cloudUser?.email}
+            </div>
+          </div>
+          <div>
+            <b>4. Cloud sync otomatis aktif</b> → Data langsung tersinkronisasi
+          </div>
+          <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+            💡 <b>Tips:</b> Gunakan email lisensi yang sama di semua perangkat untuk sync otomatis
+          </div>
+        </div>
       </div>
     </div>
   );

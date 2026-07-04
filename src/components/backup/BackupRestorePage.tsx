@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useToast } from "@/components/shared/Toast";
 import {
   createBackup, downloadBackup, readBackupFile, restoreFromBackup,
@@ -12,7 +12,7 @@ import { Database, Download, Upload, RotateCcw, AlertTriangle, Cloud, Lock } fro
 
 export function BackupRestorePage() {
   const { refreshClassrooms, teacher } = useApp();
-  const { token } = useAuth();
+  const { cloudEmail } = useCloudAuth();
   const { toast } = useToast();
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -26,12 +26,12 @@ export function BackupRestorePage() {
   const [loadingCloud, setLoadingCloud] = useState(false);
 
   const loadCloudBackups = useCallback(async () => {
-    if (!isPRO || !token) return;
+    if (!isPRO || !cloudEmail) return;
     setLoadingCloud(true);
-    const list = await listCloudBackups(token);
+    const list = await listCloudBackups(cloudEmail);
     setCloudBackups(list);
     setLoadingCloud(false);
-  }, [isPRO, token]);
+  }, [isPRO, cloudEmail]);
 
   useEffect(() => { loadCloudBackups(); }, [loadCloudBackups]);
 
@@ -49,10 +49,10 @@ export function BackupRestorePage() {
   };
 
   const handleCloudBackup = async () => {
-    if (!token) return;
+    if (!cloudEmail) return;
     setCloudBackingUp(true);
     try {
-      const ok = await backupToCloud(token, "manual");
+      const ok = await backupToCloud(cloudEmail, "manual");
       if (ok) {
         toast("Backup cloud berhasil");
         await loadCloudBackups();
