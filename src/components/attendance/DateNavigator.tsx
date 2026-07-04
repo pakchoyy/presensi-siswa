@@ -12,10 +12,16 @@ export function DateNavigator() {
     
     setBusy(true);
     
-    // Direct calculation to avoid stale state issues
-    const d = new Date(tanggalAktif + "T00:00:00");
+    // Parse date parts manually to avoid timezone issues
+    const [year, month, day] = tanggalAktif.split('-').map(Number);
+    const d = new Date(year, month - 1, day); // Month is 0-indexed
     d.setDate(d.getDate() + days);
-    const newDate = d.toISOString().slice(0, 10);
+    
+    // Format back to YYYY-MM-DD without timezone conversion
+    const newYear = d.getFullYear();
+    const newMonth = String(d.getMonth() + 1).padStart(2, '0');
+    const newDay = String(d.getDate()).padStart(2, '0');
+    const newDate = `${newYear}-${newMonth}-${newDay}`;
     
     setTanggalAktif(newDate);
     
