@@ -9,6 +9,7 @@
  */
 
 import type * as auth_helpers from "../auth_helpers.js";
+import type * as backup from "../backup.js";
 import type * as http from "../http.js";
 import type * as licenses from "../licenses.js";
 import type * as schools from "../schools.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth_helpers: typeof auth_helpers;
+  backup: typeof backup;
   http: typeof http;
   licenses: typeof licenses;
   schools: typeof schools;
