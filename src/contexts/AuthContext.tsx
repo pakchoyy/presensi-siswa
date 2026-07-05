@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.user.tier === "PRO") {
         setTimeout(async () => {
           try {
-            const uploaded = await syncService.initialUpload(result.token);
+            const uploaded = await syncService.initialUpload(email);
             if (uploaded > 0) {
               console.log(`Initial cloud upload completed: ${uploaded} records`);
             }

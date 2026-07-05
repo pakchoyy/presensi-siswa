@@ -79,7 +79,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Start sync loop for PRO users
         if (teacher?.tier === Tier.PRO && token) {
           setTimeout(() => {
-            syncService.syncAll(token).catch(() => {});
+            const cloudEmail = localStorage.getItem("presensi_cloud_email");
+            if (cloudEmail) {
+              syncService.syncAll(cloudEmail).catch(() => {});
+            }
           }, 3000);
         }
       } else {
@@ -95,7 +98,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const interval = setInterval(() => {
       if (navigator.onLine) {
-        syncService.syncAll(token).catch(() => {});
+        const cloudEmail = localStorage.getItem("presensi_cloud_email");
+        if (cloudEmail) {
+          syncService.syncAll(cloudEmail).catch(() => {});
+        }
       }
     }, 60000); // Sync every 60 seconds
 
