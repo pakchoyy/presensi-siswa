@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { syncService } from "@/services/sync.service";
 
 interface CloudUser {
   id: string;
@@ -32,6 +33,24 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
     api.users.getUserByEmail,
     cloudEmail ? { email: cloudEmail } : "skip"
   );
+
+  const prevConnected = useRef(false);
+
+  // Force sync when cloud connection becomes active
+  useEffect(() => {
+    const isConnected = !!cloudUser;
+    if (isConnected && !prevConnected.current && cloudEmail) {
+      // Just connected - trigger full sync
+      const normalized = cloudEmail.toLowerCase().trim();
+      if (normalized !== cloudEmail) {
+        localStorage.setItem(CLOUD_EMAIL_KEY, normalized);
+        setCloudEmailState(normalized);
+      } else {
+        syncService.fullSync(cloudEmail).catch(() => {});
+      }
+    }
+    prevConnected.current = isConnected;
+  }, [cloudUser, cloudEmail]);
 
   const setCloudEmail = (email: string) => {
     localStorage.setItem(CLOUD_EMAIL_KEY, email);

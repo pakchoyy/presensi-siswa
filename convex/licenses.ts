@@ -12,11 +12,18 @@ export const checkEmail = query({
       return { tier: "PRO", admin: true };
     }
 
-    // Check cloud user first (for multi-device sync)
-    const user = await ctx.db
+    // Check cloud user first (for multi-device sync) - try normalized, fallback original
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== args.email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+    }
     
     if (user && user.tier === "PRO") {
       return { tier: "PRO", data: user };

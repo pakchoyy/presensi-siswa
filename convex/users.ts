@@ -54,11 +54,18 @@ export const login = mutation({
   handler: async (ctx, { email, password, deviceId, deviceName }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user
-    const user = await ctx.db
+    // Find user (try normalized first, fallback to original for backward compat)
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       throw new Error("Email atau password salah");
@@ -216,11 +223,17 @@ export const getActiveDevices = query({
   handler: async (ctx, { email }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       return [];
@@ -315,10 +328,17 @@ export const getUserByEmail = query({
   handler: async (ctx, { email }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       return null;

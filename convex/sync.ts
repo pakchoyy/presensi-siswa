@@ -21,10 +21,17 @@ export const incrementalUpload = mutation({
   handler: async (ctx, args) => {
     const normalizedEmail = args.email.toLowerCase().trim();
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== args.email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+    }
 
     if (!user) {
       throw new Error("User not found");
@@ -184,10 +191,17 @@ export const initialUpload = mutation({
   handler: async (ctx, args) => {
     const normalizedEmail = args.email.toLowerCase().trim();
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== args.email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+    }
 
     if (!user) {
       throw new Error("User not found");
@@ -379,10 +393,17 @@ export const incrementalSync = query({
   handler: async (ctx, { email, lastSyncedAt }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       throw new Error("User not found");
@@ -472,11 +493,17 @@ export const downloadAll = query({
   handler: async (ctx, { email }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       throw new Error("User not found");
@@ -548,11 +575,17 @@ export const getSyncStatus = query({
   handler: async (ctx, { email }) => {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
+
+    if (!user && normalizedEmail !== email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+    }
 
     if (!user) {
       return null;

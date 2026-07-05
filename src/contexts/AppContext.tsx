@@ -79,8 +79,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Start sync loop for PRO users
         if (teacher?.tier === Tier.PRO && token) {
           setTimeout(() => {
-            const cloudEmail = localStorage.getItem("presensi_cloud_email");
+            let cloudEmail = localStorage.getItem("presensi_cloud_email");
             if (cloudEmail) {
+              const normalized = cloudEmail.toLowerCase().trim();
+              if (normalized !== cloudEmail) {
+                localStorage.setItem("presensi_cloud_email", normalized);
+                cloudEmail = normalized;
+              }
               syncService.syncAll(cloudEmail).catch(() => {});
             }
           }, 3000);
@@ -98,8 +103,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const interval = setInterval(() => {
       if (navigator.onLine) {
-        const cloudEmail = localStorage.getItem("presensi_cloud_email");
+        let cloudEmail = localStorage.getItem("presensi_cloud_email");
         if (cloudEmail) {
+          const normalized = cloudEmail.toLowerCase().trim();
+          if (normalized !== cloudEmail) {
+            localStorage.setItem("presensi_cloud_email", normalized);
+            cloudEmail = normalized;
+          }
           syncService.syncAll(cloudEmail).catch(() => {});
         }
       }
