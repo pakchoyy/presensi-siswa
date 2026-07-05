@@ -1,5 +1,6 @@
 import { db } from "./db";
 import type { Classroom } from "@/types/entities";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const classroomRepo = {
   async getAll(): Promise<Classroom[]> {
@@ -15,10 +16,13 @@ export const classroomRepo = {
   },
 
   async save(classroom: Classroom): Promise<number> {
-    return db.classrooms.put(classroom);
+    const result = await db.classrooms.put(classroom);
+    triggerAutoSync();
+    return result;
   },
 
   async delete(id: number): Promise<void> {
     await db.classrooms.delete(id);
+    triggerAutoSync();
   },
 };

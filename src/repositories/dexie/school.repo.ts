@@ -1,5 +1,6 @@
 import { db } from "./db";
 import type { School } from "@/types/entities";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const schoolRepo = {
   async get(): Promise<School | undefined> {
@@ -7,10 +8,13 @@ export const schoolRepo = {
   },
 
   async save(school: School): Promise<number> {
-    return db.schools.put(school);
+    const result = await db.schools.put(school);
+    triggerAutoSync();
+    return result;
   },
 
   async updateLogo(id: number, logoUrl: string): Promise<void> {
     await db.schools.update(id, { logoUrl, diubahPada: Date.now() });
+    triggerAutoSync();
   },
 };
