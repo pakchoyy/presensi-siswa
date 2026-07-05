@@ -12,10 +12,12 @@ export const register = mutation({
     name: v.string(),
   },
   handler: async (ctx, { email, password, name }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if email already exists
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (existing) {
@@ -27,7 +29,7 @@ export const register = mutation({
 
     // Create user
     const userId = await ctx.db.insert("users", {
-      email,
+      email: normalizedEmail,
       passwordHash,
       name,
       tier: "FREE",
@@ -35,7 +37,7 @@ export const register = mutation({
       updatedAt: Date.now(),
     });
 
-    return { userId, email, name };
+    return { userId, email: normalizedEmail, name };
   },
 });
 
@@ -50,10 +52,12 @@ export const login = mutation({
     deviceName: v.string(),
   },
   handler: async (ctx, { email, password, deviceId, deviceName }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {
@@ -210,10 +214,12 @@ export const getActiveDevices = query({
     email: v.string(),
   },
   handler: async (ctx, { email }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user by email
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {
@@ -307,9 +313,11 @@ export const logoutAll = mutation({
 export const getUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {

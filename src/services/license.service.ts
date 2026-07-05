@@ -64,6 +64,12 @@ export const licenseService = {
       await licenseRepo.save(license);
       await teacherRepo.updateTier(guruId, Tier.PRO);
 
+      // Update teacher email in IndexedDB
+      const teacher = await teacherRepo.get();
+      if (teacher) {
+        await teacherRepo.update(teacher.id, { ...teacher, email });
+      }
+
       // Store cloud email in localStorage
       if (result.cloudEmail) {
         localStorage.setItem("presensi_cloud_email", result.cloudEmail);

@@ -6,7 +6,7 @@ import { mutation, query } from "./_generated/server";
  */
 export const incrementalUpload = mutation({
   args: {
-    token: v.string(),
+    email: v.string(),
     changes: v.object({
       schools: v.array(v.any()),
       teachers: v.array(v.any()),
@@ -19,17 +19,18 @@ export const incrementalUpload = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+    const normalizedEmail = args.email.toLowerCase().trim();
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const userId = session.userId;
+    const userId = user._id;
     const now = Date.now();
     let updated = 0;
 
@@ -170,7 +171,7 @@ export const incrementalUpload = mutation({
  */
 export const initialUpload = mutation({
   args: {
-    token: v.string(),
+    email: v.string(),
     schools: v.array(v.any()),
     teachers: v.array(v.any()),
     academicYears: v.array(v.any()),
@@ -181,17 +182,18 @@ export const initialUpload = mutation({
     calendarEntries: v.array(v.any()),
   },
   handler: async (ctx, args) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+    const normalizedEmail = args.email.toLowerCase().trim();
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const userId = session.userId;
+    const userId = user._id;
     const now = Date.now();
 
     // Upload schools
@@ -371,21 +373,22 @@ export const initialUpload = mutation({
  */
 export const incrementalSync = query({
   args: {
-    token: v.string(),
+    email: v.string(),
     lastSyncedAt: v.number(),
   },
-  handler: async (ctx, { token, lastSyncedAt }) => {
-    // Verify session
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  handler: async (ctx, { email, lastSyncedAt }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    const userId = session.userId;
+    const userId = user._id;
 
     // Get only data that changed after lastSyncedAt
     const schools = await ctx.db
@@ -467,10 +470,12 @@ export const downloadAll = query({
     email: v.string(),
   },
   handler: async (ctx, { email }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user by email
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {
@@ -541,10 +546,12 @@ export const getSyncStatus = query({
     email: v.string(),
   },
   handler: async (ctx, { email }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user by email
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {

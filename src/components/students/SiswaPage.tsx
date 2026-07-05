@@ -231,6 +231,8 @@ export function SiswaPage() {
     
     // Reload all classes' student counts
     await loadCounts();
+    // Reload current class students
+    await loadStudents(selectedKelas.id);
     
     // Show success with breakdown
     const classCounts: Record<string, number> = {};
@@ -385,7 +387,7 @@ export function SiswaPage() {
         ) : (
           <>
             {/* Hint */}
-            <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-center gap-2 mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <Lightbulb size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
               <span className="text-[0.75rem] text-blue-600 dark:text-blue-400">
                 Klik card kelas untuk import siswa, edit dan hapus siswa

@@ -124,9 +124,11 @@ export const validateAndActivate = mutation({
     }
 
     const now = Date.now();
+    const normalizedEmail = args.email.toLowerCase().trim();
+
     await ctx.db.patch(license._id, {
       status: "digunakan",
-      email: args.email,
+      email: normalizedEmail,
       guruId: args.guruId,
       tanggalAktivasi: now,
       tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
@@ -135,15 +137,15 @@ export const validateAndActivate = mutation({
     // Auto-create cloud user for PRO license
     let user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
     if (!user) {
       // Create new user
       await ctx.db.insert("users", {
-        email: args.email,
+        email: normalizedEmail,
         passwordHash: "", // Passwordless
-        name: args.email.split('@')[0],
+        name: normalizedEmail.split('@')[0],
         tier: "PRO",
         createdAt: now,
         updatedAt: now,
@@ -160,7 +162,7 @@ export const validateAndActivate = mutation({
       success: true,
       message: "✅ Lisensi PRO berhasil diaktivasi!",
       tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
-      cloudEmail: args.email, // Return email for cloud sync
+      cloudEmail: normalizedEmail, // Return email for cloud sync
     };
   },
 });
@@ -211,6 +213,7 @@ export const renewLicense = mutation({
   },
   handler: async (ctx, args) => {
     const upperKode = args.kode.toUpperCase().trim();
+    const normalizedEmail = args.email.toLowerCase().trim();
 
     const newCode = await ctx.db
       .query("licenses")
@@ -224,7 +227,7 @@ export const renewLicense = mutation({
     // Cari lisensi existing user
     const existing = await ctx.db
       .query("licenses")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .filter((q) => q.eq(q.field("email"), normalizedEmail))
       .filter((q) => q.eq(q.field("status"), "digunakan"))
       .first();
 
@@ -246,7 +249,7 @@ export const renewLicense = mutation({
     // Tandai kode baru sebagai digunakan
     await ctx.db.patch(newCode._id, {
       status: "digunakan",
-      email: args.email,
+      email: normalizedEmail,
       tanggalAktivasi: now,
       tanggalBerakhir: newExpiry,
     });
