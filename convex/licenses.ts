@@ -33,10 +33,11 @@ export const checkEmail = query({
     }
     
     if (user && user.tier === "PRO") {
+      const now = Date.now();
       return {
         tier: "PRO",
         data: user,
-        tanggalBerakhir: license?.tanggalBerakhir,
+        tanggalBerakhir: license?.tanggalBerakhir || Math.max(user.createdAt + 365 * 24 * 60 * 60 * 1000, now),
       };
     }
 
@@ -47,10 +48,11 @@ export const checkEmail = query({
       .first();
 
     if (!teacher) return { tier: "FREE", data: null };
+    const now = Date.now();
     return {
       tier: teacher.tier,
       data: teacher,
-      tanggalBerakhir: license?.tanggalBerakhir,
+      tanggalBerakhir: license?.tanggalBerakhir || now + 365 * 24 * 60 * 60 * 1000,
     };
   },
 });
