@@ -12,6 +12,13 @@ export const checkEmail = query({
       return { tier: "PRO", admin: true };
     }
 
+    // Lookup license table for expiry info
+    const license = await ctx.db
+      .query("licenses")
+      .filter((q) => q.eq(q.field("email"), normalizedEmail))
+      .filter((q) => q.eq(q.field("status"), "digunakan"))
+      .first();
+
     // Check cloud user first (for multi-device sync) - try normalized, fallback original
     let user = await ctx.db
       .query("users")
@@ -26,7 +33,11 @@ export const checkEmail = query({
     }
     
     if (user && user.tier === "PRO") {
-      return { tier: "PRO", data: user };
+      return {
+        tier: "PRO",
+        data: user,
+        tanggalBerakhir: license?.tanggalBerakhir,
+      };
     }
 
     // Fallback to teachers table (for backward compatibility)
@@ -36,7 +47,11 @@ export const checkEmail = query({
       .first();
 
     if (!teacher) return { tier: "FREE", data: null };
-    return { tier: teacher.tier, data: teacher };
+    return {
+      tier: teacher.tier,
+      data: teacher,
+      tanggalBerakhir: license?.tanggalBerakhir,
+    };
   },
 });
 

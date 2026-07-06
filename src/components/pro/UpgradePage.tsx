@@ -2,10 +2,13 @@ import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PRO_PRICE } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
+import { licenseRepo } from "@/repositories/dexie/license.repo";
+import type { License } from "@/types/entities";
 import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck, Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { Tier } from "@/types/enums";
+import { generateId } from "@/lib/utils";
 import Confetti from "react-confetti";
 import { PageName } from "@/types/enums";
 
@@ -74,6 +77,20 @@ export function UpgradePage() {
       const data = await response.json();
 
       if (data.value?.tier === "PRO") {
+        // Save license record locally with expiry from Convex
+        const now = Date.now();
+        const expiry = data.value?.tanggalBerakhir || (now + 365 * 24 * 60 * 60 * 1000);
+        const license: License = {
+          id: generateId(),
+          guruId: teacher.id,
+          emailAktivasi: email.trim(),
+          kodeLisensi: "EMAIL-VERIFIED",
+          tanggalAktivasi: now,
+          tanggalBerakhir: expiry,
+          statusLisensi: "Aktif",
+        };
+        await licenseRepo.save(license);
+
         // Update teacher tier di local
         await teacherRepo.update(teacher.id, {
           ...teacher,

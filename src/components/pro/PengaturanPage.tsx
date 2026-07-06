@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
+import { licenseRepo } from "@/repositories/dexie/license.repo";
+import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
 import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
+import { generateId } from "@/lib/utils";
 import {
   Settings,
   ArrowUpCircle,
@@ -213,6 +216,23 @@ export function PengaturanPage() {
         toast("⚠️ Download gagal, tapi cloud sync tetap aktif");
       }
       
+      // Save license record locally with expiry from Convex
+      const now = Date.now();
+      const expiry = data.value?.tanggalBerakhir || (now + 365 * 24 * 60 * 60 * 1000);
+      const existingLicense = await licenseRepo.getActive(teacher.id);
+      if (!existingLicense) {
+        const license: License = {
+          id: generateId(),
+          guruId: teacher.id,
+          emailAktivasi: email,
+          kodeLisensi: "DEVICE-CONNECTED",
+          tanggalAktivasi: now,
+          tanggalBerakhir: expiry,
+          statusLisensi: "Aktif",
+        };
+        await licenseRepo.save(license);
+      }
+
       // Update local teacher to PRO
       await teacherRepo.update(teacher.id, {
         ...teacher,
