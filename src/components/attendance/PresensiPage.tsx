@@ -1,15 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
-import type { Student, AttendanceRecord } from "@/types/entities";
+import type { Student, AttendanceRecord, Classroom } from "@/types/entities";
 import { AttendanceStatus, HariAktif, PageName } from "@/types/enums";
 import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
-import { Info } from "lucide-react";
+import { Info, ChevronDown } from "lucide-react";
 
 function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
   const d = new Date(dateStr + "T00:00:00");
@@ -19,7 +19,7 @@ function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
 }
 
 export function PresensiPage() {
-  const { activeClassroom, tanggalAktif, setActivePage } = useApp();
+  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom } = useApp();
   const { toast } = useToast();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -27,6 +27,8 @@ export function PresensiPage() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
+  const [classDropdown, setClassDropdown] = useState(false);
+  const classRef = useRef<HTMLDivElement>(null);
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
@@ -55,6 +57,16 @@ export function PresensiPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (classRef.current && !classRef.current.contains(e.target as Node)) {
+        setClassDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!selectedStudent || !sessionId) return;
@@ -134,6 +146,33 @@ export function PresensiPage() {
                 Ubah
               </button>
             </div>
+          </div>
+        )}
+
+        {classrooms.length > 1 && (
+          <div className="relative mb-3" ref={classRef}>
+            <button
+              onClick={() => setClassDropdown(!classDropdown)}
+              className="flex items-center gap-1 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold text-[var(--text)] cursor-pointer"
+            >
+              {activeClassroom?.nama || "Pilih kelas"} <ChevronDown size={14} className="ml-auto" />
+            </button>
+            {classDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-20 py-1">
+                {classrooms.map((cls) => (
+                  <button
+                    key={cls.id}
+                    onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
+                    className={`block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)] ${
+                      activeClassroom?.id === cls.id ? "text-[#0ea5a0]" : "text-[var(--text)]"
+                    }`}
+                  >
+                    {cls.nama}
+                    {activeClassroom?.id === cls.id && " ✓"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

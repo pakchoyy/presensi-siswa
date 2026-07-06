@@ -1,29 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { Tier, PageName } from "@/types/enums";
-import type { Classroom } from "@/types/entities";
+import { Tier } from "@/types/enums";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { DropdownMenu } from "@/components/layout/DropdownMenu";
 import { SyncIndicator } from "@/components/layout/SyncIndicator";
 import { LicenseExpiryBadge } from "@/components/layout/LicenseExpiryBadge";
-import { Moon, Sun, Menu, ChevronDown } from "lucide-react";
+import { Moon, Sun, Menu } from "lucide-react";
 
 export function Header() {
-  const { activePage, darkMode, toggleDarkMode, setupSelesai, teacher, classrooms, activeClassroom, setActiveClassroom, setActivePage } =
+  const { activePage, darkMode, toggleDarkMode, setupSelesai, teacher } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [classDropdown, setClassDropdown] = useState(false);
-  const classRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (classRef.current && !classRef.current.contains(e.target as Node)) {
-        setClassDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   let subtitle = "| Presensi Siswa";
 
@@ -66,38 +53,6 @@ export function Header() {
             <div className="text-[0.95rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
               {setupSelesai ? `Bantu Guru Yuk ${subtitle}` : "Setup"}
             </div>
-            {setupSelesai && classrooms.length > 1 && (
-              <div className="relative lg:hidden" ref={classRef}>
-                <button
-                  onClick={() => setClassDropdown(!classDropdown)}
-                  className="flex items-center gap-[2px] text-[0.65rem] text-white/80 font-semibold cursor-pointer bg-transparent border-none p-0 hover:text-white"
-                >
-                  {activeClassroom?.nama || "Pilih kelas"} <ChevronDown size={11} />
-                </button>
-                {classDropdown && (
-                  <div className="absolute top-full left-0 mt-[2px] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[140px] z-[400]">
-                    {classrooms.map((cls) => (
-                      <button
-                        key={cls.id}
-                        onClick={() => {
-                          setActiveClassroom(cls);
-                          setActivePage(PageName.PRESENSI);
-                          setClassDropdown(false);
-                        }}
-                        className={`block w-full text-left px-3 py-[6px] text-[0.75rem] font-semibold cursor-pointer border-none bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                          activeClassroom?.id === cls.id
-                            ? "text-[#0ea5a0]"
-                            : "text-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {cls.nama}
-                        {activeClassroom?.id === cls.id && " ✓"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
