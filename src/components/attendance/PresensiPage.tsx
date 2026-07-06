@@ -9,7 +9,9 @@ import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
-import { Info, ChevronDown } from "lucide-react";
+import { Info, ChevronDown, Plus } from "lucide-react";
+
+const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
 function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
   const d = new Date(dateStr + "T00:00:00");
@@ -110,6 +112,11 @@ export function PresensiPage() {
 
 
 
+  const activeIdx = activeClassroom
+    ? classrooms.findIndex((c) => c.id === activeClassroom.id)
+    : -1;
+  const activeColor = activeIdx >= 0 ? CLASS_COLORS[activeIdx % CLASS_COLORS.length] : "#0ea5a0";
+
   const counts: Record<AttendanceStatus, number> = {
     [AttendanceStatus.HADIR]: 0,
     [AttendanceStatus.SAKIT]: 0,
@@ -153,24 +160,37 @@ export function PresensiPage() {
           <div className="relative mb-3" ref={classRef}>
             <button
               onClick={() => setClassDropdown(!classDropdown)}
-              className="flex items-center gap-1 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold text-[var(--text)] cursor-pointer"
+              className="flex items-center gap-2 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold cursor-pointer"
+              style={{ borderLeft: `4px solid ${activeColor}`, background: `${activeColor}0d` }}
             >
-              {activeClassroom?.nama || "Pilih kelas"} <ChevronDown size={14} className="ml-auto" />
+              <span style={{ color: activeColor }}>{activeClassroom?.nama}</span>
+              <ChevronDown size={14} className="ml-auto text-[var(--text-light)]" />
             </button>
             {classDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-20 py-1">
-                {classrooms.map((cls) => (
+                {classrooms.map((cls, i) => {
+                  const cc = CLASS_COLORS[i % CLASS_COLORS.length];
+                  const isActive = activeClassroom?.id === cls.id;
+                  return (
+                    <button
+                      key={cls.id}
+                      onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
+                      className="block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none hover:opacity-90"
+                      style={{ borderLeft: `4px solid ${cc}`, background: isActive ? `${cc}1a` : "transparent" }}
+                    >
+                      <span style={{ color: isActive ? cc : undefined }}>{cls.nama}</span>
+                      {isActive && <span style={{ color: cc }}> ✓</span>}
+                    </button>
+                  );
+                })}
+                <div className="border-t border-[var(--border)] mt-1 pt-1">
                   <button
-                    key={cls.id}
-                    onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
-                    className={`block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)] ${
-                      activeClassroom?.id === cls.id ? "text-[#0ea5a0]" : "text-[var(--text)]"
-                    }`}
+                    onClick={() => { setActivePage(PageName.SISWA); setClassDropdown(false); }}
+                    className="flex items-center gap-1 w-full text-left px-[14px] py-[9px] text-[0.75rem] font-semibold text-[#0ea5a0] cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)]"
                   >
-                    {cls.nama}
-                    {activeClassroom?.id === cls.id && " ✓"}
+                    <Plus size={13} /> Tambah Kelas
                   </button>
-                ))}
+                </div>
               </div>
             )}
           </div>

@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { exportPDF, exportExcel } from "@/services/export.service";
-import type { Student } from "@/types/entities";
+import type { Student, Classroom } from "@/types/entities";
+import { PageName } from "@/types/enums";
 import { STATUS_COLOR } from "@/lib/constants";
-import { Filter, Table, FileText, FileSpreadsheet } from "lucide-react";
+import { Filter, Table, FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
+
+const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
 const MONTH_LABELS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -17,10 +20,12 @@ const MONTH_LABELS = [
 const SEMESTER_LABELS = ["Ganjil (Jul–Des)", "Genap (Jan–Jun)"];
 
 export function RekapPage() {
-  const { activeClassroom, school, teacher } = useApp();
+  const { activeClassroom, school, teacher, classrooms, setActiveClassroom, setActivePage } = useApp();
   const { toast } = useToast();
 
   const [tab, setTab] = useState<"bulanan" | "semester">("bulanan");
+  const [classDropdown, setClassDropdown] = useState(false);
+  const classRef = useRef<HTMLDivElement>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [rekap, setRekap] = useState<Record<number, Record<string, number>>>({});
   const [totalH, setTotalH] = useState(0);
@@ -105,6 +110,16 @@ export function RekapPage() {
     loadRekap();
   }, [loadRekap]);
 
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (classRef.current && !classRef.current.contains(e.target as Node)) {
+        setClassDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   const exportableData = useMemo(() => {
     return students.map((student) => {
       const r = rekap[student.id] || { H: 0, S: 0, I: 0, A: 0 };
@@ -158,8 +173,46 @@ export function RekapPage() {
     if (!availableYears.includes(y)) availableYears.push(y);
   }
 
+  const activeIdx = activeClassroom
+    ? classrooms.findIndex((c) => c.id === activeClassroom.id)
+    : -1;
+  const activeColor = activeIdx >= 0 ? CLASS_COLORS[activeIdx % CLASS_COLORS.length] : "#0ea5a0";
+
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      {/* Classroom switcher */}
+      {classrooms.length > 1 && (
+        <div className="relative mb-3" ref={classRef}>
+          <button
+            onClick={() => setClassDropdown(!classDropdown)}
+            className="flex items-center gap-2 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold cursor-pointer"
+            style={{ borderLeft: `4px solid ${activeColor}`, background: `${activeColor}0d` }}
+          >
+            <span style={{ color: activeColor }}>{activeClassroom?.nama}</span>
+            <ChevronDown size={14} className="ml-auto text-[var(--text-light)]" />
+          </button>
+          {classDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-20 py-1">
+              {classrooms.map((cls, i) => {
+                const cc = CLASS_COLORS[i % CLASS_COLORS.length];
+                const isActive = activeClassroom?.id === cls.id;
+                return (
+                  <button
+                    key={cls.id}
+                    onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
+                    className="block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none hover:opacity-90"
+                    style={{ borderLeft: `4px solid ${cc}`, background: isActive ? `${cc}1a` : "transparent" }}
+                  >
+                    <span style={{ color: isActive ? cc : undefined }}>{cls.nama}</span>
+                    {isActive && <span style={{ color: cc }}> ✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab selector */}
       <div className="flex gap-1 mb-3 bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-1">
         <button
