@@ -75,9 +75,43 @@ export function PengaturanPage() {
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    if (teacher) {
-      licenseService.getStatus(teacher.id).then(setLicenseInfo);
-    }
+    if (!teacher) return;
+
+    licenseService.getStatus(teacher.id).then(async (status) => {
+      // If PRO but no local license record, auto-fetch from Convex
+      if (!status.aktif && teacher.tier === Tier.PRO) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_CONVEX_URL}/api/query`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              path: "licenses:checkEmail",
+              args: { email: teacher.email },
+              format: "json",
+            }),
+          });
+          const data = await res.json();
+          if (data.value?.tanggalBerakhir) {
+            const now = Date.now();
+            const license: License = {
+              id: generateId(),
+              guruId: teacher.id,
+              emailAktivasi: teacher.email,
+              kodeLisensi: "AUTO-RECOVERED",
+              tanggalAktivasi: now,
+              tanggalBerakhir: data.value.tanggalBerakhir,
+              statusLisensi: "Aktif",
+            };
+            await licenseRepo.save(license);
+            setLicenseInfo(await licenseService.getStatus(teacher.id));
+            return;
+          }
+        } catch (_) {
+          // Fallback — show what we have
+        }
+      }
+      setLicenseInfo(status);
+    });
   }, [teacher]);
 
   const handleActivate = async () => {
