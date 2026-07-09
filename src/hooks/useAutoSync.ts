@@ -36,52 +36,54 @@ export function useAutoSync() {
   
   useEffect(() => {
     if (!isCloudConnected || !cloudEmail) return;
+
+    const doSync = async () => {
+      syncQueue.push(async () => {
+        try {
+          const result = await syncService.incrementalSync(cloudEmail);
+          if (result.uploaded > 0 || result.downloaded > 0) {
+            console.log(`[AutoSync] ✅ ${result.uploaded} uploaded, ${result.downloaded} downloaded`);
+          }
+        } catch (error) {
+          console.error("[AutoSync] Failed:", error);
+          throw error;
+        }
+      });
+      processSyncQueue();
+    };
     
     // Debounced sync - accumulate changes and sync after 3 seconds of inactivity
     const triggerSync = () => {
       if (syncTimerRef.current) {
         clearTimeout(syncTimerRef.current);
       }
-      
-      syncTimerRef.current = setTimeout(() => {
-        syncQueue.push(async () => {
-          console.log("[AutoSync] Syncing changes to cloud...");
-          try {
-            const result = await syncService.incrementalSync(cloudEmail);
-            if (result.uploaded > 0 || result.downloaded > 0) {
-              console.log(`[AutoSync] ✅ ${result.uploaded} uploaded, ${result.downloaded} downloaded`);
-            }
-          } catch (error) {
-            console.error("[AutoSync] Failed:", error);
-            throw error;
-          }
-        });
-        processSyncQueue();
-      }, 3000); // 3 seconds debounce
+      syncTimerRef.current = setTimeout(doSync, 3000);
     };
     
     // Listen to storage events (data changes)
     const handleStorageChange = (e: StorageEvent) => {
-      // Ignore sync-related storage changes
       if (e.key === "presensi_last_sync" || e.key === "presensi_cloud_email") return;
-      
       triggerSync();
     };
     
     // Listen to custom data change events
-    const handleDataChange = () => {
-      triggerSync();
-    };
+    const handleDataChange = () => triggerSync();
     
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("data-changed", handleDataChange);
     
+    // Periodic polling: sync every 30s to pick up changes from other devices
+    const pollInterval = setInterval(doSync, 30000);
+    
+    // Initial sync after 5s (let app fully initialize first)
+    const initialTimer = setTimeout(doSync, 5000);
+    
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("data-changed", handleDataChange);
-      if (syncTimerRef.current) {
-        clearTimeout(syncTimerRef.current);
-      }
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      clearInterval(pollInterval);
+      clearTimeout(initialTimer);
     };
   }, [cloudEmail, isCloudConnected]);
 }
