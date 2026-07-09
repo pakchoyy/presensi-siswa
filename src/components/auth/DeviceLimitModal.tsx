@@ -75,12 +75,12 @@ export function DeviceLimitModal({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/50 z-[100]"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-[var(--card-bg)] rounded-2xl shadow-xl z-[101] border border-[var(--border)]">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-[var(--card-bg)] rounded-2xl shadow-xl z-[101] border border-[var(--border)] animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
           <div>

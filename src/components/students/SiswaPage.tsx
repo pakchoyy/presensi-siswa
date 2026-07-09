@@ -4,6 +4,7 @@ import { useToast } from "@/components/shared/Toast";
 import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
@@ -70,6 +71,8 @@ export function SiswaPage() {
   const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [addingClass, setAddingClass] = useState(false);
+  const [deleteClassTarget, setDeleteClassTarget] = useState<Classroom | null>(null);
+  const [deletingClass, setDeletingClass] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -107,35 +110,29 @@ export function SiswaPage() {
     loadCounts();
   };
 
-  const handleDeleteClass = async (cls: Classroom) => {
-    const count = kelasCounts[cls.id] || 0;
+  const handleDeleteClass = async () => {
+    if (!deleteClassTarget) return;
     
-    if (!confirm(`Hapus kelas ${formatKelasLabel(cls.nama)}? Semua data siswa di kelas ini (${count} siswa) akan dihapus.`)) {
-      return;
-    }
+    setDeletingClass(true);
+    const cls = deleteClassTarget;
     
     try {
-      // Delete all students in class
-      await db.students.where('kelasId').equals(cls.id).delete();
-      // Delete class
-      await classroomRepo.delete(cls.id);
-      // Refresh
+      const now = timestamp();
+      await db.students.where('kelasId').equals(cls.id).modify({ statusAktif: false, diubahPada: now });
+      triggerAutoSync();
+      await classroomRepo.softDelete(cls.id);
       await refreshClassrooms();
-      // If deleted class was active, clear selection
       if (activeClassroom?.id === cls.id) {
-        const remainingClasses = classrooms.filter(c => c.id !== cls.id);
-        if (remainingClasses.length > 0) {
-          setActiveClassroom(remainingClasses[0]);
-        } else {
-          setActiveClassroom(null);
-        }
+        setActiveClassroom(null);
       }
-      // Reload counts
       await loadCounts();
+      setDeleteClassTarget(null);
       toast(`✅ Kelas ${formatKelasLabel(cls.nama)} berhasil dihapus`);
     } catch (error) {
       console.error('Delete class error:', error);
       toast('❌ Gagal menghapus kelas');
+    } finally {
+      setDeletingClass(false);
     }
   };
 
@@ -412,9 +409,9 @@ export function SiswaPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteClass(cls);
+                      setDeleteClassTarget(cls);
                     }}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-all flex items-center justify-center group z-10"
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/10 active:bg-red-500 text-red-600 active:text-white transition-colors flex items-center justify-center z-10"
                     title="Hapus Kelas"
                   >
                     <Trash2 size={14} />
@@ -445,8 +442,38 @@ export function SiswaPage() {
         )}
         
         {/* Add Class Modal */}
+        {/* Delete Class Modal */}
+        {deleteClassTarget && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setDeleteClassTarget(null)}>
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+              <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
+                Hapus {formatKelasLabel(deleteClassTarget.nama)}?
+              </div>
+              <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+                Semua data siswa di kelas ini <b className="text-[var(--text)]">({kelasCounts[deleteClassTarget.id] || 0} siswa)</b> akan dinonaktifkan. Riwayat presensi tetap tersimpan.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDeleteClassTarget(null)}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleDeleteClass}
+                  disabled={deletingClass}
+                  className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {deletingClass ? "Menghapus..." : "Hapus"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {showAddClassModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAddClassModal(false)}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-fade-in" onClick={() => setShowAddClassModal(false)}>
             <div className="bg-[var(--card-bg)] rounded-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
               <div className="text-[0.9rem] font-bold mb-4">Tambah Kelas Baru</div>
               
@@ -633,13 +660,13 @@ export function SiswaPage() {
       {showModal && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[600] flex items-end lg:items-center justify-center animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowModal(false);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
-              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up">
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-[14px] text-center">
                 Tambah Siswa Baru
               </div>
@@ -682,13 +709,13 @@ export function SiswaPage() {
       {editTarget && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[600] flex items-end lg:items-center justify-center animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setEditTarget(null);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
-              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up">
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-[14px] text-center">
                 Edit Siswa
               </div>
@@ -781,13 +808,13 @@ export function SiswaPage() {
       {deleteTarget && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[600] flex items-end lg:items-center justify-center animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setDeleteTarget(null);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
-              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up">
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-2 text-center">
                 Hapus {deleteTarget.nama}?
               </div>
@@ -818,13 +845,13 @@ export function SiswaPage() {
       {showDeleteAll && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[600] flex items-end lg:items-center justify-center"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[600] flex items-end lg:items-center justify-center animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowDeleteAll(false);
             }}
           >
-            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px]">
-              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up">
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
               <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
                 Hapus Semua Siswa?
               </div>

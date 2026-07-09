@@ -73,6 +73,7 @@ export function PengaturanPage() {
   // Login device lain state
   const [loginEmail, setLoginEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (!teacher) return;
@@ -413,17 +414,45 @@ export function PengaturanPage() {
             Semua perubahan data otomatis tersimpan ke cloud dan tersinkronisasi antar perangkat.
           </div>
           <button
-            onClick={() => {
-              if (confirm('Logout dari cloud sync?\n\nData lokal tetap aman, tapi tidak akan sync otomatis ke perangkat lain.')) {
-                localStorage.removeItem('presensi_cloud_email');
-                toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
-                setTimeout(() => window.location.reload(), 1000);
-              }
-            }}
+            onClick={() => setShowLogoutConfirm(true)}
             className="text-[0.7rem] text-red-600 dark:text-red-400 font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
           >
             Logout (untuk testing)
           </button>
+          
+          {/* Logout Confirm Modal */}
+          {showLogoutConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
+              <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+                <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
+                  Logout dari Cloud Sync?
+                </div>
+                <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+                  Data lokal tetap aman, tapi tidak akan sync otomatis ke perangkat lain.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('presensi_cloud_email');
+                      toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
+                      setShowLogoutConfirm(false);
+                      setTimeout(() => window.location.reload(), 1000);
+                    }}
+                    className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

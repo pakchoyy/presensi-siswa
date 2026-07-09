@@ -30,14 +30,14 @@ export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/45 z-[500]"
+        className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[500] animate-fade-in"
         onClick={onClose}
       />
       <div
-        className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] rounded-t-[18px] px-4 pt-[18px] pb-6 z-[501]"
+        className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] rounded-t-[18px] px-4 pt-[18px] pb-6 z-[501] animate-slide-up"
         style={{ boxShadow: "var(--shadow-lg)" }}
       >
-        <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+        <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
         <div className="text-[0.85rem] font-bold mb-[14px] text-center">
           Ubah status — {studentName}
         </div>

@@ -20,7 +20,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={{ toast }}>
       {children}
       <div
-        className={`fixed left-1/2 bottom-[90px] lg:bottom-8 -translate-x-1/2 bg-[#1e293b] text-white px-[18px] py-[10px] rounded-[10px] text-[0.78rem] font-semibold pointer-events-none z-[700] max-w-[88%] text-center transition-all duration-250 ${
+        className={`fixed left-1/2 bottom-[90px] lg:bottom-8 -translate-x-1/2 bg-[#1e293b]/90 backdrop-blur-md text-white px-[18px] py-[11px] rounded-[12px] text-[0.78rem] font-semibold pointer-events-none z-[700] max-w-[88%] text-center shadow-lg transition-all duration-250 ${
           show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
         }`}
       >

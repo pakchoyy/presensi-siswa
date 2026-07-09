@@ -25,4 +25,9 @@ export const classroomRepo = {
     await db.classrooms.delete(id);
     triggerAutoSync();
   },
+
+  async softDelete(id: number): Promise<void> {
+    await db.classrooms.update(id, { statusAktif: false, diubahPada: Date.now() });
+    triggerAutoSync();
+  },
 };

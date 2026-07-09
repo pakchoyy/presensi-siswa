@@ -17,6 +17,7 @@ export function CloudSettingsPage() {
   const { setActivePage } = useApp();
   const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Queries
   const activeDevices = useQuery(api.users.getActiveDevices, 
@@ -47,8 +48,9 @@ export function CloudSettingsPage() {
   };
 
   const handleDeleteBackup = async (backupId: any) => {
-    if (!cloudEmail || !confirm("Hapus backup ini?")) return;
+    if (!cloudEmail) return;
     setDeleting(backupId);
+    setDeleteConfirmId(null);
     try {
       await deleteBackup({ email: cloudEmail, backupId });
       toast("✅ Backup dihapus");
@@ -155,7 +157,7 @@ export function CloudSettingsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDeleteBackup(backup._id)}
+                  onClick={() => setDeleteConfirmId(backup._id)}
                   disabled={deleting !== null}
                   className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg disabled:opacity-50 flex-shrink-0"
                   title="Hapus backup"
@@ -206,6 +208,36 @@ export function CloudSettingsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Delete Backup Modal */}
+      {deleteConfirmId && cloudBackups && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setDeleteConfirmId(null)}>
+          <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
+              Hapus Backup?
+            </div>
+            <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+              Backup <b className="text-[var(--text)]">{cloudBackups.find(b => b._id === deleteConfirmId)?.label || ""}</b> akan dihapus permanen.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleDeleteBackup(deleteConfirmId)}
+                disabled={deleting !== null}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {deleting === deleteConfirmId ? "Menghapus..." : "Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
