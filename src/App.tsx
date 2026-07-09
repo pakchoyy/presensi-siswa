@@ -102,7 +102,7 @@ function AppContent() {
         <PageRouter />
       </div>
       {setupSelesai && (
-        <div className="w-full">
+        <div className="sticky bottom-[56px] lg:static z-[95] w-full">
           <Marquee />
           <Footer />
         </div>

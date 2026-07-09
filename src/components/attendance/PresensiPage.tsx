@@ -167,7 +167,7 @@ export function PresensiPage() {
               <ChevronDown size={14} className="ml-auto text-[var(--text-light)]" />
             </button>
             {classDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-20 py-1 animate-slide-down">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-[100] py-1 animate-slide-down">
                 {classrooms.map((cls, i) => {
                   const cc = CLASS_COLORS[i % CLASS_COLORS.length];
                   const isActive = activeClassroom?.id === cls.id;
