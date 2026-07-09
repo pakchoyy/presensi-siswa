@@ -10,6 +10,7 @@ import type {
   AcademicCalendarEntry,
   License,
   BackupMeta,
+  Tombstone,
 } from "@/types/entities";
 
 export class PresensiDB extends Dexie {
@@ -23,6 +24,7 @@ export class PresensiDB extends Dexie {
   calendarEntries!: EntityTable<AcademicCalendarEntry, "id">;
   licenses!: EntityTable<License, "id">;
   backupMeta!: EntityTable<BackupMeta, "id">;
+  tombstones!: EntityTable<Tombstone, "id">;
 
   constructor() {
     super("bgy_presensi_db");
@@ -37,6 +39,9 @@ export class PresensiDB extends Dexie {
       calendarEntries: "id, tahunAjaranId, tanggal",
       licenses: "id, guruId",
       backupMeta: "id, guruId",
+    });
+    this.version(3).stores({
+      tombstones: "++id, entityType, localId",
     });
   }
 }

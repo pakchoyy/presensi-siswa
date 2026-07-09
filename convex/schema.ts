@@ -164,7 +164,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of academic years (PRO users)
   cloudAcademicYears: defineTable({
@@ -177,7 +178,8 @@ export default defineSchema({
     semesterAktif: v.string(),
     lastSyncedAt: v.number(),
     version: v.number(),
-  }).index("by_user", ["userId"]),
+  }).index("by_user", ["userId"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of classrooms (PRO users)
   cloudClassrooms: defineTable({
@@ -192,7 +194,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_user_guru", ["userId", "guruId"]),
+    .index("by_user_guru", ["userId", "guruId"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of students (PRO users)
   cloudStudents: defineTable({
@@ -209,7 +212,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_user_kelas", ["userId", "kelasId"]),
+    .index("by_user_kelas", ["userId", "kelasId"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of attendance sessions (PRO users)
   cloudAttendanceSessions: defineTable({
@@ -222,7 +226,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_user_kelas_tanggal", ["userId", "kelasId", "tanggal"]),
+    .index("by_user_kelas_tanggal", ["userId", "kelasId", "tanggal"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of attendance records (PRO users)
   cloudAttendanceRecords: defineTable({
@@ -236,7 +241,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_user_sesi", ["userId", "sesiId"]),
+    .index("by_user_sesi", ["userId", "sesiId"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Cloud version of calendar entries (PRO users)
   cloudCalendarEntries: defineTable({
@@ -250,7 +256,8 @@ export default defineSchema({
     lastSyncedAt: v.number(),
     version: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_user_tanggal", ["userId", "tanggal"]),
+    .index("by_user_tanggal", ["userId", "tanggal"])
+    .index("by_user_localId", ["userId", "localId"]),
 
   // Offline queue - for syncing when back online
   syncQueue: defineTable({
@@ -277,6 +284,14 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
+
+  // Tombstones - track deleted records so all devices learn about deletions
+  cloudTombstones: defineTable({
+    userId: v.id("users"),
+    entityType: v.string(), // "schools" | "teachers" | "classrooms" | "students" | ...
+    localId: v.number(),
+    deletedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   // Device tracking - max 3 devices per user
   devices: defineTable({

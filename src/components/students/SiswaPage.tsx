@@ -8,6 +8,7 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import { tombstoneRepo } from "@/repositories/dexie/tombstone.repo";
 import { db } from "@/repositories/dexie/db";
 import type { Student, Classroom } from "@/types/entities";
 import { inisial, generateId, timestamp } from "@/lib/utils";
@@ -118,9 +119,16 @@ export function SiswaPage() {
     
     try {
       const now = timestamp();
+      const students = await db.students.where('kelasId').equals(cls.id).toArray();
       await db.students.where('kelasId').equals(cls.id).modify({ statusAktif: false, diubahPada: now });
-      triggerAutoSync();
       await classroomRepo.softDelete(cls.id);
+
+      // Record tombstones so deletion propagates to cloud & all devices
+      const tombstones = students.map((s) => ({ entityType: "students", localId: s.id }));
+      tombstones.push({ entityType: "classrooms", localId: cls.id });
+      await tombstoneRepo.addMany(tombstones);
+
+      triggerAutoSync();
       await refreshClassrooms();
       if (activeClassroom?.id === cls.id) {
         setActiveClassroom(null);

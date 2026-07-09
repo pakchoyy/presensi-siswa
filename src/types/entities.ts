@@ -94,3 +94,10 @@ export interface BackupMeta {
   dibuatPada: number;
   ukuranData?: number;
 }
+
+export interface Tombstone {
+  id: number;
+  entityType: string; // "schools" | "teachers" | "classrooms" | "students" | ...
+  localId: number;
+  deletedAt: number;
+}

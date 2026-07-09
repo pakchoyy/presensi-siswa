@@ -131,6 +131,13 @@ export const syncService = {
             }
           }
         }
+
+        // Process tombstones (deletions from other devices)
+        if (cloudData.tombstones && cloudData.tombstones.length > 0) {
+          for (const tomb of cloudData.tombstones) {
+            await db.table(tomb.entityType).delete(tomb.localId);
+          }
+        }
       });
 
       return count;
@@ -163,10 +170,14 @@ export const syncService = {
       // Get local changes since last sync
       const localChanges = await getChangedData(lastSync);
 
-      // Upload local changes
+      // Get local tombstones (deletions to propagate)
+      const localTombstones = await db.tombstones.toArray();
+
+      // Upload local changes + deletions
       const uploadResult = await (convexClient as any).mutation("sync:incrementalUpload", {
         email,
         changes: localChanges,
+        deletions: localTombstones.map((t) => ({ entityType: t.entityType, localId: t.localId })),
       });
 
       // Download cloud changes since last sync
@@ -223,7 +234,17 @@ export const syncService = {
             }
           }
         });
+
+        // Process cloud tombstones (deletions from other devices)
+        if (cloudData.tombstones && cloudData.tombstones.length > 0) {
+          for (const tomb of cloudData.tombstones) {
+            await db.table(tomb.entityType).delete(tomb.localId);
+          }
+        }
       }
+
+      // Clear local tombstones after successful upload
+      await db.tombstones.clear();
 
       // Update last sync timestamp
       saveLastSyncTimestamp(now);

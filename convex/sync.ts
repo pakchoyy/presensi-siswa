@@ -17,6 +17,10 @@ export const incrementalUpload = mutation({
       attendanceRecords: v.array(v.any()),
       calendarEntries: v.array(v.any()),
     }),
+    deletions: v.optional(v.array(v.object({
+      entityType: v.string(),
+      localId: v.number(),
+    }))),
   },
   handler: async (ctx, args) => {
     const normalizedEmail = args.email.toLowerCase().trim();
@@ -40,6 +44,17 @@ export const incrementalUpload = mutation({
     const userId = user._id;
     const now = Date.now();
     let updated = 0;
+
+    const TABLE_MAP: Record<string, string> = {
+      schools: "cloudSchools",
+      teachers: "cloudTeachers",
+      academicYears: "cloudAcademicYears",
+      classrooms: "cloudClassrooms",
+      students: "cloudStudents",
+      attendanceSessions: "cloudAttendanceSessions",
+      attendanceRecords: "cloudAttendanceRecords",
+      calendarEntries: "cloudCalendarEntries",
+    };
 
     // Helper function to upsert (update or insert)
     async function upsertEntity(
@@ -76,6 +91,28 @@ export const incrementalUpload = mutation({
         });
         updated++;
       }
+    }
+
+    // Process deletions (tombstones) - truly delete from cloud
+    for (const deletion of args.deletions || []) {
+      const tableName: any = TABLE_MAP[deletion.entityType];
+      if (!tableName) continue;
+      const existing = await ctx.db
+        .query(tableName)
+        .withIndex("by_user_localId", (q: any) => 
+          q.eq("userId", userId).eq("localId", deletion.localId)
+        )
+        .first();
+      if (existing) {
+        await ctx.db.delete(existing._id);
+      }
+      // Record tombstone so other devices learn about the deletion
+      await ctx.db.insert("cloudTombstones", {
+        userId,
+        entityType: deletion.entityType,
+        localId: deletion.localId,
+        deletedAt: now,
+      });
     }
 
     // Process each entity type
@@ -460,6 +497,13 @@ export const incrementalSync = query({
       .filter((q) => q.gt(q.field("lastSyncedAt"), lastSyncedAt))
       .collect();
 
+    // Get tombstones (deletions) since last sync
+    const tombstones = await ctx.db
+      .query("cloudTombstones")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.gt(q.field("deletedAt"), lastSyncedAt))
+      .collect();
+
     return {
       schools,
       teachers,
@@ -469,6 +513,7 @@ export const incrementalSync = query({
       attendanceSessions,
       attendanceRecords,
       calendarEntries,
+      tombstones,
       hasChanges: 
         schools.length > 0 ||
         teachers.length > 0 ||
@@ -477,7 +522,8 @@ export const incrementalSync = query({
         students.length > 0 ||
         attendanceSessions.length > 0 ||
         attendanceRecords.length > 0 ||
-        calendarEntries.length > 0,
+        calendarEntries.length > 0 ||
+        tombstones.length > 0,
     };
   },
 });
@@ -552,6 +598,12 @@ export const downloadAll = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
+    // Get all tombstones (for first-time sync, device needs to know what's deleted)
+    const tombstones = await ctx.db
+      .query("cloudTombstones")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
     return {
       schools,
       teachers,
@@ -561,6 +613,7 @@ export const downloadAll = query({
       attendanceSessions,
       attendanceRecords,
       calendarEntries,
+      tombstones,
     };
   },
 });
