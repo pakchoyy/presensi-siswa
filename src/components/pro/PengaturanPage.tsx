@@ -456,6 +456,41 @@ export function PengaturanPage() {
         </div>
       )}
 
+      {/* Cloud Sync Reconnect (PRO only, not connected) */}
+      {isPRO && !isCloudConnected && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[14px] mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+            <span className="text-[0.75rem] font-bold text-amber-900 dark:text-amber-100">
+              Belum terhubung ke Cloud Sync
+            </span>
+          </div>
+          <div className="text-[0.65rem] text-amber-700 dark:text-amber-300 mb-3">
+            Masukkan email PRO untuk menyinkronkan data antar perangkat.
+          </div>
+          <div className="mb-2">
+            <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">
+              <Mail size={11} className="inline mr-1" /> Email PRO Anda
+            </label>
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="email@example.com"
+              className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+            />
+          </div>
+          <button
+            onClick={handleDeviceLogin}
+            disabled={connecting || !loginEmail.trim()}
+            className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 bg-transparent"
+          >
+            <Upload size={15} />
+            {connecting ? "Menghubungkan..." : "Hubungkan Device"}
+          </button>
+        </div>
+      )}
+
       {/* Logo Sekolah (PRO only) */}
       {isPRO && (
         <LogoUpload editable={true} />
