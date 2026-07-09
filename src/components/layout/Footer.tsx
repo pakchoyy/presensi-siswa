@@ -1,7 +1,7 @@
 export function Footer() {
   return (
     <footer
-      className="hidden lg:block w-full text-white text-center py-[8px] px-5 flex-shrink-0"
+      className="block w-full text-white text-center py-[8px] px-5 flex-shrink-0"
       style={{
         background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)",
       }}

@@ -41,14 +41,14 @@ function PageRouter() {
 
   if (!setupSelesai) {
     return (
-      <div className="flex-1 flex flex-col lg:max-w-app lg:mx-auto lg:w-full">
+      <div className="flex-1 flex flex-col w-full max-w-full lg:max-w-app lg:mx-auto lg:w-full overflow-x-hidden">
         <WizardSetup />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col lg:max-w-[720px] lg:mx-auto lg:w-full">
+    <div className="flex-1 flex flex-col w-full max-w-full lg:max-w-[720px] lg:mx-auto lg:w-full overflow-x-hidden">
       <PageContent />
     </div>
   );
@@ -102,7 +102,7 @@ function AppContent() {
         <PageRouter />
       </div>
       {setupSelesai && (
-        <div className="sticky bottom-[56px] lg:static z-[95] w-full">
+        <div className="w-full">
           <Marquee />
           <Footer />
         </div>

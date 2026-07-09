@@ -52,6 +52,7 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--bg);
+  overflow-x: hidden;
 }
 
 @media (min-width: 1024px) {
