@@ -46,7 +46,7 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(CLOUD_EMAIL_KEY, normalized);
         setCloudEmailState(normalized);
       } else {
-        syncService.fullSync(cloudEmail).catch(() => {});
+        syncService.syncAll(cloudEmail).catch(() => {});
       }
     }
     prevConnected.current = isConnected;
