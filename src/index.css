@@ -124,13 +124,13 @@ body {
   align-items: center;
 }
 .ticker-content {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
   animation: ticker-scroll 40s linear infinite;
   cursor: pointer;
   text-decoration: none;
   color: #1e293b;
-  line-height: 1;
 }
 .ticker-content:hover {
   animation-play-state: paused;

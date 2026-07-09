@@ -17,7 +17,7 @@ export function RingkasanBar({ counts }: Props) {
   ];
 
   return (
-    <div className="sticky top-14 z-[200] bg-[var(--card-bg)] border-b border-[var(--border)] px-[14px] py-2 flex flex-nowrap gap-[10px] justify-between overflow-x-auto scrollbar-hide">
+    <div className="lg:sticky lg:top-14 z-[180] bg-[var(--card-bg)] border-b border-[var(--border)] px-[14px] py-2 flex flex-nowrap gap-[10px] justify-between overflow-x-auto scrollbar-hide">
       {items.map((item) => (
         <div key={item.key} className="flex items-center gap-[5px] text-[11px] font-semibold whitespace-nowrap min-w-[70px]">
           <span

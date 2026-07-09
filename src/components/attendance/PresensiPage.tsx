@@ -130,9 +130,16 @@ export function PresensiPage() {
 
   return (
     <>
-      <RingkasanBar counts={counts} />
       <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <DateNavigator />
+
+        <div className="mb-3 lg:hidden">
+          <RingkasanBar counts={counts} />
+        </div>
+
+        <div className="hidden lg:block mb-3">
+          <RingkasanBar counts={counts} />
+        </div>
 
         {!isLibur && !loading && students.length > 0 && (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
