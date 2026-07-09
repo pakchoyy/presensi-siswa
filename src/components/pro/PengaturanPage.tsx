@@ -439,7 +439,15 @@ export function PengaturanPage() {
                     Batal
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      // If PRO from device connection, revert to FREE
+                      if (teacher) {
+                        const activeLic = await licenseRepo.getActive(teacher.id);
+                        if (activeLic?.kodeLisensi === "DEVICE-CONNECTED") {
+                          await licenseRepo.expire(activeLic.id);
+                          await teacherRepo.updateTier(teacher.id, Tier.FREE);
+                        }
+                      }
                       localStorage.removeItem('presensi_cloud_email');
                       toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
                       setShowLogoutConfirm(false);
