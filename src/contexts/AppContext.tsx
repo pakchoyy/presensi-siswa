@@ -14,7 +14,6 @@ import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { setupService } from "@/services/setup.service";
 import { licenseService } from "@/services/license.service";
-import { syncService } from "@/services/sync.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tier } from "@/types/enums";
 import { todayStr } from "@/lib/utils";
@@ -76,47 +75,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           loading: false,
         }));
 
-        // Start sync loop for PRO users
-        if (teacher?.tier === Tier.PRO && token) {
-          setTimeout(() => {
-            let cloudEmail = localStorage.getItem("presensi_cloud_email");
-            if (cloudEmail) {
-              const normalized = cloudEmail.toLowerCase().trim();
-              if (normalized !== cloudEmail) {
-                localStorage.setItem("presensi_cloud_email", normalized);
-                cloudEmail = normalized;
-              }
-              syncService.syncAll(cloudEmail).catch(() => {});
-            }
-          }, 3000);
-        }
       } else {
         setState((prev) => ({ ...prev, loading: false }));
       }
     }
     init();
   }, [token]);
-
-  // Periodic sync for PRO users
-  useEffect(() => {
-    if (!state.setupSelesai || !state.teacher || state.teacher.tier !== Tier.PRO || !token) return;
-
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        let cloudEmail = localStorage.getItem("presensi_cloud_email");
-        if (cloudEmail) {
-          const normalized = cloudEmail.toLowerCase().trim();
-          if (normalized !== cloudEmail) {
-            localStorage.setItem("presensi_cloud_email", normalized);
-            cloudEmail = normalized;
-          }
-          syncService.syncAll(cloudEmail).catch(() => {});
-        }
-      }
-    }, 5 * 60 * 1000); // Sync every 5 minutes
-
-    return () => clearInterval(interval);
-  }, [state.setupSelesai, state.teacher?.tier, token]);
 
   useEffect(() => {
     if (state.darkMode) {

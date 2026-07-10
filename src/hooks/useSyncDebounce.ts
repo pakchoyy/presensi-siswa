@@ -15,14 +15,16 @@ export function useSyncDebounce(email: string | null) {
   const timerRef = useRef<number>();
   const pendingRef = useRef(false);
 
-  const doSync = useCallback(async () => {
+  const doSync = useCallback(async (force = false) => {
     if (!email) return;
     if (pendingRef.current || isSyncing) return;
 
     const now = Date.now();
 
-    if (now - lastSyncRef.current < MIN_INTERVAL) return;
-    if (!hasChangesRef.current && lastSyncRef.current > 0) return;
+    if (!force) {
+      if (now - lastSyncRef.current < MIN_INTERVAL) return;
+      if (!hasChangesRef.current && lastSyncRef.current > 0) return;
+    }
 
     pendingRef.current = true;
     setIsSyncing(true);
@@ -37,7 +39,7 @@ export function useSyncDebounce(email: string | null) {
     } catch {
       retryCount.current++;
       const delay = Math.min(RETRY_BASE * Math.pow(2, retryCount.current - 1), RETRY_MAX);
-      timerRef.current = setTimeout(doSync, delay);
+      timerRef.current = setTimeout(() => doSync(false), delay);
     } finally {
       pendingRef.current = false;
       setIsSyncing(false);
