@@ -4,7 +4,6 @@ import { syncService } from "@/services/sync.service";
 const MIN_INTERVAL = 5 * 60 * 1000;
 const RETRY_BASE = 10_000;
 const RETRY_MAX = 60_000;
-const POLL_INTERVAL = 5 * 60 * 1000;
 
 export function useSyncDebounce(email: string | null) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -14,14 +13,18 @@ export function useSyncDebounce(email: string | null) {
   const hasChangesRef = useRef(true);
   const retryCount = useRef(0);
   const timerRef = useRef<number>();
+  const pendingRef = useRef(false);
 
   const doSync = useCallback(async () => {
     if (!email) return;
+    if (pendingRef.current || isSyncing) return;
+
     const now = Date.now();
 
     if (now - lastSyncRef.current < MIN_INTERVAL) return;
     if (!hasChangesRef.current && lastSyncRef.current > 0) return;
 
+    pendingRef.current = true;
     setIsSyncing(true);
 
     try {
@@ -36,9 +39,10 @@ export function useSyncDebounce(email: string | null) {
       const delay = Math.min(RETRY_BASE * Math.pow(2, retryCount.current - 1), RETRY_MAX);
       timerRef.current = setTimeout(doSync, delay);
     } finally {
+      pendingRef.current = false;
       setIsSyncing(false);
     }
-  }, [email]);
+  }, [email, isSyncing]);
 
   const resetDebounce = useCallback(() => {
     lastSyncRef.current = 0;

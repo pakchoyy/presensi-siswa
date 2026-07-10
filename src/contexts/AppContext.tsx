@@ -113,7 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           syncService.syncAll(cloudEmail).catch(() => {});
         }
       }
-    }, 60000); // Sync every 60 seconds
+    }, 5 * 60 * 1000); // Sync every 5 minutes
 
     return () => clearInterval(interval);
   }, [state.setupSelesai, state.teacher?.tier, token]);
