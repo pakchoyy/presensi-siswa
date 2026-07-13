@@ -52,24 +52,40 @@ export function PresensiPage() {
   const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
 
   const loadData = useCallback(async () => {
-    if (!activeClassroom || isLibur || diLuarPeriode) return;
+    if (!activeClassroom || isLibur || diLuarPeriode) {
+      setLoading(false);
+      return;
+    }
+    
+    if (!activeClassroom.id || !tanggalAktif) {
+      console.error('loadData: missing required params', { activeClassroom, tanggalAktif });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
-    const [siswa, result] = await Promise.all([
-      studentRepo.getByClass(activeClassroom.id),
-      attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif),
-    ]);
+    try {
+      const [siswa, result] = await Promise.all([
+        studentRepo.getByClass(activeClassroom.id),
+        attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif),
+      ]);
 
-    setStudents(siswa);
-    setSessionId(result.session.id);
+      setStudents(siswa);
+      setSessionId(result.session.id);
 
-    const map = new Map<number, AttendanceRecord>();
-    for (const r of result.records) {
-      map.set(r.siswaId, r);
+      const map = new Map<number, AttendanceRecord>();
+      for (const r of result.records) {
+        map.set(r.siswaId, r);
+      }
+      setRecords(map);
+    } catch (error) {
+      console.error('loadData failed:', error);
+      toast('Gagal memuat data presensi');
+    } finally {
+      setLoading(false);
     }
-    setRecords(map);
-    setLoading(false);
-  }, [activeClassroom, tanggalAktif, isLibur, diLuarPeriode]);
+  }, [activeClassroom, tanggalAktif, isLibur, diLuarPeriode, toast]);
 
   useEffect(() => {
     loadData();

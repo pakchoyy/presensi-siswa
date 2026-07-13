@@ -10,6 +10,9 @@ export const attendanceService = {
     kelasId: number,
     tanggal: string
   ): Promise<{ session: AttendanceSession; records: AttendanceRecord[] }> {
+    if (!kelasId || !tanggal) {
+      throw new Error('Invalid parameters for bukaSesiPresensi');
+    }
     let session = await attendanceRepo.getSession(kelasId, tanggal);
 
     if (!session) {
