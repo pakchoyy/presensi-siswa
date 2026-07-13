@@ -25,13 +25,22 @@ const CLOUD_EMAIL_KEY = "presensi_cloud_email";
 
 export function CloudAuthProvider({ children }: { children: ReactNode }) {
   const [cloudEmail, setCloudEmailState] = useState<string | null>(() => {
-    return localStorage.getItem(CLOUD_EMAIL_KEY);
+    const stored = localStorage.getItem(CLOUD_EMAIL_KEY);
+    // Validate email format
+    if (stored && stored.trim() && stored.includes('@')) {
+      return stored.trim();
+    }
+    // Clear invalid email
+    if (stored) {
+      localStorage.removeItem(CLOUD_EMAIL_KEY);
+    }
+    return null;
   });
 
-  // Query user by email
+  // Query user by email - only if valid
   const cloudUser = useQuery(
     api.users.getUserByEmail,
-    cloudEmail ? { email: cloudEmail } : "skip"
+    cloudEmail && cloudEmail.trim() && cloudEmail.includes('@') ? { email: cloudEmail } : "skip"
   );
 
   const prevConnected = useRef(false);
