@@ -34,6 +34,9 @@ export function PresensiPage() {
   const [classDropdown, setClassDropdown] = useState(false);
   const classRef = useRef<HTMLDivElement>(null);
 
+  // Academic year
+  const [activeAy, setActiveAy] = useState<{ tanggalMulai: string; tanggalSelesai: string } | null>(null);
+
   // State for "Sejak Awal Ajaran" ringkasan
   const [rekapAjaran, setRekapAjaran] = useState<Record<number, Record<string, number>> | null>(null);
   const [totalHariAjaran, setTotalHariAjaran] = useState(0);
@@ -42,10 +45,13 @@ export function PresensiPage() {
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
+  const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
+  const isSesudahPeriode = activeAy ? tanggalAktif > activeAy.tanggalSelesai : false;
+  const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
   const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
 
   const loadData = useCallback(async () => {
-    if (!activeClassroom || isLibur) return;
+    if (!activeClassroom || isLibur || diLuarPeriode) return;
     setLoading(true);
 
     const [siswa, result] = await Promise.all([
@@ -62,7 +68,7 @@ export function PresensiPage() {
     }
     setRecords(map);
     setLoading(false);
-  }, [activeClassroom, tanggalAktif, isLibur]);
+  }, [activeClassroom, tanggalAktif, isLibur, diLuarPeriode]);
 
   useEffect(() => {
     loadData();
@@ -76,6 +82,12 @@ export function PresensiPage() {
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  useEffect(() => {
+    academicYearRepo.getActive().then((ay) => {
+      if (ay) setActiveAy({ tanggalMulai: ay.tanggalMulai, tanggalSelesai: ay.tanggalSelesai });
+    });
   }, []);
 
   const loadRekapAjaran = useCallback(async () => {
@@ -302,12 +314,19 @@ export function PresensiPage() {
           </div>
         )}
 
-        {isLibur ? (
+        {isLibur || diLuarPeriode ? (
           <div className="text-center py-[40px]">
             <div className="text-[2.5rem] mb-2">📅</div>
-            <div className="text-[0.95rem] font-bold text-[var(--text-light)]">Hari Libur</div>
+            <div className="text-[0.95rem] font-bold text-[var(--text-light)]">
+              {diLuarPeriode ? "Di Luar Periode Ajaran" : "Hari Libur"}
+            </div>
             <div className="text-[0.75rem] text-[var(--text-light)] mt-1">
-              {hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu tidak ada presensi" : "Minggu tidak ada presensi"}
+              {diLuarPeriode
+                ? (isSebelumPeriode
+                    ? `Periode ajaran dimulai ${activeAy?.tanggalMulai}`
+                    : `Periode ajaran berakhir ${activeAy?.tanggalSelesai}`)
+                : (hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu tidak ada presensi" : "Minggu tidak ada presensi")
+              }
             </div>
           </div>
         ) : loading ? (
