@@ -122,6 +122,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshStudents = useCallback(async (classroomId: number) => {
+    // Validate classroomId before using in Dexie query
+    if (!classroomId || typeof classroomId !== 'number') {
+      console.warn('refreshStudents: invalid classroomId', { classroomId });
+      return [];
+    }
     return studentRepo.getByClass(classroomId);
   }, []);
 

@@ -15,11 +15,19 @@ export const teacherRepo = {
   },
 
   async update(id: number, teacher: Teacher): Promise<void> {
+    if (!id || typeof id !== 'number') {
+      console.warn('update: invalid id', { id });
+      return;
+    }
     await db.teachers.update(id, { ...teacher, diubahPada: Date.now() });
     triggerAutoSync();
   },
 
   async updateTier(id: number, tier: Tier): Promise<void> {
+    if (!id || typeof id !== 'number') {
+      console.warn('updateTier: invalid id', { id });
+      return;
+    }
     await db.teachers.update(id, { tier, diubahPada: Date.now() });
     triggerAutoSync();
   },

@@ -45,6 +45,12 @@ export function ImportUpdateExcel({ kelasId, existingCount, onDone }: Props) {
       return;
     }
 
+    // Validate kelasId before using in Dexie query
+    if (!kelasId || typeof kelasId !== 'number') {
+      toast("Invalid class ID");
+      return;
+    }
+
     // Compare with existing students
     const existing = await studentRepo.getByClass(kelasId);
     const baru: ComparisonResult["baru"] = [];

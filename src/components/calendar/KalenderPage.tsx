@@ -99,6 +99,11 @@ export function KalenderPage() {
       toast("Entry bawaan tidak bisa dihapus");
       return;
     }
+    // Validate entry.id before using it in Dexie query
+    if (!entry.id) {
+      toast("Invalid entry ID");
+      return;
+    }
     await db.calendarEntries.delete(entry.id);
     toast("Entry dihapus");
     setEditTarget(null);

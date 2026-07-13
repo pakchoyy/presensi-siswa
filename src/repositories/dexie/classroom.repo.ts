@@ -12,6 +12,10 @@ export const classroomRepo = {
   },
 
   async getById(id: number): Promise<Classroom | undefined> {
+    if (!id || typeof id !== 'number') {
+      console.warn('getById: invalid id', { id });
+      return undefined;
+    }
     return db.classrooms.get(id);
   },
 
@@ -22,11 +26,19 @@ export const classroomRepo = {
   },
 
   async delete(id: number): Promise<void> {
+    if (!id || typeof id !== 'number') {
+      console.warn('delete: invalid id', { id });
+      return;
+    }
     await db.classrooms.delete(id);
     triggerAutoSync();
   },
 
   async softDelete(id: number): Promise<void> {
+    if (!id || typeof id !== 'number') {
+      console.warn('softDelete: invalid id', { id });
+      return;
+    }
     await db.classrooms.update(id, { statusAktif: false, diubahPada: Date.now() });
     triggerAutoSync();
   },

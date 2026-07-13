@@ -122,6 +122,12 @@ export const syncService = {
             delete (localData as any)._id;
             delete (localData as any)._creationTime;
 
+            // Validate localData.id before using in Dexie query
+            if (!localData.id || typeof localData.id !== 'number' || isNaN(localData.id)) {
+              console.warn('Skipping invalid localData.id in downloadAll:', localData.id);
+              continue;
+            }
+
             const existing = await db.table(table).get(localData.id);
             if (existing) {
               const localTime = (existing as any).diubahPada || 0;
@@ -140,6 +146,11 @@ export const syncService = {
         // Process tombstones (deletions from other devices)
         if (cloudData.tombstones && cloudData.tombstones.length > 0) {
           for (const tomb of cloudData.tombstones) {
+            // Validate tomb.localId before using in Dexie delete
+            if (!tomb.localId || typeof tomb.localId !== 'number' || isNaN(tomb.localId)) {
+              console.warn('Skipping invalid tomb.localId in downloadAll:', tomb.localId);
+              continue;
+            }
             await db.table(tomb.entityType).delete(tomb.localId);
           }
         }
@@ -224,6 +235,12 @@ export const syncService = {
               delete (localData as any)._id;
               delete (localData as any)._creationTime;
 
+              // Validate localData.id before using in Dexie query
+              if (!localData.id || typeof localData.id !== 'number' || isNaN(localData.id)) {
+                console.warn('Skipping invalid localData.id in incrementalSync:', localData.id);
+                continue;
+              }
+
               const existing = await db.table(table).get(localData.id);
               if (existing) {
                 const localTime = (existing as any).diubahPada || 0;
@@ -243,6 +260,11 @@ export const syncService = {
         // Process cloud tombstones (deletions from other devices)
         if (cloudData.tombstones && cloudData.tombstones.length > 0) {
           for (const tomb of cloudData.tombstones) {
+            // Validate tomb.localId before using in Dexie delete
+            if (!tomb.localId || typeof tomb.localId !== 'number' || isNaN(tomb.localId)) {
+              console.warn('Skipping invalid tomb.localId in incrementalSync:', tomb.localId);
+              continue;
+            }
             await db.table(tomb.entityType).delete(tomb.localId);
           }
         }

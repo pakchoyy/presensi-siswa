@@ -376,6 +376,13 @@ export function PengaturanPage() {
       // Save license record locally with expiry from Convex
       const now = Date.now();
       const expiry = data.value?.tanggalBerakhir || (now + 365 * 24 * 60 * 60 * 1000);
+      
+      // Validate teacher.id before using in Dexie queries
+      if (!teacher?.id) {
+        toast("⚠️ Error: Invalid teacher data");
+        return;
+      }
+      
       const existingLicense = await licenseRepo.getActive(teacher.id);
       if (!existingLicense) {
         const license: License = {
@@ -563,7 +570,7 @@ export function PengaturanPage() {
                   <button
                     onClick={async () => {
                       // If PRO from device connection, revert to FREE
-                      if (teacher) {
+                      if (teacher?.id) {
                         const activeLic = await licenseRepo.getActive(teacher.id);
                         if (activeLic?.kodeLisensi === "DEVICE-CONNECTED") {
                           await licenseRepo.expire(activeLic.id);

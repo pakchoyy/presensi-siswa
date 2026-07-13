@@ -39,6 +39,11 @@ export const attendanceService = {
       return { session, records: [] };
     }
 
+    // Validate session.id before using it in queries
+    if (!session.id) {
+      throw new Error('Invalid session ID');
+    }
+    
     const records = await attendanceRepo.getRecords(session.id);
     return { session, records };
   },
@@ -48,6 +53,11 @@ export const attendanceService = {
     siswaId: number,
     statusBaru: AttendanceStatus
   ): Promise<AttendanceRecord> {
+    // Validate parameters before using in Dexie queries
+    if (!sesiId || !siswaId) {
+      throw new Error('Invalid sesiId or siswaId for ubahStatus');
+    }
+    
     const existing = await attendanceRepo.getRecordBySiswa(sesiId, siswaId);
     const now = timestamp();
 
@@ -83,6 +93,10 @@ export const attendanceService = {
   },
 
   async hitungRekapRentang(kelasId: number, startDate: string, endDate: string) {
+    if (!kelasId || !startDate || !endDate || typeof kelasId !== 'number') {
+      console.warn('hitungRekapRentang: invalid params', { kelasId, startDate, endDate });
+      return {};
+    }
     const sessions = await attendanceRepo.getSessionsInRange(kelasId, startDate, endDate);
     const sesiIds = sessions.map((s) => s.id);
     if (sesiIds.length === 0) {

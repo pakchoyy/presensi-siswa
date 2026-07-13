@@ -3,6 +3,10 @@ import type { License } from "@/types/entities";
 
 export const licenseRepo = {
   async getActive(guruId: number): Promise<License | undefined> {
+    if (!guruId || typeof guruId !== 'number') {
+      console.warn('getActive: invalid guruId', { guruId });
+      return undefined;
+    }
     const licenses = await db.licenses
       .where("guruId")
       .equals(guruId)
@@ -17,6 +21,10 @@ export const licenseRepo = {
   },
 
   async expire(id: number): Promise<void> {
+    if (!id || typeof id !== 'number') {
+      console.warn('expire: invalid id', { id });
+      return;
+    }
     await db.licenses.update(id, { statusLisensi: "Kedaluwarsa" as const });
   },
 };

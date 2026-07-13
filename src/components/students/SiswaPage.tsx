@@ -118,6 +118,12 @@ export function SiswaPage() {
     const cls = deleteClassTarget;
     
     try {
+      // Validate cls.id before using it in Dexie queries
+      if (!cls.id) {
+        console.error('Invalid classroom ID');
+        return;
+      }
+      
       const now = timestamp();
       const students = await db.students.where('kelasId').equals(cls.id).toArray();
       await db.students.where('kelasId').equals(cls.id).modify({ statusAktif: false, diubahPada: now });

@@ -29,6 +29,10 @@ export const attendanceRepo = {
   },
 
   async getRecords(sesiId: number): Promise<AttendanceRecord[]> {
+    if (!sesiId || typeof sesiId !== 'number') {
+      console.warn('getRecords: invalid sesiId', { sesiId });
+      return [];
+    }
     return db.attendanceRecords.where("sesiId").equals(sesiId).toArray();
   },
 
@@ -39,6 +43,10 @@ export const attendanceRepo = {
   },
 
   async updateSessionTimestamp(sesiId: number): Promise<void> {
+    if (!sesiId || typeof sesiId !== 'number') {
+      console.warn('updateSessionTimestamp: invalid sesiId', { sesiId });
+      return;
+    }
     await db.attendanceSessions.update(sesiId, { diubahPada: Date.now() });
     triggerAutoSync();
   },
@@ -68,10 +76,18 @@ export const attendanceRepo = {
   },
 
   async getAllSessionsForClass(kelasId: number): Promise<AttendanceSession[]> {
+    if (!kelasId || typeof kelasId !== 'number') {
+      console.warn('getAllSessionsForClass: invalid kelasId', { kelasId });
+      return [];
+    }
     return db.attendanceSessions.where("kelasId").equals(kelasId).toArray();
   },
 
   async getSessionsInRange(kelasId: number, startDate: string, endDate: string): Promise<AttendanceSession[]> {
+    if (!kelasId || !startDate || !endDate || typeof kelasId !== 'number') {
+      console.warn('getSessionsInRange: invalid params', { kelasId, startDate, endDate });
+      return [];
+    }
     return db.attendanceSessions
       .where("kelasId")
       .equals(kelasId)
@@ -81,7 +97,7 @@ export const attendanceRepo = {
 
   async getAllRecordsForClass(kelasId: number): Promise<AttendanceRecord[]> {
     const sessions = await this.getAllSessionsForClass(kelasId);
-    const sesiIds = sessions.map((s) => s.id);
+    const sesiIds = sessions.map((s) => s.id).filter(id => id != null && !isNaN(id));
     if (sesiIds.length === 0) return [];
     return db.attendanceRecords.where("sesiId").anyOf(sesiIds).toArray();
   },
