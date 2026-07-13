@@ -9,7 +9,9 @@ import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
-import { Info, ChevronDown, Plus } from "lucide-react";
+import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import { todayStr } from "@/lib/utils";
+import { Info, ChevronDown, Plus, CalendarRange } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -31,6 +33,12 @@ export function PresensiPage() {
   const [loading, setLoading] = useState(false);
   const [classDropdown, setClassDropdown] = useState(false);
   const classRef = useRef<HTMLDivElement>(null);
+
+  // State for "Sejak Awal Ajaran" ringkasan
+  const [rekapAjaran, setRekapAjaran] = useState<Record<number, Record<string, number>> | null>(null);
+  const [totalHariAjaran, setTotalHariAjaran] = useState(0);
+  const [showRekapAjaran, setShowRekapAjaran] = useState(false);
+  const [loadingRekap, setLoadingRekap] = useState(false);
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
@@ -69,6 +77,25 @@ export function PresensiPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  const loadRekapAjaran = useCallback(async () => {
+    if (!activeClassroom) return;
+    setLoadingRekap(true);
+    const ay = await academicYearRepo.getActive();
+    if (!ay) { setLoadingRekap(false); return; }
+    const today = todayStr();
+    const [data, totalHari] = await Promise.all([
+      attendanceService.hitungRekapRentang(activeClassroom.id, ay.tanggalMulai, today),
+      attendanceService.hitungHariSekolah(activeClassroom.id, ay.tanggalMulai, today),
+    ]);
+    setRekapAjaran(data);
+    setTotalHariAjaran(totalHari);
+    setLoadingRekap(false);
+  }, [activeClassroom]);
+
+  useEffect(() => {
+    loadRekapAjaran();
+  }, [loadRekapAjaran]);
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!selectedStudent || !sessionId) return;
@@ -140,6 +167,78 @@ export function PresensiPage() {
         <div className="hidden lg:block mb-3">
           <RingkasanBar counts={counts} />
         </div>
+
+        {/* Sejak Awal Ajaran */}
+        {activeClassroom && !isLibur && (
+          <div className="mb-3">
+            <button
+              onClick={() => { if (!showRekapAjaran && !rekapAjaran) loadRekapAjaran(); setShowRekapAjaran(!showRekapAjaran); }}
+              className="w-full flex items-center gap-2 px-[10px] py-[8px] border border-[var(--border)] rounded-xl text-[0.72rem] font-semibold cursor-pointer"
+              style={{ background: showRekapAjaran ? "var(--input-bg)" : "var(--card-bg)" }}
+            >
+              <CalendarRange size={14} className="text-[#0ea5a0]" />
+              <span className="text-[var(--text)] flex-1 text-left">Sejak Awal Ajaran</span>
+              {loadingRekap ? (
+                <span className="w-4 h-4 border-2 border-[var(--border)] border-t-[#0ea5a0] rounded-full animate-spin" />
+              ) : rekapAjaran ? (
+                <span className="text-[0.68rem] text-[var(--text-light)]">{totalHariAjaran} hari</span>
+              ) : null}
+              <ChevronDown size={13} className={`text-[var(--text-light)] transition-transform ${showRekapAjaran ? "rotate-180" : ""}`} />
+            </button>
+
+            {showRekapAjaran && rekapAjaran && (
+              <div className="mt-1 border border-[var(--border)] rounded-xl p-3 animate-fade-in" style={{ background: "var(--card-bg)" }}>
+                {/* Overall summary */}
+                {(() => {
+                  const total = { H: 0, S: 0, I: 0, A: 0 };
+                  for (const r of Object.values(rekapAjaran)) {
+                    total.H += r.H || 0;
+                    total.S += r.S || 0;
+                    total.I += r.I || 0;
+                    total.A += r.A || 0;
+                  }
+                  return (
+                    <div className="flex flex-nowrap gap-[10px] justify-between mb-3 text-[11px] font-semibold">
+                      <span className="flex items-center gap-[5px]">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "var(--hadir)" }} /> Hadir <b>{total.H}</b>
+                      </span>
+                      <span className="flex items-center gap-[5px]">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "var(--sakit)" }} /> Sakit <b>{total.S}</b>
+                      </span>
+                      <span className="flex items-center gap-[5px]">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "var(--izin)" }} /> Izin <b>{total.I}</b>
+                      </span>
+                      <span className="flex items-center gap-[5px]">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "var(--alpha)" }} /> Alpha <b>{total.A}</b>
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* Per-student breakdown */}
+                <div className="max-h-[200px] overflow-y-auto space-y-[3px]">
+                  {students.map((s) => {
+                    const r = rekapAjaran[s.id];
+                    if (!r) return null;
+                    const totalSiswa = totalHariAjaran;
+                    const hadir = r.H || 0;
+                    const alpha = r.A || 0;
+                    return (
+                      <div key={s.id} className="flex items-center gap-2 text-[0.68rem]">
+                        <span className="flex-1 truncate">{s.nama}</span>
+                        <span className="text-[var(--hadir)] font-semibold">{hadir}/{totalSiswa}</span>
+                        {alpha > 0 && <span className="text-[var(--alpha)] font-semibold">A:{alpha}</span>}
+                        <div className="w-16 h-[5px] rounded-full bg-[var(--border)] overflow-hidden flex-shrink-0">
+                          <div className="h-full rounded-full bg-[var(--hadir)]" style={{ width: `${totalSiswa > 0 ? (hadir / totalSiswa) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {!isLibur && !loading && students.length > 0 && (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">

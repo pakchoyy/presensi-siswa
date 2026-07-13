@@ -23,6 +23,7 @@ import {
   Calendar,
   UserCheck,
   PenLine,
+  Plus,
   School,
   Info,
   Upload,
@@ -30,6 +31,9 @@ import {
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
+import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import type { AcademicYear } from "@/types/entities";
+import { Semester } from "@/types/enums";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
@@ -70,6 +74,14 @@ export function PengaturanPage() {
   const [editJenjang, setEditJenjang] = useState<Jenjang>(school?.jenjang || Jenjang.SD);
   const [savingSekolah, setSavingSekolah] = useState(false);
   
+  // Academic year state
+  const [activeAy, setActiveAy] = useState<AcademicYear | undefined>();
+  const [editingAjaran, setEditingAjaran] = useState(false);
+  const [editLabel, setEditLabel] = useState("");
+  const [editMulai, setEditMulai] = useState("");
+  const [editSelesai, setEditSelesai] = useState("");
+  const [savingAjaran, setSavingAjaran] = useState(false);
+
   // Login device lain state
   const [loginEmail, setLoginEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
@@ -114,6 +126,17 @@ export function PengaturanPage() {
       setLicenseInfo(status);
     });
   }, [teacher]);
+
+  useEffect(() => {
+    academicYearRepo.getActive().then((ay) => {
+      if (ay) {
+        setActiveAy(ay);
+        setEditLabel(ay.label);
+        setEditMulai(ay.tanggalMulai);
+        setEditSelesai(ay.tanggalSelesai);
+      }
+    });
+  }, []);
 
   const handleActivate = async () => {
     if (!teacher) return;
@@ -195,6 +218,60 @@ export function PengaturanPage() {
       navigator.clipboard.writeText(kode);
       toast("Kode disalin");
     }
+  };
+
+  const startEditAjaran = () => {
+    if (!activeAy) return;
+    setEditLabel(activeAy.label);
+    setEditMulai(activeAy.tanggalMulai);
+    setEditSelesai(activeAy.tanggalSelesai);
+    setEditingAjaran(true);
+  };
+
+  const handleSaveAjaran = async () => {
+    if (!activeAy || !editMulai || !editSelesai) return;
+    setSavingAjaran(true);
+    const updated: AcademicYear = {
+      ...activeAy,
+      label: editLabel,
+      tanggalMulai: editMulai,
+      tanggalSelesai: editSelesai,
+    };
+    await academicYearRepo.save(updated);
+    setActiveAy(updated);
+    setEditingAjaran(false);
+    setSavingAjaran(false);
+    toast("✅ Periode ajaran berhasil disimpan");
+  };
+
+  const handleTambahAjaranBaru = async () => {
+    if (!teacher) return;
+    if (!activeAy) return;
+
+    // Parse current year label to compute next
+    const parts = activeAy.label.split("/");
+    const nextStart = parseInt(parts[0]) + 1;
+    const nextEnd = parseInt(parts[1] || parts[0]) + 1;
+    const nextLabel = `${nextStart}/${nextEnd}`;
+    const month = new Date().getMonth() + 1;
+    const nextSemester = month >= 7 ? Semester.GANJIL : Semester.GENAP;
+
+    const now = Date.now();
+    const newAy: AcademicYear = {
+      id: generateId(),
+      label: nextLabel,
+      tanggalMulai: `${nextStart}-07-01`,
+      tanggalSelesai: `${nextEnd}-06-30`,
+      semesterAktif: nextSemester,
+      guruId: teacher.id,
+    };
+
+    await academicYearRepo.save(newAy);
+    setActiveAy(newAy);
+    setEditLabel(newAy.label);
+    setEditMulai(newAy.tanggalMulai);
+    setEditSelesai(newAy.tanggalSelesai);
+    toast(`✅ Ajaran baru "${nextLabel}" dibuat`);
   };
 
   const manfaat = licenseService.getManfaat();
@@ -503,6 +580,100 @@ export function PengaturanPage() {
       {isPRO && (
         <LogoUpload editable={true} />
       )}
+
+      {/* Periode Ajaran */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+          <Calendar size={15} /> Periode Ajaran
+        </div>
+        <div className="text-[0.72rem] text-[var(--text-light)] mb-3">
+          Atur tanggal mulai dan selesai tahun ajaran untuk menghitung rekap kehadiran.
+        </div>
+
+        {editingAjaran ? (
+          <>
+            <div className="mb-2">
+              <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">Label</label>
+              <input
+                type="text"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+              />
+            </div>
+            <div className="flex gap-2 mb-2">
+              <div className="flex-1">
+                <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">Tanggal Mulai</label>
+                <input
+                  type="date"
+                  value={editMulai}
+                  onChange={(e) => setEditMulai(e.target.value)}
+                  className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">Tanggal Selesai</label>
+                <input
+                  type="date"
+                  value={editSelesai}
+                  onChange={(e) => setEditSelesai(e.target.value)}
+                  className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveAjaran}
+                disabled={savingAjaran}
+                className="flex-1 py-[9px] rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.78rem] border-none cursor-pointer disabled:opacity-50"
+              >
+                {savingAjaran ? "Menyimpan..." : "Simpan"}
+              </button>
+              <button
+                onClick={() => setEditingAjaran(false)}
+                className="flex-1 py-[9px] rounded-[10px] border border-[var(--border)] text-[var(--text)] font-bold text-[0.78rem] cursor-pointer bg-transparent"
+              >
+                Batal
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-1 mb-3 text-[0.74rem]">
+              <div className="flex gap-2">
+                <span className="text-[var(--text-light)] min-w-[80px]">Label:</span>
+                <span className="text-[var(--text)] font-semibold">{activeAy?.label || "-"}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[var(--text-light)] min-w-[80px]">Mulai:</span>
+                <span className="text-[var(--text)]">{activeAy?.tanggalMulai || "-"}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[var(--text-light)] min-w-[80px]">Selesai:</span>
+                <span className="text-[var(--text)]">{activeAy?.tanggalSelesai || "-"}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[var(--text-light)] min-w-[80px]">Semester:</span>
+                <span className="text-[var(--text)] font-semibold">{activeAy?.semesterAktif || "-"}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={startEditAjaran}
+                className="flex-1 py-[9px] rounded-[10px] border border-[var(--border)] text-[var(--text)] font-bold text-[0.78rem] cursor-pointer bg-transparent flex items-center justify-center gap-1"
+              >
+                <PenLine size={13} /> Edit
+              </button>
+              <button
+                onClick={handleTambahAjaranBaru}
+                className="flex-1 py-[9px] rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.78rem] border-none cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Plus size={13} /> Ajaran Baru
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Hari Aktif */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">

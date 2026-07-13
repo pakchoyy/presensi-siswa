@@ -123,4 +123,21 @@ export const attendanceService = {
 
     return ringkasan;
   },
+
+  async hitungHariSekolah(kelasId: number, startDate: string, endDate: string): Promise<number> {
+    const sessions = await attendanceRepo.getSessionsInRange(kelasId, startDate, endDate);
+    if (sessions.length === 0) return 0;
+
+    const holidayDates = new Set<string>();
+    const holidays = await db.calendarEntries
+      .where("tanggal")
+      .between(startDate, endDate, true, true)
+      .filter((e) => e.jenis === CalendarEntryType.HARI_LIBUR)
+      .toArray();
+    for (const h of holidays) {
+      holidayDates.add(h.tanggal);
+    }
+
+    return sessions.filter((s) => !holidayDates.has(s.tanggal)).length;
+  },
 };
