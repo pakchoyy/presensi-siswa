@@ -4,7 +4,7 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const classroomRepo = {
   async getAll(): Promise<Classroom[]> {
-    return db.classrooms.where("statusAktif").equals(true as any).toArray();
+    return db.classrooms.filter((c) => c.statusAktif === true).toArray();
   },
 
   async countActive(): Promise<number> {
