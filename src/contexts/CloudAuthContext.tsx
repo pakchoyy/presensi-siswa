@@ -37,11 +37,17 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  // Query user by email - only if valid
-  const cloudUser = useQuery(
-    api.users.getUserByEmail,
-    cloudEmail && cloudEmail.trim() && cloudEmail.includes('@') ? { email: cloudEmail } : "skip"
-  );
+  // Query user by email - only if valid, with error boundary
+  let cloudUser;
+  try {
+    cloudUser = useQuery(
+      api.users.getUserByEmail,
+      cloudEmail && cloudEmail.trim() && cloudEmail.includes('@') ? { email: cloudEmail } : "skip"
+    );
+  } catch (error) {
+    console.error('[CloudAuth] getUserByEmail error:', error);
+    cloudUser = null;
+  }
 
   const prevConnected = useRef(false);
 
