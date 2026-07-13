@@ -5,14 +5,16 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const attendanceRepo = {
   async getSession(kelasId: number, tanggal: string): Promise<AttendanceSession | undefined> {
-    if (!kelasId || !tanggal) {
+    if (!kelasId || !tanggal || typeof kelasId !== 'number' || typeof tanggal !== 'string') {
       console.warn('getSession: invalid params', { kelasId, tanggal });
       return undefined;
     }
     try {
+      // Use separate filters instead of compound index to avoid DataError
       return await db.attendanceSessions
-        .where("[kelasId+tanggal]")
-        .equals([kelasId, tanggal])
+        .where("kelasId")
+        .equals(kelasId)
+        .filter(s => s.tanggal === tanggal)
         .first();
     } catch (error) {
       console.error('getSession failed:', error);
@@ -48,14 +50,16 @@ export const attendanceRepo = {
   },
 
   async getRecordBySiswa(sesiId: number, siswaId: number): Promise<AttendanceRecord | undefined> {
-    if (!sesiId || !siswaId) {
+    if (!sesiId || !siswaId || typeof sesiId !== 'number' || typeof siswaId !== 'number') {
       console.warn('getRecordBySiswa: invalid params', { sesiId, siswaId });
       return undefined;
     }
     try {
+      // Use separate filters instead of compound index to avoid DataError
       return await db.attendanceRecords
-        .where("[sesiId+siswaId]")
-        .equals([sesiId, siswaId])
+        .where("sesiId")
+        .equals(sesiId)
+        .filter(r => r.siswaId === siswaId)
         .first();
     } catch (error) {
       console.error('getRecordBySiswa failed:', error);
