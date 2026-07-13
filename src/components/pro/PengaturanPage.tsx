@@ -90,16 +90,20 @@ export function PengaturanPage() {
   useEffect(() => {
     if (!teacher) return;
 
-    licenseService.getStatus(teacher.id).then(async (status) => {
+    const teacherId = teacher.id;
+    const teacherTier = teacher.tier;
+    const teacherEmail = teacher.email;
+
+    licenseService.getStatus(teacherId).then(async (status) => {
       // If PRO but no local license record, auto-fetch from Convex
-      if (!status.aktif && teacher.tier === Tier.PRO) {
+      if (!status.aktif && teacherTier === Tier.PRO && teacherEmail) {
         try {
           const res = await fetch(`${import.meta.env.VITE_CONVEX_URL}/api/query`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               path: "licenses:checkEmail",
-              args: { email: teacher.email },
+              args: { email: teacherEmail },
               format: "json",
             }),
           });
@@ -108,15 +112,15 @@ export function PengaturanPage() {
             const now = Date.now();
             const license: License = {
               id: generateId(),
-              guruId: teacher.id,
-              emailAktivasi: teacher.email,
+              guruId: teacherId,
+              emailAktivasi: teacherEmail,
               kodeLisensi: "AUTO-RECOVERED",
               tanggalAktivasi: now,
               tanggalBerakhir: data.value.tanggalBerakhir,
               statusLisensi: "Aktif",
             };
             await licenseRepo.save(license);
-            setLicenseInfo(await licenseService.getStatus(teacher.id));
+            setLicenseInfo(await licenseService.getStatus(teacherId));
             return;
           }
         } catch (_) {
@@ -125,7 +129,7 @@ export function PengaturanPage() {
       }
       setLicenseInfo(status);
     });
-  }, [teacher]);
+  }, [teacher?.id, teacher?.tier, teacher?.email]);
 
   useEffect(() => {
     academicYearRepo.getActive().then((ay) => {
@@ -153,6 +157,8 @@ export function PengaturanPage() {
       
       // Auto upload existing local data to cloud
       if (result.cloudEmail) {
+        let reloadTimerId: number | null = null;
+        
         setTimeout(async () => {
           try {
             toast("⏳ Mengupload data ke cloud...");
@@ -168,10 +174,17 @@ export function PengaturanPage() {
           }
           
           // Reload to show connected status
-          setTimeout(() => {
+          reloadTimerId = window.setTimeout(() => {
             window.location.reload();
           }, 1500);
         }, 1000);
+
+        // Cleanup if component unmounts before reload
+        return () => {
+          if (reloadTimerId !== null) {
+            window.clearTimeout(reloadTimerId);
+          }
+        };
       }
     } else {
       toast(result.message);
