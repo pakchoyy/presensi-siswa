@@ -47,3 +47,27 @@ export class PresensiDB extends Dexie {
 }
 
 export const db = new PresensiDB();
+
+// Auto-recovery for corrupt database
+db.on('blocked', () => {
+  console.warn('[DB] Database blocked - forcing delete');
+  db.delete().then(() => {
+    console.warn('[DB] Database deleted, reloading page...');
+    window.location.reload();
+  }).catch(console.error);
+});
+
+db.open().catch((err) => {
+  console.error('[DB] Database open failed:', err);
+  const isCorrupt = err.name === 'DataError' || 
+                    err.name === 'InvalidStateError' ||
+                    (err.message && err.message.includes('not a valid key'));
+  
+  if (isCorrupt) {
+    console.warn('[DB] Corrupt database detected - auto-deleting');
+    db.delete().then(() => {
+      console.warn('[DB] Database cleared, reloading page...');
+      window.location.reload();
+    }).catch(console.error);
+  }
+});
