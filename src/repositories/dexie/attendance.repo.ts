@@ -5,10 +5,19 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const attendanceRepo = {
   async getSession(kelasId: number, tanggal: string): Promise<AttendanceSession | undefined> {
-    return db.attendanceSessions
-      .where("[kelasId+tanggal]")
-      .equals([kelasId, tanggal])
-      .first();
+    if (!kelasId || !tanggal) {
+      console.warn('getSession: invalid params', { kelasId, tanggal });
+      return undefined;
+    }
+    try {
+      return await db.attendanceSessions
+        .where("[kelasId+tanggal]")
+        .equals([kelasId, tanggal])
+        .first();
+    } catch (error) {
+      console.error('getSession failed:', error);
+      return undefined;
+    }
   },
 
   async createSession(session: AttendanceSession): Promise<number> {
@@ -39,10 +48,19 @@ export const attendanceRepo = {
   },
 
   async getRecordBySiswa(sesiId: number, siswaId: number): Promise<AttendanceRecord | undefined> {
-    return db.attendanceRecords
-      .where("[sesiId+siswaId]")
-      .equals([sesiId, siswaId])
-      .first();
+    if (!sesiId || !siswaId) {
+      console.warn('getRecordBySiswa: invalid params', { sesiId, siswaId });
+      return undefined;
+    }
+    try {
+      return await db.attendanceRecords
+        .where("[sesiId+siswaId]")
+        .equals([sesiId, siswaId])
+        .first();
+    } catch (error) {
+      console.error('getRecordBySiswa failed:', error);
+      return undefined;
+    }
   },
 
   async getAllSessionsForClass(kelasId: number): Promise<AttendanceSession[]> {

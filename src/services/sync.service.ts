@@ -32,12 +32,17 @@ async function getChangedData(since: number) {
   const changes: Record<string, any[]> = {};
 
   for (const table of tables) {
-    // Get all records modified after 'since' timestamp
-    const records = await db.table(table).toArray();
-    changes[table] = records.filter((r: any) => {
-      const modifiedAt = r.diubahPada || r.dibuatPada || 0;
-      return modifiedAt > since;
-    });
+    try {
+      // Get all records modified after 'since' timestamp
+      const records = await db.table(table).toArray();
+      changes[table] = records.filter((r: any) => {
+        const modifiedAt = r.diubahPada || r.dibuatPada || 0;
+        return modifiedAt > since;
+      });
+    } catch (error) {
+      console.error(`getChangedData error for table ${table}:`, error);
+      changes[table] = [];
+    }
   }
 
   return changes;
