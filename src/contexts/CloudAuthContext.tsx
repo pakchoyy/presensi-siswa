@@ -26,15 +26,21 @@ const CLOUD_EMAIL_KEY = "presensi_cloud_email";
 export function CloudAuthProvider({ children }: { children: ReactNode }) {
   const [cloudEmail, setCloudEmailState] = useState<string | null>(() => {
     const stored = localStorage.getItem(CLOUD_EMAIL_KEY);
-    // Validate email format
-    if (stored && stored.trim() && stored.includes('@')) {
-      return stored.trim();
-    }
-    // Clear invalid email
-    if (stored) {
+    
+    // Force clear if stored value is invalid or corrupt
+    if (!stored || stored === 'null' || stored === 'undefined' || !stored.trim()) {
       localStorage.removeItem(CLOUD_EMAIL_KEY);
+      return null;
     }
-    return null;
+    
+    // Validate email format
+    if (!stored.includes('@') || stored.length < 5) {
+      console.warn('[CloudAuth] Invalid email format, clearing:', stored);
+      localStorage.removeItem(CLOUD_EMAIL_KEY);
+      return null;
+    }
+    
+    return stored.trim();
   });
 
   // Query user by email - only if valid, with error boundary
