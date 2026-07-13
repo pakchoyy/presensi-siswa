@@ -43,6 +43,11 @@ export class PresensiDB extends Dexie {
     this.version(3).stores({
       tombstones: "++id, entityType, localId",
     });
+    // Version 4: Remove problematic compound indexes
+    this.version(4).stores({
+      attendanceSessions: "id, kelasId, tanggal",
+      attendanceRecords: "id, sesiId, siswaId",
+    });
   }
 }
 
