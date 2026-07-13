@@ -94,41 +94,73 @@ export function PengaturanPage() {
     const teacherTier = teacher.tier;
     const teacherEmail = teacher.email;
 
-    licenseService.getStatus(teacherId).then(async (status) => {
-      // If PRO but no local license record, auto-fetch from Convex
-      if (!status.aktif && teacherTier === Tier.PRO && teacherEmail) {
-        try {
-          const res = await fetch(`${import.meta.env.VITE_CONVEX_URL}/api/query`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              path: "licenses:checkEmail",
-              args: { email: teacherEmail },
-              format: "json",
-            }),
-          });
-          const data = await res.json();
-          if (data.value?.tanggalBerakhir) {
-            const now = Date.now();
-            const license: License = {
-              id: generateId(),
-              guruId: teacherId,
-              emailAktivasi: teacherEmail,
-              kodeLisensi: "AUTO-RECOVERED",
-              tanggalAktivasi: now,
-              tanggalBerakhir: data.value.tanggalBerakhir,
-              statusLisensi: "Aktif",
-            };
-            await licenseRepo.save(license);
-            setLicenseInfo(await licenseService.getStatus(teacherId));
-            return;
+    let cancelled = false;
+
+    const loadLicense = async () => {
+      try {
+        const status = await licenseService.getStatus(teacherId);
+        if (cancelled) return;
+
+        // If PRO but no local license record, auto-fetch from Convex
+        if (!status.aktif && teacherTier === Tier.PRO && teacherEmail) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+            const res = await fetch(`${import.meta.env.VITE_CONVEX_URL}/api/query`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                path: "licenses:checkEmail",
+                args: { email: teacherEmail },
+                format: "json",
+              }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (cancelled) return;
+            const data = await res.json();
+            if (data.value?.tanggalBerakhir) {
+              const now = Date.now();
+              const license: License = {
+                id: generateId(),
+                guruId: teacherId,
+                emailAktivasi: teacherEmail,
+                kodeLisensi: "AUTO-RECOVERED",
+                tanggalAktivasi: now,
+                tanggalBerakhir: data.value.tanggalBerakhir,
+                statusLisensi: "Aktif",
+              };
+              await licenseRepo.save(license);
+              if (!cancelled) {
+                const updatedStatus = await licenseService.getStatus(teacherId);
+                setLicenseInfo(updatedStatus);
+              }
+              return;
+            }
+          } catch (err) {
+            console.error("Auto-recover license failed:", err);
+            // Fallback — show what we have
           }
-        } catch (_) {
-          // Fallback — show what we have
+        }
+
+        if (!cancelled) {
+          setLicenseInfo(status);
+        }
+      } catch (err) {
+        console.error("Load license failed:", err);
+        if (!cancelled) {
+          setLicenseInfo(null);
         }
       }
-      setLicenseInfo(status);
-    });
+    };
+
+    loadLicense();
+
+    return () => {
+      cancelled = true;
+    };
   }, [teacher?.id, teacher?.tier, teacher?.email]);
 
   useEffect(() => {
