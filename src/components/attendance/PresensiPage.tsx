@@ -35,13 +35,14 @@ export function PresensiPage() {
   const classRef = useRef<HTMLDivElement>(null);
 
   // Academic year
-  const [activeAy, setActiveAy] = useState<{ tanggalMulai: string; tanggalSelesai: string } | null>(null);
+  const [activeAy, setActiveAy] = useState<{ tanggalMulai: string; tanggalSelesai: string; semesterAktif: string } | null>(null);
 
   // State for "Sejak Awal Ajaran" ringkasan
   const [rekapAjaran, setRekapAjaran] = useState<Record<number, Record<string, number>> | null>(null);
   const [totalHariAjaran, setTotalHariAjaran] = useState(0);
   const [showRekapAjaran, setShowRekapAjaran] = useState(false);
   const [loadingRekap, setLoadingRekap] = useState(false);
+  const [semesterOnly, setSemesterOnly] = useState(true);
 
   const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
   const isLibur = isWeekend(tanggalAktif, hariAktif);
@@ -86,8 +87,28 @@ export function PresensiPage() {
 
   useEffect(() => {
     academicYearRepo.getActive().then((ay) => {
-      if (ay) setActiveAy({ tanggalMulai: ay.tanggalMulai, tanggalSelesai: ay.tanggalSelesai });
+      if (ay) setActiveAy({ tanggalMulai: ay.tanggalMulai, tanggalSelesai: ay.tanggalSelesai, semesterAktif: ay.semesterAktif });
     });
+  }, []);
+
+  const getRekapRange = useCallback((start: string, end: string, semester: string) => {
+    const year = parseInt(start.split("-")[0]);
+    const today = todayStr();
+    let rangeStart = start;
+    let rangeEnd = end < today ? end : today;
+    if (semester === "Ganjil") {
+      const s = `${year}-07-01`;
+      const e = `${year}-12-31`;
+      rangeStart = s > start ? s : start;
+      rangeEnd = e < end ? e : end;
+    } else if (semester === "Genap") {
+      const s = `${year + 1}-01-01`;
+      const e = `${year + 1}-06-30`;
+      rangeStart = s > start ? s : start;
+      rangeEnd = e < end ? e : end;
+    }
+    if (rangeEnd > today) rangeEnd = today;
+    return { start: rangeStart, end: rangeEnd };
   }, []);
 
   const loadRekapAjaran = useCallback(async () => {
@@ -96,14 +117,17 @@ export function PresensiPage() {
     const ay = await academicYearRepo.getActive();
     if (!ay) { setLoadingRekap(false); return; }
     const today = todayStr();
+    const range = semesterOnly
+      ? getRekapRange(ay.tanggalMulai, ay.tanggalSelesai, ay.semesterAktif)
+      : { start: ay.tanggalMulai, end: ay.tanggalSelesai < today ? ay.tanggalSelesai : today };
     const [data, totalHari] = await Promise.all([
-      attendanceService.hitungRekapRentang(activeClassroom.id, ay.tanggalMulai, today),
-      attendanceService.hitungHariSekolah(activeClassroom.id, ay.tanggalMulai, today),
+      attendanceService.hitungRekapRentang(activeClassroom.id, range.start, range.end),
+      attendanceService.hitungHariSekolah(activeClassroom.id, range.start, range.end),
     ]);
     setRekapAjaran(data);
     setTotalHariAjaran(totalHari);
     setLoadingRekap(false);
-  }, [activeClassroom]);
+  }, [activeClassroom, semesterOnly, getRekapRange]);
 
   useEffect(() => {
     loadRekapAjaran();
@@ -189,7 +213,9 @@ export function PresensiPage() {
               style={{ background: showRekapAjaran ? "var(--input-bg)" : "var(--card-bg)" }}
             >
               <CalendarRange size={14} className="text-[#0ea5a0]" />
-              <span className="text-[var(--text)] flex-1 text-left">Sejak Awal Ajaran</span>
+              <span className="text-[var(--text)] flex-1 text-left">
+                {semesterOnly && activeAy ? `Semester ${activeAy.semesterAktif}` : "Sejak Awal Ajaran"}
+              </span>
               {loadingRekap ? (
                 <span className="w-4 h-4 border-2 border-[var(--border)] border-t-[#0ea5a0] rounded-full animate-spin" />
               ) : rekapAjaran ? (
@@ -200,6 +226,29 @@ export function PresensiPage() {
 
             {showRekapAjaran && rekapAjaran && (
               <div className="mt-1 border border-[var(--border)] rounded-xl p-3 animate-fade-in" style={{ background: "var(--card-bg)" }}>
+                {/* Semester/Tahun toggle */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    onClick={() => { if (!semesterOnly) { setSemesterOnly(true); loadRekapAjaran(); } }}
+                    className={`flex-1 py-[6px] rounded-[8px] text-[0.68rem] font-bold border cursor-pointer ${
+                      semesterOnly
+                        ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
+                        : "border-[var(--border)] bg-transparent text-[var(--text-light)]"
+                    }`}
+                  >
+                    Semester {activeAy?.semesterAktif}
+                  </button>
+                  <button
+                    onClick={() => { if (semesterOnly) { setSemesterOnly(false); loadRekapAjaran(); } }}
+                    className={`flex-1 py-[6px] rounded-[8px] text-[0.68rem] font-bold border cursor-pointer ${
+                      !semesterOnly
+                        ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
+                        : "border-[var(--border)] bg-transparent text-[var(--text-light)]"
+                    }`}
+                  >
+                    Tahun Ajaran
+                  </button>
+                </div>
                 {/* Overall summary */}
                 {(() => {
                   const total = { H: 0, S: 0, I: 0, A: 0 };

@@ -113,7 +113,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       classrooms,
-      activeClassroom: classrooms[0] || null,
+      activeClassroom: prev.activeClassroom
+        ? classrooms.find((c) => c.id === prev.activeClassroom!.id) || classrooms[0] || null
+        : classrooms[0] || null,
       setupSelesai: true,
       teacher: t || prev.teacher,
     }));
