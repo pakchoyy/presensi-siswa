@@ -28,6 +28,7 @@ import {
   Info,
   Upload,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
@@ -542,12 +543,20 @@ export function PengaturanPage() {
           <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
             Semua perubahan data otomatis tersimpan ke cloud dan tersinkronisasi antar perangkat.
           </div>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="text-[0.7rem] text-red-600 dark:text-red-400 font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
-          >
-            Logout (untuk testing)
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
+              className="flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] cursor-pointer border-none"
+            >
+              <RefreshCw size={13} /> Sync Sekarang
+            </button>
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="text-[0.7rem] text-red-600 dark:text-red-400 font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
+            >
+              Logout
+            </button>
+          </div>
           
           {/* Logout Confirm Modal */}
           {showLogoutConfirm && (
