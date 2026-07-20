@@ -59,7 +59,7 @@ export function PengaturanPage() {
 
   const isPRO = teacher?.tier === Tier.PRO;
 
-  const [email, setEmail] = useState(teacher?.email || "");
+  const [email, setEmail] = useState("");
   const [kode, setKode] = useState("");
   const [activating, setActivating] = useState(false);
   const [renewing, setRenewing] = useState(false);
@@ -177,6 +177,7 @@ export function PengaturanPage() {
 
   const handleActivate = async () => {
     if (!teacher) return;
+    if (!email.trim()) { toast("Masukkan email dulu"); setActivating(false); return; }
     setActivating(true);
     const result: any = await licenseService.activate(email.trim(), kode.trim(), teacher.id);
     setActivating(false);
@@ -968,7 +969,7 @@ export function PengaturanPage() {
             </div>
             <button
               onClick={handleActivate}
-              disabled={activating || !kode.trim()}
+              disabled={activating || !kode.trim() || !email.trim()}
               className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
             >
