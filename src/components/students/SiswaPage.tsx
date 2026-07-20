@@ -156,7 +156,8 @@ export function SiswaPage() {
 
   const handleSave = async () => {
     const nama = modalNama.trim();
-    if (!nama || !selectedKelas) {
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!nama || !targetKelas) {
       toast("Nama siswa belum diisi");
       return;
     }
@@ -172,7 +173,7 @@ export function SiswaPage() {
       const now = timestamp();
       const s: Student = {
         id: generateId(),
-        kelasId: selectedKelas.id,
+        kelasId: targetKelas.id,
         nama,
         urutan: students.length + 1,
         statusAktif: true,
@@ -182,7 +183,7 @@ export function SiswaPage() {
       await studentRepo.save(s);
       setModalNama("");
       setShowModal(false);
-      await loadStudents(selectedKelas.id);
+      await loadStudents(targetKelas.id);
       await loadCounts();
       toast("Siswa berhasil ditambahkan");
     } catch (error) {
@@ -193,7 +194,8 @@ export function SiswaPage() {
   };
 
   const handleImport = async (result: ImportResult) => {
-    if (!selectedKelas) return;
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!targetKelas) return;
 
     if (!isPRO) {
       const totalAfterImport = students.length + result.students.length;
@@ -236,19 +238,19 @@ export function SiswaPage() {
     }
     
     // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
-    const newStudents = siswaToImportResult(result, selectedKelas.id, isPRO ? updatedClassrooms : undefined);
+    const newStudents = siswaToImportResult(result, targetKelas.id, isPRO ? updatedClassrooms : undefined);
     
     await studentRepo.bulkSave(newStudents);
     
     // Reload all classes' student counts
     await loadCounts();
     // Reload current class students
-    await loadStudents(selectedKelas.id);
+    await loadStudents(targetKelas.id);
     
     // Show success with breakdown
     const classCounts: Record<string, number> = {};
     result.students.forEach(s => {
-      const kls = s.kelas || selectedKelas.nama;
+      const kls = s.kelas || targetKelas.nama;
       classCounts[kls] = (classCounts[kls] || 0) + 1;
     });
     
@@ -359,7 +361,8 @@ export function SiswaPage() {
   };
 
   const handleDeleteAll = async () => {
-    if (!selectedKelas) return;
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!targetKelas) return;
     
     setDeletingAll(true);
     
@@ -369,7 +372,7 @@ export function SiswaPage() {
       }
       
       setShowDeleteAll(false);
-      await loadStudents(selectedKelas.id);
+      await loadStudents(targetKelas.id);
       await loadCounts();
       toast(`✅ ${students.length} siswa berhasil dihapus`);
     } catch (error) {
@@ -594,10 +597,10 @@ export function SiswaPage() {
         </button>
       )}
 
-      {showImport && selectedKelas && (
+      {showImport && (selectedKelas || activeClassroom) && (
         <div className="mb-3">
           <ImportExcel
-            kelasId={selectedKelas.id}
+            kelasId={(selectedKelas || activeClassroom)!.id}
             existingCount={students.length}
             onImport={handleImport}
             onClose={() => setShowImport(false)}
@@ -605,12 +608,12 @@ export function SiswaPage() {
         </div>
       )}
 
-      {isPRO && showImportUpdate && selectedKelas && (
+      {isPRO && showImportUpdate && (selectedKelas || activeClassroom) && (
         <div className="mb-3">
           <ImportUpdateExcel
-            kelasId={selectedKelas.id}
+            kelasId={(selectedKelas || activeClassroom)!.id}
             existingCount={students.length}
-            onDone={() => { setShowImportUpdate(false); loadStudents(selectedKelas.id); }}
+            onDone={() => { setShowImportUpdate(false); loadStudents((selectedKelas || activeClassroom)!.id); }}
           />
         </div>
       )}
