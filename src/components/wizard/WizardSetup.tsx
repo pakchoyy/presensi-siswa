@@ -36,6 +36,18 @@ export function WizardSetup() {
   }, [step]);
 
   const next = () => {
+    if (step === 1 && !sekolah.trim()) {
+      toast("Nama sekolah harus diisi");
+      return;
+    }
+    if (step === 2) {
+      if (!namaGuru.trim()) { toast("Nama guru harus diisi"); return; }
+      if (!email.trim()) { toast("Email harus diisi"); return; }
+    }
+    if (step === 4 && !namaKelas.trim()) {
+      toast("Nama kelas harus diisi");
+      return;
+    }
     if (step < WIZARD_TOTAL) {
       setStep((s) => s + 1);
     } else {
@@ -69,14 +81,14 @@ export function WizardSetup() {
     localStorage.setItem("bgy_hari_aktif", hariAktif);
 
     const data: SetupData = {
-      sekolah: sekolah || "Sekolahku",
+      sekolah: sekolah.trim(),
       jenjang,
-      namaGuru: namaGuru || "Guru",
-      email: email || "guru@email.com",
-      tahunAjaran: tahunAjaran || "2026/2027",
+      namaGuru: namaGuru.trim(),
+      email: email.trim(),
+      tahunAjaran: tahunAjaran.trim(),
       semester,
-      namaKelas: namaKelas || "Kelas 1A",
-      siswa: siswaList.length > 0 ? siswaList.map((s) => ({ nama: s.nama })) : [{ nama: "Siswa Baru" }],
+      namaKelas: namaKelas.trim(),
+      siswa: siswaList.map((s) => ({ nama: s.nama })),
     };
 
     await setupService.executeSetup(data);
