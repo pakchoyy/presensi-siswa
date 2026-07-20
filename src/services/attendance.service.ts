@@ -142,6 +142,10 @@ export const attendanceService = {
   },
 
   async hitungHariSekolah(kelasId: number, startDate: string, endDate: string): Promise<number> {
+    if (!kelasId || !startDate || !endDate || typeof kelasId !== 'number') {
+      console.warn('hitungHariSekolah: invalid params', { kelasId, startDate, endDate });
+      return 0;
+    }
     const sessions = await attendanceRepo.getSessionsInRange(kelasId, startDate, endDate);
     if (sessions.length === 0) return 0;
 

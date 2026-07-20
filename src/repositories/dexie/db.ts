@@ -48,9 +48,10 @@ export class PresensiDB extends Dexie {
       attendanceSessions: "id, kelasId, tanggal",
       attendanceRecords: "id, sesiId, siswaId",
     });
-    // Version 5: Remove boolean index (statusAktif) from classrooms
+    // Version 5: Remove ALL boolean indexes (statusAktif) — booleans are invalid as IndexedDB index keys
     this.version(5).stores({
       classrooms: "id, tahunAjaranId, guruId",
+      students: "id, kelasId",
     });
   }
 }
