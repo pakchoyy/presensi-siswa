@@ -12,6 +12,11 @@ export const checkEmail = query({
       return { tier: "PRO", admin: true };
     }
 
+    // Skip PRO detection for default/placeholder emails
+    if (normalizedEmail === "guru@email.com" || normalizedEmail === "admin@gmail.com") {
+      return { tier: "FREE", data: null };
+    }
+
     // Lookup license table for expiry info
     const license = await ctx.db
       .query("licenses")

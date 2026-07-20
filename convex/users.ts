@@ -321,6 +321,58 @@ export const logoutAll = mutation({
 });
 
 /**
+ * Ensure a user record exists in Convex (idempotent).
+ * Creates one if missing, patches tier if existing is FREE but should be PRO.
+ */
+export const ensureUser = mutation({
+  args: {
+    email: v.string(),
+    tier: v.string(),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const normalizedEmail = args.email.toLowerCase().trim();
+
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .first();
+
+    if (!user && normalizedEmail !== args.email) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+    }
+
+    const now = Date.now();
+
+    if (user) {
+      // Upgrade tier if needed
+      if (args.tier === "PRO" && user.tier !== "PRO") {
+        await ctx.db.patch(user._id, {
+          tier: "PRO",
+          updatedAt: now,
+        });
+      }
+      return { created: false, id: user._id };
+    }
+
+    // Create new user
+    const id = await ctx.db.insert("users", {
+      email: normalizedEmail,
+      passwordHash: "",
+      name: args.name || normalizedEmail.split('@')[0],
+      tier: args.tier,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { created: true, id };
+  },
+});
+
+/**
  * Get user by email (passwordless for PRO users)
  */
 export const getUserByEmail = query({

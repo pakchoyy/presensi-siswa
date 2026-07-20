@@ -36,6 +36,12 @@ export const setupService = {
       const result = await (convexClient as any).query("licenses:checkEmail", { email: data.email });
       if (result?.tier === "PRO") {
         defaultTier = Tier.PRO;
+        // Ensure a Convex users record exists so cloud sync works
+        await (convexClient as any).mutation("users:ensureUser", {
+          email: data.email,
+          tier: "PRO",
+          name: data.namaGuru,
+        });
       }
     } catch {
       // Offline — default to FREE

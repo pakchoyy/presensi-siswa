@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { convexClient } from "@/lib/convex";
 import { syncService } from "@/services/sync.service";
 
 interface CloudUser {
@@ -56,6 +57,22 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
   }
 
   const prevConnected = useRef(false);
+  const ensuringUser = useRef(false);
+
+  // Ensure user exists in Convex when email is set but user is missing
+  useEffect(() => {
+    if (!cloudEmail || cloudUser !== null || cloudUser === undefined) return;
+    if (ensuringUser.current) return;
+    ensuringUser.current = true;
+    (convexClient as any).mutation("users:ensureUser", {
+      email: cloudEmail,
+      tier: "FREE",
+    }).then(() => {
+      ensuringUser.current = false;
+    }).catch(() => {
+      ensuringUser.current = false;
+    });
+  }, [cloudEmail, cloudUser]);
 
   // Force sync when cloud connection becomes active
   useEffect(() => {
