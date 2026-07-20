@@ -573,14 +573,16 @@ export function SiswaPage() {
 
       <div className="flex gap-2 mb-3">
         <button
-          onClick={() => setShowImport(!showImport)}
-          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+          type="button"
+          onClick={() => setShowImport(true)}
+          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer active:bg-[var(--input-bg)]"
         >
           <FileSpreadsheet size={15} /> Import Excel
         </button>
         <button
+          type="button"
           onClick={() => setShowModal(true)}
-          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+          className="flex-1 flex items-center justify-center gap-[6px] py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
           style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
         >
           <UserPlus size={15} /> Tambah
