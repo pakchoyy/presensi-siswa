@@ -127,6 +127,74 @@ export function CloudSettingsPage() {
         )}
       </div>
 
+      {/* Manual Upload / Tarik */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
+          <Upload size={15} className="text-[#0ea5a0]" /> Upload & Tarik Manual
+        </div>
+        <div className="text-[0.68rem] text-[var(--text-light)] mb-3">
+          Upload data lokal ke cloud, atau tarik data dari cloud ke device ini.
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              if (!cloudEmail) return;
+              setSyncing(true);
+              try {
+                await syncService.initialUpload(cloudEmail);
+                toast("✅ Upload ke cloud berhasil");
+              } catch (error) {
+                toast("❌ Upload gagal. Coba lagi.");
+              } finally {
+                setSyncing(false);
+              }
+            }}
+            disabled={syncing}
+            className="flex-1 flex items-center justify-center gap-[5px] py-[9px] rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] border-none cursor-pointer disabled:opacity-50"
+          >
+            <Upload size={13} /> {syncing ? "Memproses..." : "Upload ke Cloud"}
+          </button>
+          <button
+            onClick={async () => {
+              if (!cloudEmail) return;
+              setSyncing(true);
+              try {
+                const count = await syncService.downloadAll(cloudEmail);
+                toast(`✅ Tarik dari cloud berhasil (${count} data)`);
+              } catch (error) {
+                toast("❌ Tarik gagal. Coba lagi.");
+              } finally {
+                setSyncing(false);
+              }
+            }}
+            disabled={syncing}
+            className="flex-1 flex items-center justify-center gap-[5px] py-[9px] rounded-[10px] border border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.75rem] cursor-pointer bg-transparent disabled:opacity-50"
+          >
+            <Download size={13} /> {syncing ? "Memproses..." : "Tarik dari Cloud"}
+          </button>
+        </div>
+      </div>
+
+      {/* Sync Sekarang (combined) */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[0.8rem] font-bold flex items-center gap-2">
+            <RefreshCw size={15} className="text-[#0ea5a0]" /> Sync Semua
+          </div>
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="flex items-center gap-[5px] px-[14px] py-[8px] rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] border-none cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Menyinkronkan..." : "Sync Sekarang"}
+          </button>
+        </div>
+        <div className="text-[0.68rem] text-[var(--text-light)] mt-2">
+          Upload + Tarik sekaligus. Semua device akan mendapat data terbaru.
+        </div>
+      </div>
+
       {/* Auto-Sync Info */}
       <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
