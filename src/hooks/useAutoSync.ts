@@ -12,7 +12,7 @@ export function useAutoSync() {
 
     const triggerSync = () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = setTimeout(sync, 3000);
+      syncTimerRef.current = setTimeout(() => sync(true), 1000);
     };
 
     const handleStorage = (e: StorageEvent) => {
@@ -25,8 +25,8 @@ export function useAutoSync() {
     window.addEventListener("storage", handleStorage);
     window.addEventListener("data-changed", handleDataChange);
 
-    const pollTimer = setInterval(sync, 5 * 60 * 1000);
-    const initTimer = setTimeout(sync, 5000);
+    const pollTimer = setInterval(() => sync(false), 30 * 1000);
+    const initTimer = setTimeout(() => sync(true), 3000);
 
     return () => {
       window.removeEventListener("storage", handleStorage);
