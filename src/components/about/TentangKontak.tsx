@@ -31,7 +31,7 @@ export function TentangKontak() {
         </div>
           <div className="flex gap-2">
             <span className="font-semibold text-[#0ea5a0]">PRO:</span>
-            <span>Unlimited kelas, cloud sync, multi-device — Rp10.000/tahun</span>
+            <span>Unlimited kelas, cloud sync, multi-device — Rp12.000/tahun</span>
           </div>
         </div>
       </div>
