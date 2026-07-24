@@ -3,6 +3,7 @@ import { useApp } from "@/contexts/AppContext";
 import { PRO_PRICE } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
+import { syncService } from "@/services/sync.service";
 import type { License } from "@/types/entities";
 import { ArrowUpCircle, Check, MessageCircle, Crown, ShieldCheck, Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
@@ -92,15 +93,20 @@ export function UpgradePage() {
 
         await refreshTeacher();
 
+        localStorage.setItem("presensi_cloud_email", normalizedEmail);
+
         toast("✅ Email terverifikasi! Kamu sekarang PRO 🎉");
         setErrorMessage("");
-
         setShowConfetti(true);
 
+        // Trigger initial upload to cloud
+        syncService.initialUpload(normalizedEmail).catch(() => {});
+
+        // Reload after confetti to activate cloud sync
         setTimeout(() => {
           setShowConfetti(false);
-          setActivePage(PageName.PENGATURAN);
-        }, 2000);
+          window.location.reload();
+        }, 3000);
       } else {
         const { data: profile } = await supabase
           .from("profiles")
@@ -122,12 +128,18 @@ export function UpgradePage() {
           await licenseRepo.save(license);
           await teacherRepo.update(teacher.id, { ...teacher, tier: Tier.PRO, email: normalizedEmail });
           await refreshTeacher();
+
+          localStorage.setItem("presensi_cloud_email", normalizedEmail);
+
           toast("✅ Email terverifikasi! Kamu sekarang PRO 🎉");
           setShowConfetti(true);
+
+          syncService.initialUpload(normalizedEmail).catch(() => {});
+
           setTimeout(() => {
             setShowConfetti(false);
-            setActivePage(PageName.PENGATURAN);
-          }, 2000);
+            window.location.reload();
+          }, 3000);
         } else {
           setErrorMessage("Email belum terdaftar sebagai PRO. Silakan hubungi admin via WhatsApp.");
         }

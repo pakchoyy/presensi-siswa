@@ -181,8 +181,6 @@ export function PengaturanPage() {
       
       // Auto upload existing local data to cloud
       if (result.cloudEmail) {
-        let reloadTimerId: number | null = null;
-        
         setTimeout(async () => {
           try {
             toast("⏳ Mengupload data ke cloud...");
@@ -198,17 +196,10 @@ export function PengaturanPage() {
           }
           
           // Reload to show connected status
-          reloadTimerId = window.setTimeout(() => {
+          setTimeout(() => {
             window.location.reload();
           }, 1500);
         }, 1000);
-
-        // Cleanup if component unmounts before reload
-        return () => {
-          if (reloadTimerId !== null) {
-            window.clearTimeout(reloadTimerId);
-          }
-        };
       }
     } else {
       toast(result.message);
@@ -393,6 +384,7 @@ export function PengaturanPage() {
       await refreshTeacher();
       
       setTimeout(() => {
+        setConnecting(false);
         toast("✅ Device berhasil terhubung!");
         setTimeout(() => window.location.reload(), 1000);
       }, 1500);
