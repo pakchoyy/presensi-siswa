@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
@@ -8,7 +9,8 @@ import { generateDefaultCalendar } from "@/data/kalender-akademik";
 import { Tier, Jenjang, Semester } from "@/types/enums";
 import type { School, Teacher, AcademicYear, Classroom, Student } from "@/types/entities";
 import { timestamp, generateId } from "@/lib/utils";
-import { convexClient } from "@/lib/convex";
+
+const ADMIN_EMAILS = ["pulsachoy@gmail.com", "choiruddin2410@gmail.com"];
 
 export interface SetupData {
   sekolah: string;
@@ -29,22 +31,37 @@ export const setupService = {
 
   async executeSetup(data: SetupData): Promise<void> {
     const now = timestamp();
+    const normalizedEmail = data.email.toLowerCase().trim();
 
-    // Check Convex for email — detect admin or existing PRO
     let defaultTier = Tier.FREE;
-    try {
-      const result = await (convexClient as any).query("licenses:checkEmail", { email: data.email });
-      if (result?.tier === "PRO") {
-        defaultTier = Tier.PRO;
-        // Ensure a Convex users record exists so cloud sync works
-        await (convexClient as any).mutation("users:ensureUser", {
-          email: data.email,
-          tier: "PRO",
-          name: data.namaGuru,
-        });
+
+    if (ADMIN_EMAILS.includes(normalizedEmail)) {
+      defaultTier = Tier.PRO;
+    } else {
+      try {
+        const { data: license } = await supabase
+          .from("licenses")
+          .select("tanggal_berakhir")
+          .eq("email", normalizedEmail)
+          .eq("status", "digunakan")
+          .maybeSingle();
+
+        if (license) {
+          defaultTier = Tier.PRO;
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("tier")
+            .eq("email", normalizedEmail)
+            .maybeSingle();
+
+          if (profile && profile.tier === "PRO") {
+            defaultTier = Tier.PRO;
+          }
+        }
+      } catch {
+        // Offline — default to FREE
       }
-    } catch {
-      // Offline — default to FREE
     }
 
     const school: School = {

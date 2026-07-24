@@ -92,6 +92,17 @@ export function PresensiPage() {
   }, [loadData]);
 
   useEffect(() => {
+    const handleRealtimeUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.table && ["attendanceSessions", "attendanceRecords"].includes(detail.table)) {
+        loadData();
+      }
+    };
+    window.addEventListener("realtime-update", handleRealtimeUpdate);
+    return () => window.removeEventListener("realtime-update", handleRealtimeUpdate);
+  }, [loadData]);
+
+  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (classRef.current && !classRef.current.contains(e.target as Node)) {
         setClassDropdown(false);

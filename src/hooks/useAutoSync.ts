@@ -1,11 +1,20 @@
 import { useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useSyncDebounce } from "./useSyncDebounce";
+import { useCloudRealtime } from "./useCloudRealtime";
 
 export function useAutoSync() {
+  const { user } = useAuth();
   const { cloudEmail, isCloudConnected } = useCloudAuth();
-  const { sync, isSyncing } = useSyncDebounce(cloudEmail);
+  const { sync } = useSyncDebounce(cloudEmail);
   const syncTimerRef = useRef<number>();
+
+  const useRealtime = !!(user?.id && isCloudConnected);
+  const { connected: realtimeConnected } = useCloudRealtime(
+    user?.id || null,
+    useRealtime
+  );
 
   useEffect(() => {
     if (!isCloudConnected || !cloudEmail) return;
@@ -15,27 +24,20 @@ export function useAutoSync() {
       syncTimerRef.current = setTimeout(() => sync(true), 1000);
     };
 
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "presensi_last_sync" || e.key === "presensi_cloud_email") return;
-      triggerSync();
-    };
-
     const handleDataChange = () => triggerSync();
 
-    window.addEventListener("storage", handleStorage);
     window.addEventListener("data-changed", handleDataChange);
 
     const pollTimer = setInterval(() => sync(false), 30 * 1000);
     const initTimer = setTimeout(() => sync(true), 3000);
 
     return () => {
-      window.removeEventListener("storage", handleStorage);
       window.removeEventListener("data-changed", handleDataChange);
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      clearInterval(pollTimer);
+      if (pollTimer) clearInterval(pollTimer);
       clearTimeout(initTimer);
     };
-  }, [cloudEmail, isCloudConnected, sync]);
+  }, [cloudEmail, isCloudConnected, sync, realtimeConnected]);
 }
 
 export function triggerAutoSync() {

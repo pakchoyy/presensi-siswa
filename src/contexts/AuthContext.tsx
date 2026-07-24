@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
 
 interface User {
@@ -40,10 +39,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = "presensi_auth_token";
 const DEVICE_ID_KEY = "presensi_device_id";
 
-// Generate device fingerprint
 function getDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
@@ -53,19 +50,16 @@ function getDeviceId(): string {
   return deviceId;
 }
 
-// Get device name
 function getDeviceName(): string {
   const ua = navigator.userAgent;
   let browser = "Browser";
   let os = "Unknown";
 
-  // Detect browser
   if (ua.includes("Chrome")) browser = "Chrome";
   else if (ua.includes("Firefox")) browser = "Firefox";
   else if (ua.includes("Safari")) browser = "Safari";
   else if (ua.includes("Edge")) browser = "Edge";
 
-  // Detect OS
   if (ua.includes("Windows")) os = "Windows";
   else if (ua.includes("Mac")) os = "Mac";
   else if (ua.includes("Linux")) os = "Linux";
@@ -75,113 +69,193 @@ function getDeviceName(): string {
   return `${browser} on ${os}`;
 }
 
+async function checkDeviceLimit(userId: string): Promise<{ allowed: boolean; devices: Device[]; tier: string; limit: number }> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tier")
+    .eq("id", userId)
+    .single();
+
+  const tier = profile?.tier || "FREE";
+  const limit = tier === "PRO" ? 3 : 1;
+
+  const { data: activeDevices } = await supabase
+    .from("devices")
+    .select("id, device_id, device_name, last_active_at, created_at")
+    .eq("user_id", userId);
+
+  const devices: Device[] = (activeDevices || []).map((d: any) => ({
+    _id: String(d.id),
+    deviceName: d.device_name,
+    lastActiveAt: d.last_active_at,
+    createdAt: d.created_at,
+    deviceId: d.device_id,
+  }));
+  const deviceId = getDeviceId();
+
+  const existingDevice = devices.find((d) => d.deviceId === deviceId);
+  const otherDevices = devices.filter((d) => d.deviceId !== deviceId);
+
+  if (existingDevice) {
+    return { allowed: true, devices, tier, limit };
+  }
+
+  if (devices.length >= limit) {
+    return { allowed: false, devices, tier, limit };
+  }
+
+  return { allowed: true, devices, tier, limit };
+}
+
+async function trackDevice(userId: string) {
+  const deviceId = getDeviceId();
+  const deviceName = getDeviceName();
+
+  const { data: existing } = await supabase
+    .from("devices")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("device_id", deviceId)
+    .maybeSingle();
+
+  const now = Date.now();
+  if (existing) {
+    await supabase
+      .from("devices")
+      .update({ last_active_at: now, device_name: deviceName })
+      .eq("id", existing.id);
+  } else {
+    await supabase.from("devices").insert({
+      user_id: userId,
+      device_name: deviceName,
+      device_id: deviceId,
+      last_active_at: now,
+      created_at: now,
+      ip_address: null,
+      user_agent: navigator.userAgent,
+    });
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem(TOKEN_KEY);
-  });
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deviceLimitError, setDeviceLimitError] = useState<DeviceLimitError | null>(null);
 
-  // Mutations and Queries
-  const loginMutation = useMutation(api.users.login);
-  const registerMutation = useMutation(api.users.register);
-  const logoutMutation = useMutation(api.users.logout);
-  const updateActivity = useMutation(api.users.updateSessionActivity);
-
-  // Query current user
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    token ? { token } : "skip"
-  );
-
-  // Update user when query returns
   useEffect(() => {
-    if (currentUser !== undefined) {
-      setUser(currentUser as User | null);
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const supabaseUser = session.user;
+        setToken(session.access_token);
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, tier")
+          .eq("id", supabaseUser.id)
+          .single();
+
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email || "",
+          name: profile?.name || supabaseUser.user_metadata?.name || "",
+          tier: (profile?.tier as "FREE" | "PRO") || "FREE",
+        });
+      }
       setLoading(false);
-    }
-  }, [currentUser]);
+    };
 
-  // Update session activity every 5 minutes
-  useEffect(() => {
-    if (!token) return;
+    init();
 
-    const interval = setInterval(() => {
-      updateActivity({ token }).catch(() => {
-        // Silently fail if session expired
-      });
-    }, 5 * 60 * 1000); // 5 minutes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setToken(session.access_token);
 
-    return () => clearInterval(interval);
-  }, [token, updateActivity]);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, tier")
+          .eq("id", session.user.id)
+          .single();
 
-  // Login function
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          name: profile?.name || session.user.user_metadata?.name || "",
+          tier: (profile?.tier as "FREE" | "PRO") || "FREE",
+        });
+      } else {
+        setToken(null);
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const login = async (email: string, password: string) => {
-    const deviceId = getDeviceId();
-    const deviceName = getDeviceName();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
 
-    try {
-      const result = await loginMutation({
-        email,
-        password,
-        deviceId,
-        deviceName,
+    if (error) {
+      if (error.message.includes("Invalid login")) {
+        throw new Error("Email atau password salah");
+      }
+      throw new Error(error.message);
+    }
+
+    if (!data.user) {
+      throw new Error("Gagal login");
+    }
+
+    const limitCheck = await checkDeviceLimit(data.user.id);
+    if (!limitCheck.allowed) {
+      await supabase.auth.signOut();
+      setDeviceLimitError({
+        isDeviceLimitError: true,
+        message: `Batas perangkat tercapai. Tier ${limitCheck.tier} maksimal ${limitCheck.limit} perangkat.`,
+        devices: limitCheck.devices.map((d: any) => ({
+          _id: d.id.toString(),
+          deviceName: d.device_name,
+          lastActiveAt: d.last_active_at,
+          createdAt: d.created_at,
+          deviceId: d.device_id,
+        })),
+        tier: limitCheck.tier,
+        deviceLimit: limitCheck.limit,
       });
+      throw new Error("Batas perangkat tercapai. Tier " + limitCheck.tier + " maksimal " + limitCheck.limit + " perangkat.");
+    }
 
-      // Store token
-      localStorage.setItem(TOKEN_KEY, result.token);
-      setToken(result.token);
-      setUser(result.user as User);
-      setDeviceLimitError(null); // Clear any previous error
+    await trackDevice(data.user.id);
 
-      // Trigger auto upload for PRO users after successful login
-      if (result.user.tier === "PRO") {
-        setTimeout(async () => {
-          try {
-            const uploaded = await syncService.initialUpload(email);
-            if (uploaded > 0) {
-              console.log(`Initial cloud upload completed: ${uploaded} records`);
-            }
-          } catch (error) {
-            console.error("Initial upload failed:", error);
-          }
-        }, 1000); // Delay 1 second to let UI settle
-      }
-    } catch (error: any) {
-      // Check if it's a device limit error
-      const errorMessage = error.message || "";
-      if (errorMessage.includes("Batas perangkat tercapai")) {
-        // Parse the error message to extract tier and device limit
-        const tierMatch = errorMessage.match(/Tier (\w+)/);
-        const limitMatch = errorMessage.match(/maksimal (\d+)/);
-        
-        const tier = tierMatch ? tierMatch[1] : "FREE";
-        const deviceLimit = limitMatch ? parseInt(limitMatch[1]) : 1;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name, tier")
+      .eq("id", data.user.id)
+      .single();
 
-        // Get active devices using direct convex query
+    const currentUser: User = {
+      id: data.user.id,
+      email: data.user.email || email,
+      name: profile?.name || data.user.user_metadata?.name || "",
+      tier: (profile?.tier as "FREE" | "PRO") || "FREE",
+    };
+
+    if (currentUser.tier === "PRO") {
+      setTimeout(async () => {
         try {
-          // We can't get devices without a valid token
-          // For now, parse device list from error message or show empty
-          setDeviceLimitError({
-            isDeviceLimitError: true,
-            message: errorMessage,
-            devices: [], // Will be populated by LoginPage via separate call
-            tier,
-            deviceLimit,
-          });
-        } catch {
-          // If can't get devices, still show error with empty list
-          setDeviceLimitError({
-            isDeviceLimitError: true,
-            message: errorMessage,
-            devices: [],
-            tier,
-            deviceLimit,
-          });
+          const uploaded = await syncService.initialUpload(email);
+          if (uploaded > 0) {
+            console.log(`Initial cloud upload completed: ${uploaded} records`);
+          }
+        } catch (err) {
+          console.error("Initial upload failed:", err);
         }
-      }
-      throw error; // Re-throw to let caller handle
+      }, 1000);
     }
   };
 
@@ -189,21 +263,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDeviceLimitError(null);
   };
 
-  // Register function
   const register = async (email: string, password: string, name: string) => {
-    await registerMutation({ email, password, name });
-    // After registration, auto-login
-    await login(email, password);
+    const { data, error } = await supabase.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: {
+        data: { name, tier: "FREE" },
+      },
+    });
+
+    if (error) throw new Error(error.message);
+
+    if (data.user) {
+      await trackDevice(data.user.id);
+    }
   };
 
-  // Logout function
   const logout = async () => {
-    if (token) {
-      await logoutMutation({ token });
+    const userId = user?.id;
+    const deviceId = getDeviceId();
+
+    if (userId) {
+      await supabase.from("devices").delete().eq("user_id", userId).eq("device_id", deviceId);
     }
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setUser(null);
+
+    await supabase.auth.signOut();
   };
 
   const value = {

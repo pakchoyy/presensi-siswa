@@ -8,6 +8,7 @@ import { syncService } from "@/services/sync.service";
 import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
 import { generateId } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import {
   Settings,
   ArrowUpCircle,
@@ -102,27 +103,17 @@ export function PengaturanPage() {
         const status = await licenseService.getStatus(teacherId);
         if (cancelled) return;
 
-        // If PRO but no local license record, auto-fetch from Convex
+        // If PRO but no local license record, auto-fetch from Supabase
         if (!status.aktif && teacherTier === Tier.PRO && teacherEmail) {
           try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            const { data: licenseData } = await supabase
+              .from("licenses")
+              .select("email, tanggal_berakhir, status")
+              .eq("email", teacherEmail.toLowerCase().trim())
+              .eq("status", "digunakan")
+              .maybeSingle();
 
-            const res = await fetch(`${import.meta.env.VITE_CONVEX_URL}/api/query`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                path: "licenses:checkEmail",
-                args: { email: teacherEmail },
-                format: "json",
-              }),
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-
-            if (cancelled) return;
-            const data = await res.json();
-            if (data.value?.tanggalBerakhir) {
+            if (licenseData?.tanggal_berakhir) {
               const now = Date.now();
               const license: License = {
                 id: generateId(),
@@ -130,7 +121,7 @@ export function PengaturanPage() {
                 emailAktivasi: teacherEmail,
                 kodeLisensi: "AUTO-RECOVERED",
                 tanggalAktivasi: now,
-                tanggalBerakhir: data.value.tanggalBerakhir,
+                tanggalBerakhir: licenseData.tanggal_berakhir,
                 statusLisensi: "Aktif",
               };
               await licenseRepo.save(license);
@@ -142,7 +133,6 @@ export function PengaturanPage() {
             }
           } catch (err) {
             console.error("Auto-recover license failed:", err);
-            // Fallback — show what we have
           }
         }
 
@@ -326,8 +316,8 @@ export function PengaturanPage() {
   const handleDeviceLogin = async () => {
     if (!teacher) return;
     
-    const email = loginEmail.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
+    const emailAddress = loginEmail.trim().toLowerCase();
+    if (!emailAddress || !emailAddress.includes('@')) {
       toast("❌ Email tidak valid");
       return;
     }
@@ -335,36 +325,33 @@ export function PengaturanPage() {
     setConnecting(true);
     
     try {
-      // Check if email is PRO via checkEmail query
-      const response = await fetch(
-        `${import.meta.env.VITE_CONVEX_URL}/api/query`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "licenses:checkEmail",
-            args: { email },
-            format: "json",
-          }),
+      const { data: licenseData } = await supabase
+        .from("licenses")
+        .select("tanggal_berakhir, status")
+        .eq("email", emailAddress)
+        .eq("status", "digunakan")
+        .maybeSingle();
+
+      if (!licenseData) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("email", emailAddress)
+          .maybeSingle();
+
+        if (!profile || profile.tier !== "PRO") {
+          toast("❌ Email tidak ditemukan atau belum PRO");
+          setConnecting(false);
+          return;
         }
-      );
-      
-      const data = await response.json();
-      
-      if (data.value?.tier !== "PRO") {
-        toast("❌ Email tidak ditemukan atau belum PRO");
-        setConnecting(false);
-        return;
       }
       
-      // Set cloud email
-      localStorage.setItem("presensi_cloud_email", email);
+      localStorage.setItem("presensi_cloud_email", emailAddress);
       
       toast("⏳ Menghubungkan ke cloud...");
       
-      // Download data from cloud
       try {
-        const downloaded = await syncService.downloadAll(email);
+        const downloaded = await syncService.downloadAll(emailAddress);
         if (downloaded > 0) {
           toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
         } else {
@@ -375,11 +362,9 @@ export function PengaturanPage() {
         toast("⚠️ Download gagal, tapi cloud sync tetap aktif");
       }
       
-      // Save license record locally with expiry from Convex
       const now = Date.now();
-      const expiry = data.value?.tanggalBerakhir || (now + 365 * 24 * 60 * 60 * 1000);
+      const expiry = licenseData?.tanggal_berakhir || (now + 365 * 24 * 60 * 60 * 1000);
       
-      // Validate teacher.id before using in Dexie queries
       if (!teacher?.id) {
         toast("⚠️ Error: Invalid teacher data");
         return;
@@ -390,7 +375,7 @@ export function PengaturanPage() {
         const license: License = {
           id: generateId(),
           guruId: teacher.id,
-          emailAktivasi: email,
+          emailAktivasi: emailAddress,
           kodeLisensi: "DEVICE-CONNECTED",
           tanggalAktivasi: now,
           tanggalBerakhir: expiry,
@@ -399,11 +384,10 @@ export function PengaturanPage() {
         await licenseRepo.save(license);
       }
 
-      // Update local teacher to PRO
       await teacherRepo.update(teacher.id, {
         ...teacher,
         tier: Tier.PRO,
-        email,
+        email: emailAddress,
       });
       
       await refreshTeacher();

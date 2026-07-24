@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Smartphone, Clock, Loader2 } from "lucide-react";
-import { convexClient } from "@/lib/convex";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/shared/Toast";
 
 interface Device {
@@ -33,19 +33,20 @@ export function DeviceLimitModal({
 
   if (!isOpen) return null;
 
-  const handleLogout = async (sessionId: string) => {
-    setLoggingOut(sessionId);
+  const handleLogout = async (deviceId: string) => {
+    setLoggingOut(deviceId);
     try {
-      const token = localStorage.getItem("presensi_auth_token");
-      if (!token) {
-        toast("Token tidak ditemukan");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast("Session tidak ditemukan");
         return;
       }
 
-      await (convexClient as any).mutation("users:logoutDevice", {
-        token,
-        sessionId,
-      });
+      await supabase
+        .from("devices")
+        .delete()
+        .eq("user_id", session.user.id)
+        .eq("device_id", deviceId);
 
       toast("Perangkat berhasil logout");
       onDeviceLoggedOut();
@@ -57,7 +58,6 @@ export function DeviceLimitModal({
   };
 
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
@@ -68,20 +68,16 @@ export function DeviceLimitModal({
     if (minutes < 60) return `${minutes} menit lalu`;
     if (hours < 24) return `${hours} jam lalu`;
     if (days < 7) return `${days} hari lalu`;
-    return date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    return new Date(timestamp).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
   };
 
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] animate-fade-in"
         onClick={onClose}
       />
-
-      {/* Modal */}
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-[var(--card-bg)] rounded-2xl shadow-xl z-[101] border border-[var(--border)] animate-slide-up">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-bold">Batas Perangkat Tercapai</h2>
@@ -97,13 +93,11 @@ export function DeviceLimitModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4">
           <p className="text-[0.8rem] text-[var(--text-light)] mb-4">
             Logout dari salah satu perangkat untuk melanjutkan login, atau upgrade ke PRO untuk 3 perangkat.
           </p>
 
-          {/* Device List */}
           <div className="space-y-2">
             {devices.map((device) => (
               <div
@@ -123,11 +117,11 @@ export function DeviceLimitModal({
                   </div>
                 </div>
                 <button
-                  onClick={() => handleLogout(device._id)}
+                  onClick={() => handleLogout(device.deviceId)}
                   disabled={loggingOut !== null}
                   className="flex-shrink-0 px-3 py-1.5 text-[0.75rem] bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
                 >
-                  {loggingOut === device._id ? (
+                  {loggingOut === device.deviceId ? (
                     <>
                       <Loader2 size={12} className="animate-spin" />
                       <span>Logout...</span>
@@ -141,11 +135,10 @@ export function DeviceLimitModal({
           </div>
         </div>
 
-        {/* Footer */}
         {tier === "FREE" && (
           <div className="p-4 border-t border-[var(--border)] bg-blue-50 dark:bg-blue-950/20">
             <p className="text-[0.75rem] text-blue-600 dark:text-blue-400">
-              💡 Upgrade ke PRO untuk menggunakan hingga 3 perangkat sekaligus
+              Upgrade ke PRO untuk menggunakan hingga 3 perangkat sekaligus
             </p>
           </div>
         )}

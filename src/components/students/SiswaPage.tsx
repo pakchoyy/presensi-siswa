@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb } from "lucide-react";
@@ -16,6 +16,7 @@ import { siswaToImportResult } from "@/services/import.service";
 import type { ImportResult } from "@/services/import.service";
 import { Tier } from "@/types/enums";
 import { MAX_STUDENTS_FREE } from "@/lib/constants";
+import { getCache, setCache, clearCache } from "@/lib/cache";
 
 function formatKelasLabel(namaKelas: string): string {
   if (namaKelas.toLowerCase().startsWith("kelas")) {
@@ -54,6 +55,16 @@ export function SiswaPage() {
   const [selectedKelas, setSelectedKelas] = useState<Classroom | null>(classrooms.length <= 1 ? activeClassroom : null);
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 300);
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showImportUpdate, setShowImportUpdate] = useState(false);
@@ -85,9 +96,19 @@ export function SiswaPage() {
 
   useEffect(() => { loadCounts(); }, [loadCounts]);
 
-  const loadStudents = useCallback(async (kelasId: number) => {
+  const loadStudents = useCallback(async (kelasId: number, forceReload = false) => {
+    const cacheKey = `students_${kelasId}`;
+    if (!forceReload) {
+      const cached = getCache<Student[]>(cacheKey);
+      if (cached) {
+        setStudents(cached);
+        return;
+      }
+    }
+
     const data = await studentRepo.getByClass(kelasId);
     setStudents(data);
+    setCache(cacheKey, data);
   }, []);
 
   useEffect(() => {
@@ -108,6 +129,8 @@ export function SiswaPage() {
     setView("kelas");
     setSelectedKelas(null);
     setSearch("");
+    setDebouncedSearch("");
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     loadCounts();
   };
 
@@ -151,7 +174,7 @@ export function SiswaPage() {
   };
 
   const filtered = students.filter((s) =>
-    s.nama.toLowerCase().includes(search.toLowerCase())
+    s.nama.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const handleSave = async () => {
@@ -183,7 +206,8 @@ export function SiswaPage() {
       await studentRepo.save(s);
       setModalNama("");
       setShowModal(false);
-      await loadStudents(targetKelas.id);
+      clearCache(`students_${targetKelas.id}`);
+      await loadStudents(targetKelas.id, true);
       await loadCounts();
       toast("Siswa berhasil ditambahkan");
     } catch (error) {
@@ -244,8 +268,8 @@ export function SiswaPage() {
     
     // Reload all classes' student counts
     await loadCounts();
-    // Reload current class students
-    await loadStudents(targetKelas.id);
+    clearCache(`students_${targetKelas.id}`);
+    await loadStudents(targetKelas.id, true);
     
     // Show success with breakdown
     const classCounts: Record<string, number> = {};
@@ -284,7 +308,8 @@ export function SiswaPage() {
       
       await studentRepo.save(updated);
       setEditTarget(null);
-      await loadStudents(editTarget.kelasId);
+      clearCache(`students_${editTarget.kelasId}`);
+      await loadStudents(editTarget.kelasId, true);
       toast("✅ Data siswa diperbarui");
     } catch (error) {
       toast("❌ Gagal mengupdate siswa");
@@ -302,7 +327,8 @@ export function SiswaPage() {
       await studentRepo.softDelete(deleteTarget.id);
       const kelasId = deleteTarget.kelasId;
       setDeleteTarget(null);
-      await loadStudents(kelasId);
+      clearCache(`students_${kelasId}`);
+      await loadStudents(kelasId, true);
       await loadCounts();
       toast("Siswa dihapus");
     } catch (error) {
@@ -565,7 +591,7 @@ export function SiswaPage() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Cari nama siswa..."
           className="w-full pl-9 pr-[11px] py-[10px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.85rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] focus:shadow-[0_0_0_3px_rgba(14,165,160,0.12)] font-[inherit]"
         />

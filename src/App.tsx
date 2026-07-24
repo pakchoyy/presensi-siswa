@@ -23,8 +23,6 @@ import { UpgradePage } from "@/components/pro/UpgradePage";
 import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
 import { PageName } from "@/types/enums";
-import { ConvexProvider } from "convex/react";
-import { convexClient } from "@/lib/convex";
 
 function PageRouter() {
   const { activePage, setupSelesai, loading } = useApp();
@@ -115,16 +113,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ConvexProvider client={convexClient}>
-      <AuthProvider>
-        <CloudAuthProvider>
-          <AppProvider>
-            <ToastProvider>
-              <AppContent />
-            </ToastProvider>
-          </AppProvider>
-        </CloudAuthProvider>
-      </AuthProvider>
-    </ConvexProvider>
+    <AuthProvider>
+      <CloudAuthProvider>
+        <AppProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </AppProvider>
+      </CloudAuthProvider>
+    </AuthProvider>
   );
 }

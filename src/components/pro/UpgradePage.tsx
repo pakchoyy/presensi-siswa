@@ -9,6 +9,7 @@ import { useToast } from "@/components/shared/Toast";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { Tier } from "@/types/enums";
 import { generateId } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import Confetti from "react-confetti";
 import { PageName } from "@/types/enums";
 
@@ -22,7 +23,6 @@ export function UpgradePage() {
   const [emailError, setEmailError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [checking, setChecking] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const validateEmail = (email: string) => {
@@ -48,7 +48,7 @@ export function UpgradePage() {
 
   const handleCheckEmail = async () => {
     setErrorMessage("");
-    
+
     if (!validateEmail(email)) {
       return;
     }
@@ -61,29 +61,22 @@ export function UpgradePage() {
     setChecking(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_CONVEX_URL}/api/query`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "licenses:checkEmail",
-            args: { email: email.trim() },
-            format: "json",
-          }),
-        }
-      );
+      const normalizedEmail = email.trim().toLowerCase();
 
-      const data = await response.json();
+      const { data: licenseData } = await supabase
+        .from("licenses")
+        .select("tanggal_berakhir, status")
+        .eq("email", normalizedEmail)
+        .eq("status", "digunakan")
+        .maybeSingle();
 
-      if (data.value?.tier === "PRO") {
-        // Save license record locally with expiry from Convex
+      if (licenseData) {
         const now = Date.now();
-        const expiry = data.value?.tanggalBerakhir || (now + 365 * 24 * 60 * 60 * 1000);
+        const expiry = licenseData.tanggal_berakhir || (now + 365 * 24 * 60 * 60 * 1000);
         const license: License = {
           id: generateId(),
           guruId: teacher.id,
-          emailAktivasi: email.trim(),
+          emailAktivasi: normalizedEmail,
           kodeLisensi: "EMAIL-VERIFIED",
           tanggalAktivasi: now,
           tanggalBerakhir: expiry,
@@ -91,29 +84,53 @@ export function UpgradePage() {
         };
         await licenseRepo.save(license);
 
-        // Update teacher tier di local
         await teacherRepo.update(teacher.id, {
           ...teacher,
           tier: Tier.PRO,
-          email: email.trim(),
+          email: normalizedEmail,
         });
 
-        // Refresh context
         await refreshTeacher();
 
         toast("✅ Email terverifikasi! Kamu sekarang PRO 🎉");
         setErrorMessage("");
-        
-        // Show confetti
+
         setShowConfetti(true);
-        
-        // Redirect to Pengaturan after 2 seconds
+
         setTimeout(() => {
           setShowConfetti(false);
           setActivePage(PageName.PENGATURAN);
         }, 2000);
       } else {
-        setErrorMessage("Email belum terdaftar sebagai PRO. Silakan hubungi admin via WhatsApp.");
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (profile && profile.tier === "PRO") {
+          const now = Date.now();
+          const license: License = {
+            id: generateId(),
+            guruId: teacher.id,
+            emailAktivasi: normalizedEmail,
+            kodeLisensi: "EMAIL-VERIFIED",
+            tanggalAktivasi: now,
+            tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
+            statusLisensi: "Aktif",
+          };
+          await licenseRepo.save(license);
+          await teacherRepo.update(teacher.id, { ...teacher, tier: Tier.PRO, email: normalizedEmail });
+          await refreshTeacher();
+          toast("✅ Email terverifikasi! Kamu sekarang PRO 🎉");
+          setShowConfetti(true);
+          setTimeout(() => {
+            setShowConfetti(false);
+            setActivePage(PageName.PENGATURAN);
+          }, 2000);
+        } else {
+          setErrorMessage("Email belum terdaftar sebagai PRO. Silakan hubungi admin via WhatsApp.");
+        }
       }
     } catch (error) {
       console.error("Check email error:", error);
@@ -139,7 +156,6 @@ export function UpgradePage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
-      {/* Hero Banner */}
       <div className="bg-gradient-to-br from-[#0ea5a0] to-[#2d6a7f] rounded-2xl p-6 mb-3 text-white text-center">
         <ArrowUpCircle size={48} className="mx-auto mb-3 opacity-90" />
         <h2 className="text-[1.3rem] font-extrabold mb-2">Upgrade ke PRO</h2>
@@ -164,7 +180,6 @@ export function UpgradePage() {
         </button>
       </div>
 
-      {/* Sudah Beli PRO */}
       <div className="bg-[rgba(14,165,160,0.08)] border-2 border-[#0ea5a0] rounded-xl p-4 mb-3">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-10 h-10 rounded-full bg-[#0ea5a0] flex items-center justify-center">
@@ -224,7 +239,6 @@ export function UpgradePage() {
         )}
       </div>
 
-      {/* Fitur PRO */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-4 mb-3">
         <div className="text-[0.85rem] font-bold mb-3 flex items-center gap-2">
           <Crown size={16} className="text-[#f59e0b]" />
@@ -243,7 +257,6 @@ export function UpgradePage() {
         </div>
       </div>
 
-      {/* Perbandingan */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-2">
           <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan
@@ -264,7 +277,6 @@ export function UpgradePage() {
         </div>
       </div>
       
-      {/* Confetti Effect */}
       {showConfetti && (
         <Confetti
           width={window.innerWidth}

@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { DeviceLimitModal } from "./DeviceLimitModal";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 
 export function LoginPage() {
-  const { login, register, loading, deviceLimitError, clearDeviceLimitError, token } = useAuth();
+  const { login, register, loading, deviceLimitError, clearDeviceLimitError } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,7 +12,6 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [devices, setDevices] = useState<any[]>([]);
   
   // Check for pre-filled email from URL params
   useEffect(() => {
@@ -24,25 +21,11 @@ export function LoginPage() {
     
     if (emailParam) {
       setEmail(emailParam);
-      // If coming from activation, suggest register mode
       if (refParam === 'activation') {
         setMode('register');
       }
     }
   }, []);
-
-  // Query active devices when device limit error occurs
-  const activeDevices = useQuery(
-    api.users.getActiveDevices,
-    token && deviceLimitError ? { email: email } : "skip"
-  );
-
-  // Update devices when query completes
-  useEffect(() => {
-    if (activeDevices) {
-      setDevices(activeDevices as any[]);
-    }
-  }, [activeDevices]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,7 +225,7 @@ export function LoginPage() {
         <DeviceLimitModal
           isOpen={true}
           onClose={clearDeviceLimitError}
-          devices={devices.length > 0 ? devices : deviceLimitError.devices}
+          devices={deviceLimitError.devices}
           tier={deviceLimitError.tier}
           deviceLimit={deviceLimitError.deviceLimit}
           onDeviceLoggedOut={handleDeviceLoggedOut}

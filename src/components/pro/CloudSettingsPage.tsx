@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
+import { listCloudBackups, deleteCloudBackup } from "@/services/backup.service";
 import { useToast } from "@/components/shared/Toast";
 import { useApp } from "@/contexts/AppContext";
 import { 
@@ -18,28 +18,48 @@ export function CloudSettingsPage() {
   const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [activeDevices, setActiveDevices] = useState<any[]>([]);
+  const [cloudBackups, setCloudBackups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Queries
-  const activeDevices = useQuery(api.users.getActiveDevices, 
-    cloudEmail ? { email: cloudEmail } : "skip"
-  );
-  const syncStatus = useQuery(api.sync.getSyncStatus, 
-    cloudEmail ? { email: cloudEmail } : "skip"
-  );
-  const cloudBackups = useQuery(api.backup.listCloudBackups,
-    cloudEmail ? { email: cloudEmail } : "skip"
-  );
+  useEffect(() => {
+    if (!cloudEmail || !cloudUser) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [cloudEmail, cloudUser]);
 
-  // Mutations
-  const deleteBackup = useMutation(api.backup.deleteCloudBackup);
+  async function loadData() {
+    if (!cloudUser) return;
+    setLoading(true);
+    try {
+      const { data: devices } = await supabase
+        .from("devices")
+        .select("id, device_id, device_name, last_active_at, created_at")
+        .eq("user_id", cloudUser.id);
 
-  // Handlers
+      setActiveDevices(devices || []);
+
+      try {
+        const backups = await listCloudBackups(cloudEmail!);
+        setCloudBackups(backups);
+      } catch {
+        setCloudBackups([]);
+      }
+    } catch (err) {
+      console.error("Failed to load cloud data:", err);
+    }
+    setLoading(false);
+  }
+
   const handleManualSync = async () => {
     if (!cloudEmail) return;
     setSyncing(true);
     try {
       const result = await syncService.syncAll(cloudEmail);
       toast(`✅ Sync selesai: ${result.uploaded} upload, ${result.downloaded} download`);
+      await loadData();
     } catch (error) {
       toast("❌ Sync gagal. Coba lagi.");
     } finally {
@@ -47,13 +67,18 @@ export function CloudSettingsPage() {
     }
   };
 
-  const handleDeleteBackup = async (backupId: any) => {
+  const handleDeleteBackup = async (backupId: string) => {
     if (!cloudEmail) return;
     setDeleting(backupId);
     setDeleteConfirmId(null);
     try {
-      await deleteBackup({ email: cloudEmail, backupId });
-      toast("✅ Backup dihapus");
+      const success = await deleteCloudBackup(cloudEmail, backupId);
+      if (success) {
+        toast("✅ Backup dihapus");
+        await loadData();
+      } else {
+        toast("❌ Gagal hapus backup");
+      }
     } catch (error) {
       toast("❌ Gagal hapus backup");
     } finally {
@@ -83,7 +108,6 @@ export function CloudSettingsPage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
-      {/* Header with Back Button */}
       <button
         onClick={() => setActivePage(PageName.PENGATURAN)}
         className="flex items-center gap-2 text-[0.78rem] font-bold text-[#0ea5a0] mb-3 bg-transparent border-none cursor-pointer"
@@ -95,27 +119,26 @@ export function CloudSettingsPage() {
         Cloud Sync & Device Management
       </div>
 
-      {/* Section 1: Active Devices */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
-          <Smartphone size={15} /> Active Devices ({activeDevices?.length || 0}/3)
+          <Smartphone size={15} /> Active Devices ({activeDevices.length}/3)
         </div>
         
-        {activeDevices && activeDevices.length > 0 ? (
+        {activeDevices.length > 0 ? (
           <div className="space-y-2">
             {activeDevices.map((device: any) => (
-              <div key={device.deviceId} className="flex items-center gap-3 p-3 bg-[var(--input-bg)] rounded-lg border border-[var(--border)]">
+              <div key={device.id || device.device_id} className="flex items-center gap-3 p-3 bg-[var(--input-bg)] rounded-lg border border-[var(--border)]">
                 <Smartphone size={16} className="text-[var(--text-light)] flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-[0.78rem] font-semibold truncate">
-                    {device.deviceName}
+                    {device.device_name || device.deviceName}
                   </div>
                   <div className="text-[0.68rem] text-[var(--text-light)]">
-                    Last active: {formatRelativeTime(device.lastActiveAt)}
+                    Last active: {formatRelativeTime(device.last_active_at || device.lastActiveAt)}
                   </div>
                 </div>
                 <span className="text-[0.65rem] text-[var(--text-light)] flex-shrink-0">
-                  {device.deviceId.substring(0, 8)}...
+                  {(device.device_id || device.deviceId || "").substring(0, 8)}...
                 </span>
               </div>
             ))}
@@ -206,13 +229,12 @@ export function CloudSettingsPage() {
         </div>
       </div>
 
-      {/* Section 3: Cloud Backups */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
           <Download size={15} /> Cloud Backups
         </div>
         
-        {cloudBackups && cloudBackups.length > 0 ? (
+        {cloudBackups.length > 0 ? (
           <div className="space-y-2">
             {cloudBackups.map((backup: any) => (
               <div key={backup._id} className="flex items-center gap-3 p-3 bg-[var(--input-bg)] rounded-lg border border-[var(--border)]">
@@ -221,7 +243,7 @@ export function CloudSettingsPage() {
                     {backup.label}
                   </div>
                   <div className="text-[0.68rem] text-[var(--text-light)]">
-                    {backup.totalEntitas} items • {formatBytes(backup.size)}
+                    {backup.totalEntitas} items
                   </div>
                 </div>
                 <button
@@ -246,8 +268,7 @@ export function CloudSettingsPage() {
         )}
       </div>
 
-      {/* Multi-Device Instructions */}
-      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px]">
+      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px] mt-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
           <Info size={15} className="text-blue-600 dark:text-blue-400" />
           <span className="text-blue-900 dark:text-blue-100">
@@ -277,8 +298,7 @@ export function CloudSettingsPage() {
         </div>
       </div>
       
-      {/* Delete Backup Modal */}
-      {deleteConfirmId && cloudBackups && (
+      {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setDeleteConfirmId(null)}>
           <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
@@ -310,8 +330,8 @@ export function CloudSettingsPage() {
   );
 }
 
-// Helper functions
 function formatRelativeTime(timestamp: number): string {
+  if (!timestamp) return "Unknown";
   const now = Date.now();
   const diff = now - timestamp;
   const minutes = Math.floor(diff / 60000);

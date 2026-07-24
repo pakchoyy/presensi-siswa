@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { convexClient } from "@/lib/convex";
+import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
 
 interface CloudUser {
@@ -27,58 +25,54 @@ const CLOUD_EMAIL_KEY = "presensi_cloud_email";
 export function CloudAuthProvider({ children }: { children: ReactNode }) {
   const [cloudEmail, setCloudEmailState] = useState<string | null>(() => {
     const stored = localStorage.getItem(CLOUD_EMAIL_KEY);
-    
-    // Force clear if stored value is invalid or corrupt
-    if (!stored || stored === 'null' || stored === 'undefined' || !stored.trim()) {
+
+    if (!stored || stored === "null" || stored === "undefined" || !stored.trim()) {
       localStorage.removeItem(CLOUD_EMAIL_KEY);
       return null;
     }
-    
-    // Validate email format
-    if (!stored.includes('@') || stored.length < 5) {
-      console.warn('[CloudAuth] Invalid email format, clearing:', stored);
+
+    if (!stored.includes("@") || stored.length < 5) {
+      console.warn("[CloudAuth] Invalid email format, clearing:", stored);
       localStorage.removeItem(CLOUD_EMAIL_KEY);
       return null;
     }
-    
+
     return stored.trim();
   });
 
-  // Query user by email - only if valid, with error boundary
-  let cloudUser;
-  try {
-    cloudUser = useQuery(
-      api.users.getUserByEmail,
-      cloudEmail && cloudEmail.trim() && cloudEmail.includes('@') ? { email: cloudEmail } : "skip"
-    );
-  } catch (error) {
-    console.error('[CloudAuth] getUserByEmail error:', error);
-    cloudUser = null;
-  }
-
+  const [cloudUser, setCloudUser] = useState<CloudUser | null>(null);
+  const [loading, setLoading] = useState(false);
   const prevConnected = useRef(false);
-  const ensuringUser = useRef(false);
 
-  // Ensure user exists in Convex when email is set but user is missing
   useEffect(() => {
-    if (!cloudEmail || cloudUser !== null || cloudUser === undefined) return;
-    if (ensuringUser.current) return;
-    ensuringUser.current = true;
-    (convexClient as any).mutation("users:ensureUser", {
-      email: cloudEmail,
-      tier: "FREE",
-    }).then(() => {
-      ensuringUser.current = false;
-    }).catch(() => {
-      ensuringUser.current = false;
-    });
-  }, [cloudEmail, cloudUser]);
+    if (!cloudEmail) return;
 
-  // Force sync when cloud connection becomes active
+    const fetchUser = async () => {
+      setLoading(true);
+      const normalizedEmail = cloudEmail.toLowerCase().trim();
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, name, tier")
+        .eq("email", normalizedEmail)
+        .limit(1);
+
+      if (profiles && profiles.length > 0) {
+        const p = profiles[0];
+        setCloudUser({ id: p.id, email: p.email, name: p.name, tier: p.tier });
+      } else {
+        setCloudUser(null);
+      }
+
+      setLoading(false);
+    };
+
+    fetchUser();
+  }, [cloudEmail]);
+
   useEffect(() => {
     const isConnected = !!cloudUser;
     if (isConnected && !prevConnected.current && cloudEmail) {
-      // Just connected - trigger full sync
       const normalized = cloudEmail.toLowerCase().trim();
       if (normalized !== cloudEmail) {
         localStorage.setItem(CLOUD_EMAIL_KEY, normalized);
@@ -98,13 +92,14 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
   const clearCloudEmail = () => {
     localStorage.removeItem(CLOUD_EMAIL_KEY);
     setCloudEmailState(null);
+    setCloudUser(null);
   };
 
   const value = {
     cloudEmail,
-    cloudUser: cloudUser || null,
+    cloudUser,
     isCloudConnected: !!cloudUser,
-    loading: cloudEmail !== null && cloudUser === undefined,
+    loading: cloudEmail !== null && loading,
     setCloudEmail,
     clearCloudEmail,
   };

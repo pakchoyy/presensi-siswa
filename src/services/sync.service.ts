@@ -1,22 +1,28 @@
 import { db } from "@/repositories/dexie/db";
-import { convexClient } from "@/lib/convex";
+import { supabase } from "@/lib/supabase";
 
 export type SyncStatus = "tersinkron" | "menyinkronkan" | "menunggu" | "error";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
 
-// Get last sync timestamp from localStorage
 function getLastSyncTimestamp(): number {
   const stored = localStorage.getItem(LAST_SYNC_KEY);
   return stored ? parseInt(stored) : 0;
 }
 
-// Save last sync timestamp to localStorage
 function saveLastSyncTimestamp(timestamp: number) {
   localStorage.setItem(LAST_SYNC_KEY, timestamp.toString());
 }
 
-// Get data changed since timestamp
+async function getUserIdByEmail(email: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+  return data?.id || null;
+}
+
 async function getChangedData(since: number) {
   const tables = [
     "schools",
@@ -33,7 +39,6 @@ async function getChangedData(since: number) {
 
   for (const table of tables) {
     try {
-      // Get all records modified after 'since' timestamp
       const records = await db.table(table).toArray();
       changes[table] = records.filter((r: any) => {
         const modifiedAt = r.diubahPada || r.dibuatPada || 0;
@@ -48,12 +53,23 @@ async function getChangedData(since: number) {
   return changes;
 }
 
+const CLOUD_TABLE_MAP: Record<string, string> = {
+  schools: "cloud_schools",
+  teachers: "cloud_teachers",
+  academicYears: "cloud_academic_years",
+  classrooms: "cloud_classrooms",
+  students: "cloud_students",
+  attendanceSessions: "cloud_attendance_sessions",
+  attendanceRecords: "cloud_attendance_records",
+  calendarEntries: "cloud_calendar_entries",
+};
+
 export const syncService = {
-  /**
-   * Initial upload - First time sync from local to cloud
-   */
   async initialUpload(email: string): Promise<number> {
     try {
+      const userId = await getUserIdByEmail(email);
+      if (!userId) return 0;
+
       const schools = await db.table("schools").toArray();
       const teachers = await db.table("teachers").toArray();
       const academicYears = await db.table("academicYears").toArray();
@@ -63,33 +79,74 @@ export const syncService = {
       const attendanceRecords = await db.table("attendanceRecords").toArray();
       const calendarEntries = await db.table("calendarEntries").toArray();
 
-      const result = await (convexClient as any).mutation("sync:initialUpload", {
-        email,
-        schools,
-        teachers,
-        academicYears,
-        classrooms,
-        students,
-        attendanceSessions,
-        attendanceRecords,
-        calendarEntries,
-      });
+      const now = Date.now();
 
-      return (result as any).totalUploaded || 0;
+      const entities: [string, any[]][] = [
+        ["cloud_schools", schools],
+        ["cloud_teachers", teachers],
+        ["cloud_academic_years", academicYears],
+        ["cloud_classrooms", classrooms],
+        ["cloud_students", students],
+        ["cloud_attendance_sessions", attendanceSessions],
+        ["cloud_attendance_records", attendanceRecords],
+        ["cloud_calendar_entries", calendarEntries],
+      ];
+
+      let totalUploaded = 0;
+
+      for (const [tableName, rows] of entities) {
+        const batch = rows.map((row: any) => ({
+          user_id: userId,
+          local_id: row.id,
+          nama: row.nama,
+          jenjang: row.jenjang,
+          logo_url: row.logoUrl || null,
+          alamat: row.alamat || null,
+          email: row.email,
+          sekolah_id: row.sekolahId || 0,
+          tier: row.tier || "FREE",
+          guru_id: row.guruId || 0,
+          label: row.label,
+          tanggal_mulai: row.tanggalMulai,
+          tanggal_selesai: row.tanggalSelesai,
+          semester_aktif: row.semesterAktif,
+          tahun_ajaran_id: row.tahunAjaranId || 0,
+          status_aktif: row.statusAktif,
+          kelas_id: row.kelasId || 0,
+          nisn: row.nisn || null,
+          jenis_kelamin: row.jenisKelamin || null,
+          urutan: row.urutan || 0,
+          tanggal: row.tanggal,
+          sesi_id: row.sesiId || 0,
+          siswa_id: row.siswaId || 0,
+          status: row.status,
+          catatan: row.catatan || null,
+          keterangan: row.keterangan || null,
+          sumber: row.sumber,
+          dibuat_pada: row.dibuatPada || now,
+          diubah_pada: row.diubahPada || now,
+          last_synced_at: now,
+          version: 1,
+        }));
+
+        if (batch.length > 0) {
+          const { error } = await supabase.from(tableName).insert(batch);
+          if (!error) totalUploaded += batch.length;
+        }
+      }
+
+      return totalUploaded;
     } catch (error) {
       console.error("Initial upload failed:", error);
       return 0;
     }
   },
 
-  /**
-   * Download all data from cloud and merge with local
-   */
   async downloadAll(email: string): Promise<number> {
     try {
-      const cloudData = await (convexClient as any).query("sync:downloadAll", { email });
+      const userId = await getUserIdByEmail(email);
+      if (!userId) return 0;
 
-      let count = 0;
       const tables = [
         "schools",
         "teachers",
@@ -101,57 +158,51 @@ export const syncService = {
         "calendarEntries",
       ];
 
+      const cloudTables = tables.map((t) => CLOUD_TABLE_MAP[t]);
+      let count = 0;
+
       await db.transaction("rw", tables.map((t) => db.table(t)), async () => {
-        // Process each entity type
-        for (const table of tables) {
-          const cloudRows = (cloudData as any)[table] as any[];
+        for (let i = 0; i < tables.length; i++) {
+          const { data: cloudRows } = await supabase
+            .from(cloudTables[i])
+            .select("*")
+            .eq("user_id", userId);
+
           if (!cloudRows || cloudRows.length === 0) continue;
 
           for (const cloudRow of cloudRows) {
-            // Map cloud data back to local format
-            const localData = {
-              id: cloudRow.localId,
-              ...cloudRow,
-            };
+            const localId = cloudRow.local_id;
+            if (!localId || typeof localId !== "number" || isNaN(localId)) continue;
 
-            // Remove cloud-specific fields
-            delete (localData as any).userId;
-            delete (localData as any).localId;
-            delete (localData as any).lastSyncedAt;
-            delete (localData as any).version;
-            delete (localData as any)._id;
-            delete (localData as any)._creationTime;
-
-            // Validate localData.id before using in Dexie query
-            if (!localData.id || typeof localData.id !== 'number' || isNaN(localData.id)) {
-              console.warn('Skipping invalid localData.id in downloadAll:', localData.id);
-              continue;
-            }
-
-            const existing = await db.table(table).get(localData.id);
+            const existing = await db.table(tables[i]).get(localId);
             if (existing) {
               const localTime = (existing as any).diubahPada || 0;
-              const cloudTime = (localData as any).diubahPada || 0;
-              if (cloudTime >= localTime) {
-                await db.table(table).put(localData);
-                count++;
-              }
-            } else {
-              await db.table(table).put(localData);
-              count++;
+              const cloudTime = cloudRow.diubah_pada || 0;
+              if (cloudTime < localTime) continue;
             }
+
+            const localData: any = { id: localId };
+            for (const [key, value] of Object.entries(cloudRow)) {
+              const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+              if (!["user_id", "local_id", "last_synced_at", "version", "id"].includes(key)) {
+                localData[camelKey] = value;
+              }
+            }
+
+            await db.table(tables[i]).put(localData);
+            count++;
           }
         }
 
-        // Process tombstones (deletions from other devices)
-        if (cloudData.tombstones && cloudData.tombstones.length > 0) {
-          for (const tomb of cloudData.tombstones) {
-            // Validate tomb.localId before using in Dexie delete
-            if (!tomb.localId || typeof tomb.localId !== 'number' || isNaN(tomb.localId)) {
-              console.warn('Skipping invalid tomb.localId in downloadAll:', tomb.localId);
-              continue;
-            }
-            await db.table(tomb.entityType).delete(tomb.localId);
+        const { data: tombstones } = await supabase
+          .from("cloud_tombstones")
+          .select("id, entity_type, local_id, deleted_at")
+          .eq("user_id", userId);
+
+        if (tombstones) {
+          for (const tomb of tombstones) {
+            if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+            await db.table(tomb.entity_type).delete(tomb.local_id);
           }
         }
       });
@@ -163,153 +214,153 @@ export const syncService = {
     }
   },
 
-  /**
-   * Get sync status from cloud
-   */
   async getSyncStatus(email: string) {
     try {
-      return await (convexClient as any).query("sync:getSyncStatus", { email });
+      const userId = await getUserIdByEmail(email);
+      if (!userId) return null;
+
+      const { data } = await supabase
+        .from("sync_metadata")
+        .select("id, entity_type, last_synced_at, sync_status, total_records")
+        .eq("user_id", userId);
+
+      return data;
     } catch (error) {
       console.error("Get sync status failed:", error);
       return null;
     }
   },
 
-  /**
-   * Incremental sync - only sync changed data
-   */
   async incrementalSync(email: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean }> {
     try {
+      const userId = await getUserIdByEmail(email);
+      if (!userId) return { uploaded: 0, downloaded: 0, hasChanges: false };
+
       const lastSync = getLastSyncTimestamp();
       const now = Date.now();
 
-      // Get local changes since last sync
       const localChanges = await getChangedData(lastSync);
-
-      // Get local tombstones (deletions to propagate)
       const localTombstones = await db.tombstones.toArray();
 
-      // Upload local changes + deletions
-      const uploadResult = await (convexClient as any).mutation("sync:incrementalUpload", {
-        email,
-        changes: localChanges,
-        deletions: localTombstones.map((t) => ({ entityType: t.entityType, localId: t.localId })),
-      });
+      let uploaded = 0;
 
-      // Download cloud changes since last sync
-      const cloudData = await (convexClient as any).query("sync:incrementalSync", {
-        email,
-        lastSyncedAt: lastSync,
-      });
+      for (const [table, rows] of Object.entries(localChanges)) {
+        const cloudTable = CLOUD_TABLE_MAP[table];
+        if (!cloudTable || rows.length === 0) continue;
 
-      let downloaded = 0;
-      const tables = [
-        "schools",
-        "teachers",
-        "academicYears",
-        "classrooms",
-        "students",
-        "attendanceSessions",
-        "attendanceRecords",
-        "calendarEntries",
-      ];
+        for (const row of rows) {
+          const { data: existing } = await supabase
+            .from(cloudTable)
+            .select("id, version, diubah_pada")
+            .eq("user_id", userId)
+            .eq("local_id", row.id)
+            .maybeSingle();
 
-      // Merge cloud changes to local
-      if (cloudData.hasChanges) {
-        await db.transaction("rw", tables.map((t) => db.table(t)), async () => {
-          for (const table of tables) {
-            const cloudRows = (cloudData as any)[table] as any[];
-            if (!cloudRows || cloudRows.length === 0) continue;
-
-            for (const cloudRow of cloudRows) {
-              const localData = {
-                id: cloudRow.localId,
-                ...cloudRow,
-              };
-
-              // Remove cloud-specific fields
-              delete (localData as any).userId;
-              delete (localData as any).localId;
-              delete (localData as any).lastSyncedAt;
-              delete (localData as any).version;
-              delete (localData as any)._id;
-              delete (localData as any)._creationTime;
-
-              // Validate localData.id before using in Dexie query
-              if (!localData.id || typeof localData.id !== 'number' || isNaN(localData.id)) {
-                console.warn('Skipping invalid localData.id in incrementalSync:', localData.id);
-                continue;
-              }
-
-              const existing = await db.table(table).get(localData.id);
-              if (existing) {
-                const localTime = (existing as any).diubahPada || 0;
-                const cloudTime = (localData as any).diubahPada || 0;
-                if (cloudTime >= localTime) {
-                  await db.table(table).put(localData);
-                  downloaded++;
-                }
-              } else {
-                await db.table(table).put(localData);
-                downloaded++;
-              }
+          if (existing) {
+            if ((row.diubahPada || 0) >= (existing.diubah_pada || 0)) {
+              await supabase
+                .from(cloudTable)
+                .update({ ...buildCloudRow(row, now), version: existing.version + 1 })
+                .eq("id", existing.id);
+              uploaded++;
             }
-          }
-        });
-
-        // Process cloud tombstones (deletions from other devices)
-        if (cloudData.tombstones && cloudData.tombstones.length > 0) {
-          for (const tomb of cloudData.tombstones) {
-            // Validate tomb.localId before using in Dexie delete
-            if (!tomb.localId || typeof tomb.localId !== 'number' || isNaN(tomb.localId)) {
-              console.warn('Skipping invalid tomb.localId in incrementalSync:', tomb.localId);
-              continue;
-            }
-            await db.table(tomb.entityType).delete(tomb.localId);
+          } else {
+            const { error } = await supabase
+              .from(cloudTable)
+              .insert({ ...buildCloudRow(row, now), user_id: userId, local_id: row.id });
+            if (!error) uploaded++;
           }
         }
       }
 
-      // Clear local tombstones after successful upload
-      await db.tombstones.clear();
+      for (const tomb of localTombstones) {
+        const cloudTable = CLOUD_TABLE_MAP[tomb.entityType];
+        if (cloudTable) {
+          await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
+          await supabase.from("cloud_tombstones").insert({
+            user_id: userId,
+            entity_type: tomb.entityType,
+            local_id: tomb.localId,
+            deleted_at: now,
+          });
+        }
+      }
 
-      // Update last sync timestamp
+      const tables = [
+        "schools", "teachers", "academicYears", "classrooms",
+        "students", "attendanceSessions", "attendanceRecords", "calendarEntries",
+      ];
+
+      let downloaded = 0;
+      let hasChanges = false;
+
+      for (const table of tables) {
+        const cloudTable = CLOUD_TABLE_MAP[table];
+        const { data: cloudRows } = await supabase
+          .from(cloudTable)
+          .select("*")
+          .eq("user_id", userId)
+          .gt("last_synced_at", lastSync);
+
+        if (cloudRows && cloudRows.length > 0) {
+          hasChanges = true;
+          for (const cloudRow of cloudRows) {
+            const localId = cloudRow.local_id;
+            if (!localId || isNaN(localId)) continue;
+
+            const existing = await db.table(table).get(localId);
+            if (existing) {
+              if ((cloudRow.diubah_pada || 0) >= ((existing as any).diubahPada || 0)) {
+                const localData = convertCloudToLocal(cloudRow);
+                await db.table(table).put(localData);
+                downloaded++;
+              }
+            } else {
+              const localData = convertCloudToLocal(cloudRow);
+              await db.table(table).put(localData);
+              downloaded++;
+            }
+          }
+        }
+      }
+
+      const { data: cloudTombstones } = await supabase
+        .from("cloud_tombstones")
+        .select("id, entity_type, local_id, deleted_at")
+        .eq("user_id", userId)
+        .gt("deleted_at", lastSync);
+
+      if (cloudTombstones && cloudTombstones.length > 0) {
+        hasChanges = true;
+        for (const tomb of cloudTombstones) {
+          if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+          await db.table(tomb.entity_type).delete(tomb.local_id);
+        }
+      }
+
+      await db.tombstones.clear();
       saveLastSyncTimestamp(now);
 
-      return {
-        uploaded: uploadResult.updated || 0,
-        downloaded,
-        hasChanges: cloudData.hasChanges || uploadResult.updated > 0,
-      };
+      return { uploaded, downloaded, hasChanges };
     } catch (error) {
       console.error("Incremental sync failed:", error);
       return { uploaded: 0, downloaded: 0, hasChanges: false };
     }
   },
 
-  /**
-   * Full sync - for first time or when incremental fails
-   */
   async fullSync(email: string): Promise<{ uploaded: number; downloaded: number }> {
     const uploaded = await this.initialUpload(email);
     const downloaded = await this.downloadAll(email);
-    // Save sync timestamp after full sync
     saveLastSyncTimestamp(Date.now());
     return { uploaded, downloaded };
   },
 
-  /**
-   * Smart sync - use incremental if possible, fallback to full sync
-   */
   async syncAll(email: string): Promise<{ uploaded: number; downloaded: number }> {
     const lastSync = getLastSyncTimestamp();
-    
-    // If never synced before, do full sync
     if (lastSync === 0) {
       return await this.fullSync(email);
     }
 
-    // Try incremental sync first
     try {
       const result = await this.incrementalSync(email);
       return { uploaded: result.uploaded, downloaded: result.downloaded };
@@ -319,10 +370,52 @@ export const syncService = {
     }
   },
 
-  /**
-   * Reset sync state (force full sync next time)
-   */
   resetSyncState() {
     localStorage.removeItem(LAST_SYNC_KEY);
   },
 };
+
+function buildCloudRow(row: any, now: number): Record<string, any> {
+  return {
+    nama: row.nama,
+    jenjang: row.jenjang,
+    logo_url: row.logoUrl || null,
+    alamat: row.alamat || null,
+    email: row.email,
+    sekolah_id: row.sekolahId || 0,
+    tier: row.tier || "FREE",
+    guru_id: row.guruId || 0,
+    label: row.label,
+    tanggal_mulai: row.tanggalMulai,
+    tanggal_selesai: row.tanggalSelesai,
+    semester_aktif: row.semesterAktif,
+    tahun_ajaran_id: row.tahunAjaranId || 0,
+    status_aktif: row.statusAktif,
+    kelas_id: row.kelasId || 0,
+    nisn: row.nisn || null,
+    jenis_kelamin: row.jenisKelamin || null,
+    urutan: row.urutan || 0,
+    tanggal: row.tanggal,
+    sesi_id: row.sesiId || 0,
+    siswa_id: row.siswaId || 0,
+    status: row.status,
+    catatan: row.catatan || null,
+    keterangan: row.keterangan || null,
+    sumber: row.sumber,
+    dibuat_pada: row.dibuatPada || now,
+    diubah_pada: row.diubahPada || now,
+    last_synced_at: now,
+    version: 1,
+  };
+}
+
+function convertCloudToLocal(cloudRow: any): any {
+  const localData: any = { id: cloudRow.local_id };
+  for (const [key, value] of Object.entries(cloudRow)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    if (!["user_id", "local_id", "last_synced_at", "version", "id"].includes(key)) {
+      localData[camelKey] = value;
+    }
+  }
+  return localData;
+}
