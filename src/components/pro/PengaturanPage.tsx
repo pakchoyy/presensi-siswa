@@ -56,7 +56,7 @@ const getAutoHadir = (): boolean => {
 export function PengaturanPage() {
   const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
-  const { isCloudConnected, cloudUser } = useCloudAuth();
+  const { isCloudConnected, cloudUser, setCloudEmail } = useCloudAuth();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -129,6 +129,8 @@ export function PengaturanPage() {
                 const updatedStatus = await licenseService.getStatus(teacherId);
                 setLicenseInfo(updatedStatus);
               }
+              // Set cloud email so sync activates
+              setCloudEmail(teacherEmail.toLowerCase().trim());
               return;
             }
           } catch (err) {
