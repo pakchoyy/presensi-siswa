@@ -89,6 +89,16 @@ export function PengaturanPage() {
   const [connecting, setConnecting] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Auto-fill email from teacher data
+  useEffect(() => {
+    if (teacher?.email && !loginEmail) {
+      setLoginEmail(teacher.email);
+    }
+    if (teacher?.email && !email) {
+      setEmail(teacher.email);
+    }
+  }, [teacher]);
+
   useEffect(() => {
     if (!teacher) return;
 
