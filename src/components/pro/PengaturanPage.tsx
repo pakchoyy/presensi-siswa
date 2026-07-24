@@ -319,7 +319,7 @@ export function PengaturanPage() {
   const handleDeviceLogin = async () => {
     if (!teacher) return;
     
-    const emailAddress = loginEmail.trim().toLowerCase();
+    const emailAddress = (loginEmail || teacher?.email || "").trim().toLowerCase();
     if (!emailAddress || !emailAddress.includes('@')) {
       toast("❌ Email tidak valid");
       return;
@@ -994,7 +994,7 @@ function formatRelativeTime(ts: number): string {
               </label>
               <input
                 type="email"
-                value={loginEmail}
+                value={loginEmail || teacher?.email || ""}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 placeholder="email@example.com"
                 className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
@@ -1002,7 +1002,7 @@ function formatRelativeTime(ts: number): string {
             </div>
             <button
               onClick={handleDeviceLogin}
-              disabled={connecting || !loginEmail.trim()}
+              disabled={connecting || !(loginEmail || teacher?.email)}
               className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 bg-transparent"
             >
               <Upload size={15} />
