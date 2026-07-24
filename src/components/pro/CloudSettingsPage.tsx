@@ -119,6 +119,20 @@ export function CloudSettingsPage() {
         Cloud Sync & Device Management
       </div>
 
+      {/* Auto-Sync Info — prominent at top */}
+      <div className="bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800 p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
+          <Cloud size={15} className="text-green-600 dark:text-green-400" />
+          <span className="text-green-900 dark:text-green-100">Sync Otomatis Aktif 🟢</span>
+        </div>
+        <div className="text-[0.72rem] text-green-900 dark:text-green-100 mb-2">
+          Semua perubahan data <b>otomatis</b> tersinkronisasi ke cloud. Tidak perlu klik tombol apapun.
+        </div>
+        <div className="text-[0.65rem] text-green-700 dark:text-green-300">
+          Data yang sama bisa diakses dari HP, laptop, atau tablet manapun — <b>cukup login dengan email yang sama</b>.
+        </div>
+      </div>
+
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
           <Smartphone size={15} /> Active Devices ({activeDevices.length}/3)
@@ -148,6 +162,13 @@ export function CloudSettingsPage() {
             Tidak ada device aktif
           </p>
         )}
+      </div>
+
+      {/* Manual Backup — hanya untuk backup/darurat */}
+      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[10px] mb-3 text-center">
+        <div className="text-[0.68rem] text-amber-800 dark:text-amber-200">
+          ⚠️ Tombol di bawah hanya untuk <b>backup manual / darurat</b>. Normalnya data sync otomatis.
+        </div>
       </div>
 
       {/* Manual Upload / Tarik */}
@@ -218,17 +239,7 @@ export function CloudSettingsPage() {
         </div>
       </div>
 
-      {/* Auto-Sync Info */}
-      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
-          <Cloud size={15} className="text-blue-600 dark:text-blue-400" />
-          <span className="text-blue-900 dark:text-blue-100">Auto-Sync Aktif</span>
-        </div>
-        <div className="text-[0.72rem] text-blue-900 dark:text-blue-100">
-          Semua perubahan data otomatis tersinkronisasi ke cloud dalam 3 detik. Tidak perlu klik tombol apapun.
-        </div>
-      </div>
-
+      {/* Backups */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
           <Download size={15} /> Cloud Backups
@@ -266,36 +277,6 @@ export function CloudSettingsPage() {
             Belum ada backup
           </p>
         )}
-      </div>
-
-      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-[14px] mt-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-2">
-          <Info size={15} className="text-blue-600 dark:text-blue-400" />
-          <span className="text-blue-900 dark:text-blue-100">
-            Cara Sync ke Perangkat Lain
-          </span>
-        </div>
-        
-        <div className="space-y-2 text-[0.72rem] text-blue-900 dark:text-blue-100">
-          <div>
-            <b>1. Buka aplikasi di perangkat baru</b> (HP/laptop kedua)
-          </div>
-          <div>
-            <b>2. Masuk ke menu Pengaturan → Lisensi PRO</b>
-          </div>
-          <div>
-            <b>3. Aktivasi lisensi dengan email yang SAMA:</b>
-            <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded font-mono text-[0.7rem]">
-              {cloudUser?.email}
-            </div>
-          </div>
-          <div>
-            <b>4. Cloud sync otomatis aktif</b> → Data langsung tersinkronisasi
-          </div>
-          <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-            💡 <b>Tips:</b> Gunakan email lisensi yang sama di semua perangkat untuk sync otomatis
-          </div>
-        </div>
       </div>
       
       {deleteConfirmId && (

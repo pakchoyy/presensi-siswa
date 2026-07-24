@@ -507,27 +507,33 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Cloud Sync Status (PRO only) - Simplified */}
+      {/* Cloud Sync Status (PRO only) */}
       {isPRO && isCloudConnected && (
         <div className="bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800 p-[14px] mb-3">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <span className="text-[0.75rem] font-bold text-green-900 dark:text-green-100">
-              Data tersinkronisasi otomatis
+              Auto-Sync Aktif — Data Otomatis Tersinkronisasi
             </span>
           </div>
           <div className="text-[0.68rem] text-green-700 dark:text-green-300 mb-2">
-            Email: <b>{cloudUser?.email}</b>
+            <Mail size={11} className="inline mr-1" />{cloudUser?.email}
           </div>
-          <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
-            Semua perubahan data otomatis tersimpan ke cloud dan tersinkronisasi antar perangkat.
-          </div>
+          {localStorage.getItem("presensi_last_sync") ? (
+            <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
+              Terakhir sync: {formatRelativeTime(parseInt(localStorage.getItem("presensi_last_sync")!))}
+            </div>
+          ) : (
+            <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
+              Menunggu sync pertama...
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
-              className="flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] cursor-pointer border-none"
+              className="flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 font-bold text-[0.75rem] cursor-pointer bg-transparent"
             >
-              <RefreshCw size={13} /> Sync Sekarang
+              <RefreshCw size={13} /> Pengaturan Cloud Sync
             </button>
             <button
               onClick={() => setShowLogoutConfirm(true)}
@@ -563,7 +569,18 @@ export function PengaturanPage() {
                         if (activeLic?.kodeLisensi === "DEVICE-CONNECTED") {
                           await licenseRepo.expire(activeLic.id);
                           await teacherRepo.updateTier(teacher.id, Tier.FREE);
-                        }
+}
+
+function formatRelativeTime(ts: number): string {
+  if (!ts) return "belum pernah";
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "baru saja";
+  if (mins < 60) return `${mins} menit lalu`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return `${Math.floor(hours / 24)} hari lalu`;
+}
                       }
                       localStorage.removeItem('presensi_cloud_email');
                       toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
@@ -581,25 +598,22 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Cloud Sync Reconnect (PRO only, not connected) */}
+      {/* Cloud Sync Setup (PRO only, not connected - one-time setup) */}
       {isPRO && !isCloudConnected && (
         <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[14px] mb-3">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-amber-500"></div>
             <span className="text-[0.75rem] font-bold text-amber-900 dark:text-amber-100">
-              Belum terhubung ke Cloud Sync
+              Aktifkan Sync Antar Device
             </span>
           </div>
-          <div className="text-[0.65rem] text-amber-700 dark:text-amber-300 mb-3">
-            Masukkan email PRO untuk menyinkronkan data antar perangkat.
+          <div className="text-[0.68rem] text-amber-700 dark:text-amber-300 mb-3">
+            Cukup lakukan <b>sekali</b>. Setelah itu data otomatis tersinkronisasi ke cloud.
           </div>
           <div className="mb-2">
-            <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">
-              <Mail size={11} className="inline mr-1" /> Email PRO Anda
-            </label>
             <input
               type="email"
-              value={loginEmail}
+              value={loginEmail || teacher?.email || ""}
               onChange={(e) => setLoginEmail(e.target.value)}
               placeholder="email@example.com"
               className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
@@ -607,11 +621,11 @@ export function PengaturanPage() {
           </div>
           <button
             onClick={handleDeviceLogin}
-            disabled={connecting || !loginEmail.trim()}
+            disabled={connecting || !(loginEmail || teacher?.email)}
             className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.82rem] cursor-pointer disabled:opacity-60 bg-transparent"
           >
             <Upload size={15} />
-            {connecting ? "Menghubungkan..." : "Hubungkan Device"}
+            {connecting ? "Menghubungkan..." : "Hubungkan Sekarang"}
           </button>
         </div>
       )}
@@ -1026,4 +1040,15 @@ export function PengaturanPage() {
       </div>
     </div>
   );
+}
+
+function formatRelativeTime(ts: number): string {
+  if (!ts) return "belum pernah";
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "baru saja";
+  if (mins < 60) return `${mins} menit lalu`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return `${Math.floor(hours / 24)} hari lalu`;
 }
