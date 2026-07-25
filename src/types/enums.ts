@@ -30,6 +30,7 @@ export enum CalendarEntryType {
 export enum HariAktif {
   SENIN_JUMAT = "Senin-Jumat",
   SENIN_SABTU = "Senin-Sabtu",
+  KUSTOM = "Kustom",
 }
 
 export enum CalendarSource {

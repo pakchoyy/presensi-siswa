@@ -16,6 +16,8 @@ export interface Teacher {
   email: string;
   sekolahId: number;
   tier: Tier;
+  hariAktifMode?: string;
+  hariAktifCustom?: string;
   dibuatPada: number;
   diubahPada: number;
 }

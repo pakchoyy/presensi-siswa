@@ -53,6 +53,36 @@ export function getMonthLabel(iso: string): string {
   return d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 }
 
+const DAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+export function getActiveDays(teacher?: { hariAktifMode?: string; hariAktifCustom?: string }): number[] {
+  const stored = localStorage.getItem("bgy_hari_aktif");
+  const custom = localStorage.getItem("bgy_hari_aktif_custom");
+  const mode = teacher?.hariAktifMode || stored || "Senin-Sabtu";
+  const customDays = teacher?.hariAktifCustom || custom;
+
+  if (mode === "Senin-Jumat") return [1, 2, 3, 4, 5];
+  if (mode === "Senin-Sabtu") return [1, 2, 3, 4, 5, 6];
+  if (customDays) return customDays.split(",").map(Number).filter((n) => n >= 0 && n <= 6);
+  return [1, 2, 3, 4, 5, 6];
+}
+
+export function isDayActive(day: number, teacher?: { hariAktifMode?: string; hariAktifCustom?: string }): boolean {
+  return getActiveDays(teacher).includes(day);
+}
+
+export function getHariAktifLabel(teacher?: { hariAktifMode?: string; hariAktifCustom?: string }): string {
+  const mode = teacher?.hariAktifMode || localStorage.getItem("bgy_hari_aktif") || "Senin-Sabtu";
+  if (mode !== "Kustom") {
+    if (mode === "Senin-Jumat") return "Senin - Jumat";
+    if (mode === "Senin-Sabtu") return "Senin - Sabtu";
+    return mode;
+  }
+  const days = getActiveDays(teacher);
+  if (days.length === 7) return "Setiap hari";
+  return days.map((d) => DAY_LABELS[d]).join(", ");
+}
+
 export function getMonthsInRange(start: string, end: string): string[] {
   const months: string[] = [];
   const startDate = new Date(start + "T00:00:00");

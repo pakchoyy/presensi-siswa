@@ -4,22 +4,20 @@ import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import type { Student, AttendanceRecord, Classroom } from "@/types/entities";
-import { AttendanceStatus, HariAktif, PageName } from "@/types/enums";
+import { AttendanceStatus, PageName } from "@/types/enums";
 import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
-import { todayStr } from "@/lib/utils";
+import { todayStr, isDayActive } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
-function isWeekend(dateStr: string, hariAktif: HariAktif): boolean {
+function isWeekend(dateStr: string): boolean {
   const d = new Date(dateStr + "T00:00:00");
-  const day = d.getDay();
-  if (hariAktif === HariAktif.SENIN_JUMAT) return day === 0 || day === 6;
-  return day === 0;
+  return !isDayActive(d.getDay());
 }
 
 export function PresensiPage() {
@@ -44,8 +42,7 @@ export function PresensiPage() {
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [semesterOnly, setSemesterOnly] = useState(true);
 
-  const hariAktif = (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
-  const isLibur = isWeekend(tanggalAktif, hariAktif);
+  const isLibur = isWeekend(tanggalAktif);
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
   const isSesudahPeriode = activeAy ? tanggalAktif > activeAy.tanggalSelesai : false;
   const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
@@ -401,7 +398,7 @@ export function PresensiPage() {
                 ? (isSebelumPeriode
                     ? `Periode ajaran dimulai ${activeAy?.tanggalMulai}`
                     : `Periode ajaran berakhir ${activeAy?.tanggalSelesai}`)
-                : (hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu tidak ada presensi" : "Minggu tidak ada presensi")
+                : "Tidak ada presensi (hari libur / tidak aktif)"
               }
             </div>
           </div>

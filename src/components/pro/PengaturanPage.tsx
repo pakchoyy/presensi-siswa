@@ -5,9 +5,9 @@ import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
-import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
+import { Tier, Jenjang, PageName } from "@/types/enums";
 import { MAX_STUDENTS_FREE, PRO_PRICE } from "@/lib/constants";
-import { generateId } from "@/lib/utils";
+import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import {
   Settings,
@@ -42,8 +42,8 @@ import { LogoUpload } from "@/components/shared/LogoUpload";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 
-const getHariAktif = (): HariAktif => {
-  return (localStorage.getItem("bgy_hari_aktif") as HariAktif) || HariAktif.SENIN_SABTU;
+const getHariAktif = (): string => {
+  return localStorage.getItem("bgy_hari_aktif") || "Senin-Sabtu";
 };
 
 const getAutoHadir = (): boolean => {
@@ -70,7 +70,8 @@ export function PengaturanPage() {
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
 
-  const [hariAktif, setHariAktif] = useState<HariAktif>(getHariAktif());
+  const [hariAktif, setHariAktif] = useState<string>(getHariAktif());
+  const [customDays, setCustomDays] = useState<string>(localStorage.getItem("bgy_hari_aktif_custom") || "1,2,3,4,5,6");
   const [autoHadir, setAutoHadir] = useState(getAutoHadir());
 
   const [editSekolah, setEditSekolah] = useState(false);
@@ -188,6 +189,50 @@ export function PengaturanPage() {
       }
     });
   }, []);
+
+  // Load hari aktif dari teacher object & cloud (PRO)
+  useEffect(() => {
+    if (teacher?.hariAktifMode) {
+      setHariAktif(teacher.hariAktifMode);
+      if (teacher.hariAktifCustom) setCustomDays(teacher.hariAktifCustom);
+    }
+    if (isPRO && teacher?.email) {
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from("teacher_settings")
+            .select("hari_aktif_mode, hari_aktif_custom")
+            .eq("email", teacher.email.toLowerCase().trim())
+            .maybeSingle();
+          if (data) {
+            setHariAktif(data.hari_aktif_mode);
+            if (data.hari_aktif_custom) setCustomDays(data.hari_aktif_custom);
+            localStorage.setItem("bgy_hari_aktif", data.hari_aktif_mode);
+            if (data.hari_aktif_custom) localStorage.setItem("bgy_hari_aktif_custom", data.hari_aktif_custom);
+          }
+        } catch {}
+      })();
+    }
+  }, [teacher?.id, isPRO]);
+
+  const saveHariAktifSettings = async (mode: string, days: string) => {
+    setHariAktif(mode);
+    setCustomDays(days);
+    localStorage.setItem("bgy_hari_aktif", mode);
+    localStorage.setItem("bgy_hari_aktif_custom", days);
+    if (teacher?.id) {
+      await teacherRepo.update(teacher.id, { ...teacher, hariAktifMode: mode, hariAktifCustom: days });
+      await refreshTeacher();
+    }
+    if (isPRO && teacher?.email) {
+      await supabase.from("teacher_settings").upsert(
+        { email: teacher.email.toLowerCase().trim(), hari_aktif_mode: mode, hari_aktif_custom: days, updated_at: Date.now() },
+        { onConflict: "email" }
+      );
+    }
+    const label = mode === "Kustom" ? days.split(",").map(Number).sort().map((d) => ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][d]).join(", ") : mode === "Senin-Jumat" ? "Senin - Jumat" : "Senin - Sabtu";
+    toast(`Hari aktif: ${label}`);
+  };
 
   const handleActivate = async () => {
     if (!teacher) return;
@@ -719,13 +764,13 @@ export function PengaturanPage() {
           <Calendar size={15} /> Hari Aktif
         </div>
         <div className="text-[0.72rem] text-[var(--text-light)] mb-3">
-          Hari yang tidak aktif tidak akan muncul di presensi dan ditandai merah di kalender.
+          Pilih hari yang masuk presensi. Hari tidak aktif akan ditandai merah di kalender.
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-3">
           <button
-            onClick={() => { setHariAktif(HariAktif.SENIN_JUMAT); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_JUMAT); toast("Hari aktif: Senin - Jumat"); }}
+            onClick={() => saveHariAktifSettings("Senin-Jumat", "1,2,3,4,5")}
             className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
-              hariAktif === HariAktif.SENIN_JUMAT
+              hariAktif === "Senin-Jumat"
                 ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
                 : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
             }`}
@@ -733,18 +778,61 @@ export function PengaturanPage() {
             Senin - Jumat
           </button>
           <button
-            onClick={() => { setHariAktif(HariAktif.SENIN_SABTU); localStorage.setItem("bgy_hari_aktif", HariAktif.SENIN_SABTU); toast("Hari aktif: Senin - Sabtu"); }}
+            onClick={() => saveHariAktifSettings("Senin-Sabtu", "1,2,3,4,5,6")}
             className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
-              hariAktif === HariAktif.SENIN_SABTU
+              hariAktif === "Senin-Sabtu"
                 ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
                 : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
             }`}
           >
             Senin - Sabtu
           </button>
+          <button
+            onClick={() => saveHariAktifSettings("Kustom", customDays || "1,2,3,4,5,6")}
+            className={`flex-1 py-[10px] rounded-[10px] text-[0.78rem] font-bold border-[1.5px] cursor-pointer ${
+              hariAktif === "Kustom"
+                ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
+                : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
+            }`}
+          >
+            Custom
+          </button>
         </div>
-        <div className="mt-2 text-[0.65rem] text-[var(--text-light)]">
-          {hariAktif === HariAktif.SENIN_JUMAT ? "Sabtu & Minggu: tidak masuk presensi, merah di kalender" : "Minggu: tidak masuk presensi, merah di kalender"}
+
+        {hariAktif === "Kustom" && (
+          <div className="mb-3">
+            <div className="grid grid-cols-7 gap-1.5">
+              {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((label, i) => {
+                const active = customDays?.split(",").map(Number).includes(i) || false;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      const current = customDays ? customDays.split(",").map(Number) : [];
+                      const next = current.includes(i) ? current.filter((d) => d !== i) : [...current, i];
+                      const sorted = next.sort((a, b) => a - b);
+                      const joined = sorted.join(",");
+                      setCustomDays(joined);
+                      localStorage.setItem("bgy_hari_aktif_custom", joined);
+                    }}
+                    className={`py-2 rounded-lg text-[0.72rem] font-bold border-[1.5px] cursor-pointer transition-all ${
+                      active
+                        ? "border-[#0ea5a0] bg-[#0ea5a0] text-white shadow-sm"
+                        : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-light)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="text-[0.65rem] text-[var(--text-light)]">
+          {hariAktif === "Senin-Jumat" && "Sabtu & Minggu: tidak masuk presensi, merah di kalender"}
+          {hariAktif === "Senin-Sabtu" && "Minggu: tidak masuk presensi, merah di kalender"}
+          {hariAktif === "Kustom" && "Hari yang tidak aktif: tidak masuk presensi, merah di kalender"}
         </div>
       </div>
 
