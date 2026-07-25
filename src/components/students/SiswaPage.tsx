@@ -186,7 +186,7 @@ export function SiswaPage() {
     }
     
     if (!isPRO && students.length >= MAX_STUDENTS_FREE) {
-      toast("⚠️ Limit FREE: maksimal 15 siswa. Upgrade ke PRO untuk unlimited siswa.");
+      toast(`⚠️ Limit FREE: maksimal ${MAX_STUDENTS_FREE} siswa. Upgrade ke PRO untuk unlimited siswa.`);
       return;
     }
     
@@ -226,10 +226,10 @@ export function SiswaPage() {
       if (totalAfterImport > MAX_STUDENTS_FREE) {
         const canImport = MAX_STUDENTS_FREE - students.length;
         if (canImport <= 0) {
-          toast("⚠️ Kelas sudah penuh (15 siswa). Upgrade ke PRO untuk unlimited siswa.");
+          toast(`⚠️ Kelas sudah penuh (${MAX_STUDENTS_FREE} siswa). Upgrade ke PRO untuk unlimited siswa.`);
           return;
         }
-        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit FREE: 15 siswa). Upgrade ke PRO untuk unlimited.`);
+        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit FREE: ${MAX_STUDENTS_FREE} siswa). Upgrade ke PRO untuk unlimited.`);
         result.students = result.students.slice(0, canImport);
       }
     }

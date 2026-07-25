@@ -27,7 +27,7 @@ export function TentangKontak() {
           </div>
         <div className="flex gap-2 mb-1">
           <span className="font-semibold text-[#0ea5a0]">FREE:</span>
-          <span>1 kelas (15 siswa), offline penuh, rekap & export lengkap</span>
+          <span>1 kelas (12 siswa), offline penuh, rekap & export lengkap</span>
         </div>
           <div className="flex gap-2">
             <span className="font-semibold text-[#0ea5a0]">PRO:</span>

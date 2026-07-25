@@ -6,7 +6,7 @@ import { licenseRepo } from "@/repositories/dexie/license.repo";
 import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
 import { Tier, HariAktif, Jenjang, PageName } from "@/types/enums";
-import { PRO_PRICE } from "@/lib/constants";
+import { MAX_STUDENTS_FREE, PRO_PRICE } from "@/lib/constants";
 import { generateId } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import {
@@ -30,6 +30,8 @@ import {
   Upload,
   LogOut,
   RefreshCw,
+  Smartphone,
+  X,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
@@ -56,7 +58,7 @@ const getAutoHadir = (): boolean => {
 export function PengaturanPage() {
   const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
-  const { isCloudConnected, cloudUser, setCloudEmail } = useCloudAuth();
+  const { isCloudConnected, cloudUser, setCloudEmail, clearCloudEmail } = useCloudAuth();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -89,6 +91,8 @@ export function PengaturanPage() {
   const [connecting, setConnecting] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const [showSyncPrompt, setShowSyncPrompt] = useState(false);
+
   // Auto-fill email from teacher data
   useEffect(() => {
     if (teacher?.email && !loginEmail) {
@@ -98,6 +102,15 @@ export function PengaturanPage() {
       setEmail(teacher.email);
     }
   }, [teacher]);
+
+  // First-time PRO sync reminder
+  useEffect(() => {
+    const reminded = localStorage.getItem("bgy_pro_sync_reminded");
+    if (isPRO && !isCloudConnected && !reminded) {
+      const timer = setTimeout(() => setShowSyncPrompt(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isPRO, isCloudConnected]);
 
   useEffect(() => {
     if (!teacher) return;
@@ -139,7 +152,6 @@ export function PengaturanPage() {
                 const updatedStatus = await licenseService.getStatus(teacherId);
                 setLicenseInfo(updatedStatus);
               }
-              // Set cloud email so sync activates
               setCloudEmail(teacherEmail.toLowerCase().trim());
               return;
             }
@@ -191,7 +203,6 @@ export function PengaturanPage() {
       const status = await licenseService.getStatus(teacher.id);
       setLicenseInfo(status);
       
-      // Auto upload existing local data to cloud
       if (result.cloudEmail) {
         setTimeout(async () => {
           try {
@@ -207,7 +218,6 @@ export function PengaturanPage() {
             toast("⚠️ Upload gagal, gunakan Sync Now nanti");
           }
           
-          // Reload to show connected status
           setTimeout(() => {
             window.location.reload();
           }, 1500);
@@ -253,6 +263,19 @@ export function PengaturanPage() {
     setLicenseInfo(null);
   };
 
+  const handleLogoutFromPro = async () => {
+    if (!teacher) return;
+    const activeLicense = await licenseRepo.getActive(teacher.id);
+    if (activeLicense) {
+      await licenseRepo.expire(activeLicense.id);
+    }
+    await teacherRepo.updateTier(teacher.id, Tier.FREE);
+    clearCloudEmail();
+    toast("Akun PRO berhasil dikeluarkan dari perangkat ini.");
+    setShowLogoutConfirm(false);
+    setTimeout(() => window.location.reload(), 700);
+  };
+
   const copyKode = () => {
     if (kode) {
       navigator.clipboard.writeText(kode);
@@ -288,7 +311,6 @@ export function PengaturanPage() {
     if (!teacher) return;
     if (!activeAy) return;
 
-    // Parse current year label to compute next
     const parts = activeAy.label.split("/");
     const nextStart = parseInt(parts[0]) + 1;
     const nextEnd = parseInt(parts[1] || parts[0]) + 1;
@@ -347,6 +369,18 @@ export function PengaturanPage() {
           setConnecting(false);
           return;
         }
+      }
+
+      // Pastikan profile ada agar CloudAuthContext mendeteksi cloud connected
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", emailAddress)
+        .maybeSingle();
+      if (existingProfile) {
+        await supabase.from("profiles").update({ tier: "PRO", updated_at: new Date().toISOString() }).eq("id", existingProfile.id);
+      } else {
+        await supabase.from("profiles").insert({ email: emailAddress, tier: "PRO", updated_at: new Date().toISOString() });
       }
       
       localStorage.setItem("presensi_cloud_email", emailAddress);
@@ -426,7 +460,6 @@ export function PengaturanPage() {
       toast("✅ Nama sekolah diperbarui");
       setEditSekolah(false);
       
-      // Reload to reflect changes
       setTimeout(() => window.location.reload(), 500);
     } catch (error) {
       toast("❌ Gagal menyimpan. Coba lagi.");
@@ -545,70 +578,11 @@ export function PengaturanPage() {
             >
               <RefreshCw size={13} /> Pengaturan Cloud Sync
             </button>
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="text-[0.7rem] text-red-600 dark:text-red-400 font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
-            >
-              Logout
-            </button>
           </div>
-          
-          {/* Logout Confirm Modal */}
-          {showLogoutConfirm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
-              <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
-                <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
-                <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
-                  Logout dari Cloud Sync?
-                </div>
-                <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
-                  Data lokal tetap aman, tapi tidak akan sync otomatis ke perangkat lain.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    onClick={async () => {
-                      // If PRO from device connection, revert to FREE
-                      if (teacher?.id) {
-                        const activeLic = await licenseRepo.getActive(teacher.id);
-                        if (activeLic?.kodeLisensi === "DEVICE-CONNECTED") {
-                          await licenseRepo.expire(activeLic.id);
-                          await teacherRepo.updateTier(teacher.id, Tier.FREE);
-}
-
-function formatRelativeTime(ts: number): string {
-  if (!ts) return "belum pernah";
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "baru saja";
-  if (mins < 60) return `${mins} menit lalu`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} jam lalu`;
-  return `${Math.floor(hours / 24)} hari lalu`;
-}
-                      }
-                      localStorage.removeItem('presensi_cloud_email');
-                      toast('⚠️ Logout berhasil. Auto-sync dinonaktifkan.');
-                      setShowLogoutConfirm(false);
-                      setTimeout(() => window.location.reload(), 1000);
-                    }}
-                    className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Cloud Sync Setup (PRO only, not connected - one-time setup) */}
+      {/* Cloud Sync Setup (PRO only, not connected) */}
       {isPRO && !isCloudConnected && (
         <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[14px] mb-3">
           <div className="flex items-center gap-2 mb-1">
@@ -804,42 +778,50 @@ function formatRelativeTime(ts: number): string {
         </div>
       </div>
 
-      {/* PRO Active */}
-      {isPRO && licenseInfo ? (
+      {/* PRO Section */}
+      {isPRO ? (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
           <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
             <Crown size={15} className="text-[#f59e0b]" /> Lisensi PRO Aktif
           </div>
 
-          <div className="mb-3 space-y-1 text-[0.74rem]">
-            <div className="flex gap-2">
-              <Mail size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
-              <span className="text-[var(--text)]">{licenseInfo.email}</span>
-            </div>
-            <div className="flex gap-2">
-              <CalendarCheck size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
-              <span className="text-[var(--text)]">
-                Berlaku sampai <b>{licenseInfo.berakhir}</b>
-              </span>
-            </div>
-            {daysRemaining !== undefined && (
-              <div className="flex gap-2">
-                <Clock size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
-                <span className={isExpiring ? "text-[#b45309] font-semibold" : "text-[var(--text)]"}>
-                  {daysRemaining} hari tersisa
-                </span>
+          {licenseInfo ? (
+            <>
+              <div className="mb-3 space-y-1 text-[0.74rem]">
+                <div className="flex gap-2">
+                  <Mail size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
+                  <span className="text-[var(--text)]">{licenseInfo.email}</span>
+                </div>
+                <div className="flex gap-2">
+                  <CalendarCheck size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
+                  <span className="text-[var(--text)]">
+                    Berlaku sampai <b>{licenseInfo.berakhir}</b>
+                  </span>
+                </div>
+                {daysRemaining !== undefined && (
+                  <div className="flex gap-2">
+                    <Clock size={13} className="text-[var(--text-light)] flex-shrink-0 mt-[1px]" />
+                    <span className={isExpiring ? "text-[#b45309] font-semibold" : "text-[var(--text)]"}>
+                      {daysRemaining} hari tersisa
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {isExpiring && daysRemaining !== undefined && (
-            <div className="bg-[#fef3c7] rounded-lg p-3 mb-3 border border-[#fbbf24] flex items-start gap-2">
-              <AlertTriangle size={14} className="text-[#b45309] flex-shrink-0 mt-[1px]" />
-              <div className="text-[0.7rem] text-[#78350f] flex-1">
-                {daysRemaining === 0
-                  ? "Lisensi akan habis hari ini! Perpanjang sekarang agar fitur PRO tetap aktif."
-                  : `Lisensi akan habis dalam ${daysRemaining} hari. Perpanjang sekarang agar tidak terputus.`}
-              </div>
+              {isExpiring && daysRemaining !== undefined && (
+                <div className="bg-[#fef3c7] rounded-lg p-3 mb-3 border border-[#fbbf24] flex items-start gap-2">
+                  <AlertTriangle size={14} className="text-[#b45309] flex-shrink-0 mt-[1px]" />
+                  <div className="text-[0.7rem] text-[#78350f] flex-1">
+                    {daysRemaining === 0
+                      ? "Lisensi akan habis hari ini! Perpanjang sekarang agar fitur PRO tetap aktif."
+                      : `Lisensi akan habis dalam ${daysRemaining} hari. Perpanjang sekarang agar tidak terputus.`}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-[0.74rem] text-[var(--text-light)] mb-3">
+              Memuat info lisensi...
             </div>
           )}
 
@@ -906,8 +888,23 @@ function formatRelativeTime(ts: number): string {
             <span>Sudah pernah beli? Masukkan email & kode yang sama untuk aktivasi ulang.</span>
           </div>
 
-          <div className="text-[0.78rem] text-[var(--text-light)] mb-3">
-            Dapatkan akses penuh ke semua fitur premium hanya dengan <b>{PRO_PRICE}</b>
+          <div className="bg-gradient-to-br from-[#0ea5a0]/8 to-[#0d7a8a]/12 rounded-xl p-4 mb-3 border-2 border-[#0ea5a0]/20 text-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(14,165,160,0.06), rgba(13,122,138,0.10))",
+            }}>
+            <Crown size={24} className="text-[#0ea5a0] mx-auto mb-1" />
+            <div className="text-[1rem] font-bold text-[var(--text)] mb-1">
+              Akses Penuh Semua Fitur Premium
+            </div>
+            <div className="text-[0.75rem] text-[var(--text-light)] mb-2">
+              Kelola semua kelas, cloud sync, backup otomatis & banyak lagi
+            </div>
+            <div className="text-[1.6rem] font-black text-[#0ea5a0] leading-tight">
+              {PRO_PRICE}
+            </div>
+            <div className="text-[0.65rem] text-[var(--text-light)] mt-1">
+              per tahun
+            </div>
           </div>
 
           <div className="mb-3">
@@ -1012,42 +1009,128 @@ function formatRelativeTime(ts: number): string {
         </div>
       )}
 
-      {/* Info Tier */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
-        <div className="text-[0.75rem] font-bold text-[var(--text)] mb-2">
-          Perbandingan Gratis vs PRO
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[0.7rem] border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
-                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Gratis</th>
-                <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
-                { fitur: "Jumlah siswa per kelas", free: "15 siswa", pro: "Unlimited" },
-                { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
-                { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
-                { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
-                { fitur: "Backup ke internet", free: "Tidak", pro: "Bisa" },
-                { fitur: "Logo di laporan", free: "Tidak", pro: "Bisa" },
-                { fitur: "Update data Excel", free: "Tidak", pro: "Bisa" },
-                { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
-              ].map((row, i) => (
-                <tr key={i} className="border-b border-[var(--border)] last:border-0">
-                  <td className="py-2 px-2 font-semibold">{row.fitur}</td>
-                  <td className="py-2 px-2 text-center text-[var(--text-light)]">{row.free}</td>
-                  <td className="py-2 px-2 text-center text-[#0ea5a0] font-bold">{row.pro}</td>
+      {/* Perbandingan Gratis vs PRO (khusus FREE) */}
+      {!isPRO && (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
+          <div className="text-[0.75rem] font-bold text-[var(--text)] mb-2">
+            Perbandingan Gratis vs PRO
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[0.7rem] border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="py-2 px-2 text-left text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Fitur</th>
+                  <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[var(--text-light)] font-semibold">Gratis</th>
+                  <th className="py-2 px-2 text-center text-[0.62rem] uppercase text-[#0ea5a0] font-bold">PRO</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[
+                  { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
+                  { fitur: "Jumlah siswa per kelas", free: `${MAX_STUDENTS_FREE} siswa`, pro: "Unlimited" },
+                  { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
+                  { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
+                  { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
+                  { fitur: "Backup ke internet", free: "Tidak", pro: "Bisa" },
+                  { fitur: "Logo di laporan", free: "Tidak", pro: "Bisa" },
+                  { fitur: "Update data Excel", free: "Tidak", pro: "Bisa" },
+                  { fitur: "Harga", free: "Gratis", pro: PRO_PRICE },
+                ].map((row, i) => (
+                  <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                    <td className="py-2 px-2 font-semibold">{row.fitur}</td>
+                    <td className="py-2 px-2 text-center text-[var(--text-light)]">{row.free}</td>
+                    <td className="py-2 px-2 text-center text-[#0ea5a0] font-bold">{row.pro}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Keluar dari Akun PRO (PRO only) */}
+      {isPRO && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] border-[1.5px] border-[#ef4444] text-[#ef4444] font-bold text-[0.8rem] cursor-pointer bg-transparent"
+          >
+            <LogOut size={15} /> Keluar dari Akun PRO di Perangkat Ini
+          </button>
+        </div>
+      )}
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="text-[0.85rem] font-bold mb-2 text-center text-[#ef4444]">
+              Keluar dari Akun PRO?
+            </div>
+            <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+              Perangkat ini akan kembali ke paket FREE dan berhenti sync. Data lokal tetap aman, lisensi PRO pengguna tidak dinonaktifkan.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleLogoutFromPro}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer"
+              >
+                Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* First-time PRO sync prompt */}
+      {showSyncPrompt && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setShowSyncPrompt(false)}>
+          <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
+            <div className="flex justify-center mb-3">
+              <div className="w-14 h-14 rounded-full bg-[#0ea5a0]/10 flex items-center justify-center">
+                <Smartphone size={28} className="text-[#0ea5a0]" />
+              </div>
+            </div>
+            <div className="text-[0.85rem] font-bold mb-2 text-center text-[var(--text)]">
+              Selamat Datang di PRO! 🎉
+            </div>
+            <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+              Aktifkan <b>Sinkronisasi Cloud</b> agar data kamu aman dan bisa diakses dari perangkat lain. Cukup sekali, selanjutnya otomatis!
+            </p>
+            <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-3 mb-3 text-[0.7rem] text-[var(--text)]">
+              <b>Cara:</b> Buka halaman ini → gulir ke <b>Pengaturan Cloud Sync</b> → masukkan email → klik <b>Hubungkan Sekarang</b>.
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); }}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
+              >
+                Nanti
+              </button>
+              <button
+                onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+                style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+              >
+                Oke, Saya Mau!
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); setActivePage(PageName.CLOUD_SETTINGS); }}
+              className="w-full text-center text-[0.68rem] text-[#0ea5a0] font-semibold mt-2 bg-transparent border-none cursor-pointer"
+            >
+              Buka Pengaturan Cloud Sync
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

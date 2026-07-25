@@ -30,7 +30,7 @@ export const WIZARD_TOTAL_STEPS = 5;
 export const PRO_PRICE = "Rp12.000/tahun";
 
 export const MAX_KELAS_FREE = 1;
-export const MAX_STUDENTS_FREE = 15;
+export const MAX_STUDENTS_FREE = 12;
 
 export const APP_URL = "https://presiswa.bantuguruyuk.web.id";
 export const MAIN_SITE_URL = "https://bantuguruyuk.web.id";

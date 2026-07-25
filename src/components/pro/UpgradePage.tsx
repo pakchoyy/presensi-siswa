@@ -277,7 +277,7 @@ export function UpgradePage() {
           <div className="bg-[var(--input-bg)] rounded-lg p-2">
             <div className="font-bold mb-1">FREE</div>
             <div className="text-[var(--text-light)] leading-[1.6]">
-              • 1 kelas<br />• 15 siswa<br />• Offline<br />• Rekap & export
+              • 1 kelas<br />• 12 siswa<br />• Offline<br />• Rekap & export
             </div>
           </div>
           <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 border border-[#0ea5a0]/20">
