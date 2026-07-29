@@ -4,10 +4,12 @@ import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
 
+const LAST_SYNC_KEY = "presensi_last_sync";
+
 export function useAutoSync() {
   const { user } = useAuth();
   const { cloudEmail, isCloudConnected } = useCloudAuth();
-  const { sync } = useSyncDebounce(cloudEmail);
+  const { sync, isSyncing, lastSync } = useSyncDebounce(cloudEmail);
   const syncTimerRef = useRef<number>();
 
   const useRealtime = !!(user?.id && isCloudConnected);
@@ -15,6 +17,13 @@ export function useAutoSync() {
     user?.id || null,
     useRealtime
   );
+
+  useEffect(() => {
+    if (lastSync > 0) {
+      localStorage.setItem(LAST_SYNC_KEY, lastSync.toString());
+      window.dispatchEvent(new Event("storage"));
+    }
+  }, [lastSync]);
 
   useEffect(() => {
     if (!isCloudConnected || !cloudEmail) return;

@@ -111,6 +111,12 @@ export function RekapPage() {
   }, [loadRekap]);
 
   useEffect(() => {
+    const handler = () => loadRekap();
+    window.addEventListener("data-changed", handler);
+    return () => window.removeEventListener("data-changed", handler);
+  }, [loadRekap]);
+
+  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (classRef.current && !classRef.current.contains(e.target as Node)) {
         setClassDropdown(false);

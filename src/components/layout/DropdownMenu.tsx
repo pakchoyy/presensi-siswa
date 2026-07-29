@@ -112,13 +112,15 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <div className="h-px bg-[var(--border)] mx-0" />
 
-        <button
-          onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[#0ea5a0] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-        >
-          <ArrowUpCircle size={16} /> Upgrade PRO
-          <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">{PRO_PRICE}</span>
-        </button>
+        {!isPRO && (
+          <button
+            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[#0ea5a0] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          >
+            <ArrowUpCircle size={16} /> Upgrade PRO
+            <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">{PRO_PRICE}</span>
+          </button>
+        )}
       </div>
     </>
   );

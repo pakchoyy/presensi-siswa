@@ -5,6 +5,10 @@ const MIN_INTERVAL = 30 * 1000;
 const RETRY_BASE = 10_000;
 const RETRY_MAX = 60_000;
 
+function dispatchSyncEvent(type: "sync-start" | "sync-end") {
+  window.dispatchEvent(new CustomEvent("presensi-sync", { detail: { type } }));
+}
+
 export function useSyncDebounce(email: string | null) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(0);
@@ -28,6 +32,7 @@ export function useSyncDebounce(email: string | null) {
 
     pendingRef.current = true;
     setIsSyncing(true);
+    dispatchSyncEvent("sync-start");
 
     try {
       const result = await syncService.incrementalSync(email);
@@ -43,6 +48,7 @@ export function useSyncDebounce(email: string | null) {
     } finally {
       pendingRef.current = false;
       setIsSyncing(false);
+      dispatchSyncEvent("sync-end");
     }
   }, [email, isSyncing]);
 

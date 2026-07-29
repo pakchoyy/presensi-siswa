@@ -207,6 +207,10 @@ export const syncService = {
         }
       });
 
+      if (count > 0) {
+        window.dispatchEvent(new Event("data-changed"));
+      }
+
       return count;
     } catch (error) {
       console.error("Download all failed:", error);
@@ -340,6 +344,10 @@ export const syncService = {
 
       await db.tombstones.clear();
       saveLastSyncTimestamp(now);
+
+      if (hasChanges && downloaded > 0) {
+        window.dispatchEvent(new Event("data-changed"));
+      }
 
       return { uploaded, downloaded, hasChanges };
     } catch (error) {
