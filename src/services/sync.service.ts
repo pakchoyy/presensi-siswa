@@ -5,53 +5,16 @@ export type SyncStatus = "tersinkron" | "menyinkronkan" | "menunggu" | "error";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
 
-function getLastSyncTimestamp(): number {
-  const stored = localStorage.getItem(LAST_SYNC_KEY);
-  return stored ? parseInt(stored) : 0;
-}
-
-function saveLastSyncTimestamp(timestamp: number) {
-  localStorage.setItem(LAST_SYNC_KEY, timestamp.toString());
-}
-
-async function getUserIdByEmail(email: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email.toLowerCase().trim())
-    .maybeSingle();
-  return data?.id || null;
-}
-
-async function getChangedData(since: number) {
-  const tables = [
-    "schools",
-    "teachers",
-    "academicYears",
-    "classrooms",
-    "students",
-    "attendanceSessions",
-    "attendanceRecords",
-    "calendarEntries",
-  ];
-
-  const changes: Record<string, any[]> = {};
-
-  for (const table of tables) {
-    try {
-      const records = await db.table(table).toArray();
-      changes[table] = records.filter((r: any) => {
-        const modifiedAt = r.diubahPada || r.dibuatPada || 0;
-        return modifiedAt > since;
-      });
-    } catch (error) {
-      console.error(`getChangedData error for table ${table}:`, error);
-      changes[table] = [];
-    }
-  }
-
-  return changes;
-}
+const SYNC_TABLES = [
+  "schools",
+  "teachers",
+  "academicYears",
+  "classrooms",
+  "students",
+  "attendanceSessions",
+  "attendanceRecords",
+  "calendarEntries",
+] as const;
 
 const CLOUD_TABLE_MAP: Record<string, string> = {
   schools: "cloud_schools",
@@ -64,75 +27,72 @@ const CLOUD_TABLE_MAP: Record<string, string> = {
   calendarEntries: "cloud_calendar_entries",
 };
 
+let _userIdCache: { email: string; id: string } | null = null;
+
+function getLastSyncTimestamp(): number {
+  const stored = localStorage.getItem(LAST_SYNC_KEY);
+  return stored ? parseInt(stored) : 0;
+}
+
+function saveLastSyncTimestamp(ts: number) {
+  localStorage.setItem(LAST_SYNC_KEY, ts.toString());
+}
+
+async function getUserIdByEmail(email: string): Promise<string | null> {
+  if (_userIdCache && _userIdCache.email === email.toLowerCase().trim()) {
+    return _userIdCache.id;
+  }
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+  if (data?.id) {
+    _userIdCache = { email: email.toLowerCase().trim(), id: data.id };
+  }
+  return data?.id || null;
+}
+
+async function getLocalChanges(since: number): Promise<Record<string, any[]>> {
+  const changes: Record<string, any[]> = {};
+  for (const table of SYNC_TABLES) {
+    try {
+      const records = await db.table(table).toArray();
+      const filtered = records.filter((r: any) => {
+        const modifiedAt = r.diubahPada || r.dibuatPada || 0;
+        return modifiedAt > since;
+      });
+      if (filtered.length > 0) changes[table] = filtered;
+    } catch {
+      changes[table] = [];
+    }
+  }
+  return changes;
+}
+
 export const syncService = {
   async initialUpload(email: string): Promise<number> {
     try {
       const userId = await getUserIdByEmail(email);
       if (!userId) return 0;
 
-      const schools = await db.table("schools").toArray();
-      const teachers = await db.table("teachers").toArray();
-      const academicYears = await db.table("academicYears").toArray();
-      const classrooms = await db.table("classrooms").toArray();
-      const students = await db.table("students").toArray();
-      const attendanceSessions = await db.table("attendanceSessions").toArray();
-      const attendanceRecords = await db.table("attendanceRecords").toArray();
-      const calendarEntries = await db.table("calendarEntries").toArray();
-
+      const allData = await Promise.all(SYNC_TABLES.map(t => db.table(t).toArray()));
       const now = Date.now();
-
-      const entities: [string, any[]][] = [
-        ["cloud_schools", schools],
-        ["cloud_teachers", teachers],
-        ["cloud_academic_years", academicYears],
-        ["cloud_classrooms", classrooms],
-        ["cloud_students", students],
-        ["cloud_attendance_sessions", attendanceSessions],
-        ["cloud_attendance_records", attendanceRecords],
-        ["cloud_calendar_entries", calendarEntries],
-      ];
 
       let totalUploaded = 0;
 
-      for (const [tableName, rows] of entities) {
+      for (let i = 0; i < SYNC_TABLES.length; i++) {
+        const rows = allData[i];
+        if (rows.length === 0) continue;
+
         const batch = rows.map((row: any) => ({
           user_id: userId,
           local_id: row.id,
-          nama: row.nama,
-          jenjang: row.jenjang,
-          logo_url: row.logoUrl || null,
-          alamat: row.alamat || null,
-          email: row.email,
-          sekolah_id: row.sekolahId || 0,
-          tier: row.tier || "FREE",
-          guru_id: row.guruId || 0,
-          label: row.label,
-          tanggal_mulai: row.tanggalMulai,
-          tanggal_selesai: row.tanggalSelesai,
-          semester_aktif: row.semesterAktif,
-          tahun_ajaran_id: row.tahunAjaranId || 0,
-          status_aktif: row.statusAktif,
-          kelas_id: row.kelasId || 0,
-          nisn: row.nisn || null,
-          jenis_kelamin: row.jenisKelamin || null,
-          urutan: row.urutan || 0,
-          tanggal: row.tanggal,
-          sesi_id: row.sesiId || 0,
-          siswa_id: row.siswaId || 0,
-          status: row.status,
-          catatan: row.catatan || null,
-          keterangan: row.keterangan || null,
-          sumber: row.sumber,
-          dibuat_pada: row.dibuatPada || now,
-          diubah_pada: row.diubahPada || now,
-          last_synced_at: now,
-          version: 1,
+          ...buildCloudRow(row, now),
         }));
 
-        if (batch.length > 0) {
-          const { error } = await supabase.from(tableName).insert(batch);
-          if (!error) totalUploaded += batch.length;
-        }
+        const { error } = await supabase.from(CLOUD_TABLE_MAP[SYNC_TABLES[i]]).insert(batch);
+        if (!error) totalUploaded += batch.length;
       }
 
       return totalUploaded;
@@ -147,24 +107,12 @@ export const syncService = {
       const userId = await getUserIdByEmail(email);
       if (!userId) return 0;
 
-      const tables = [
-        "schools",
-        "teachers",
-        "academicYears",
-        "classrooms",
-        "students",
-        "attendanceSessions",
-        "attendanceRecords",
-        "calendarEntries",
-      ];
-
-      const cloudTables = tables.map((t) => CLOUD_TABLE_MAP[t]);
       let count = 0;
 
-      await db.transaction("rw", tables.map((t) => db.table(t)), async () => {
-        for (let i = 0; i < tables.length; i++) {
+      await db.transaction("rw", SYNC_TABLES.map(t => db.table(t)), async () => {
+        for (const table of SYNC_TABLES) {
           const { data: cloudRows } = await supabase
-            .from(cloudTables[i])
+            .from(CLOUD_TABLE_MAP[table])
             .select("*")
             .eq("user_id", userId);
 
@@ -174,22 +122,15 @@ export const syncService = {
             const localId = cloudRow.local_id;
             if (!localId || typeof localId !== "number" || isNaN(localId)) continue;
 
-            const existing = await db.table(tables[i]).get(localId);
+            const existing = await db.table(table).get(localId);
             if (existing) {
               const localTime = (existing as any).diubahPada || 0;
               const cloudTime = cloudRow.diubah_pada || 0;
               if (cloudTime < localTime) continue;
             }
 
-            const localData: any = { id: localId };
-            for (const [key, value] of Object.entries(cloudRow)) {
-              const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-              if (!["user_id", "local_id", "last_synced_at", "version", "id"].includes(key)) {
-                localData[camelKey] = value;
-              }
-            }
-
-            await db.table(tables[i]).put(localData);
+            const localData = convertCloudToLocal(cloudRow);
+            await db.table(table).put(localData);
             count++;
           }
         }
@@ -218,20 +159,30 @@ export const syncService = {
     }
   },
 
-  async getSyncStatus(email: string) {
+  async hasCloudChanges(email: string): Promise<boolean> {
     try {
       const userId = await getUserIdByEmail(email);
-      if (!userId) return null;
+      if (!userId) return false;
 
-      const { data } = await supabase
-        .from("sync_metadata")
-        .select("id, entity_type, last_synced_at, sync_status, total_records")
-        .eq("user_id", userId);
+      const lastSync = getLastSyncTimestamp();
 
-      return data;
-    } catch (error) {
-      console.error("Get sync status failed:", error);
-      return null;
+      const { count } = await supabase
+        .from("cloud_attendance_records")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gt("last_synced_at", lastSync);
+
+      if (count && count > 0) return true;
+
+      const { count: tombCount } = await supabase
+        .from("cloud_tombstones")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gt("deleted_at", lastSync);
+
+      return (tombCount || 0) > 0;
+    } catch {
+      return false;
     }
   },
 
@@ -243,109 +194,121 @@ export const syncService = {
       const lastSync = getLastSyncTimestamp();
       const now = Date.now();
 
-      const localChanges = await getChangedData(lastSync);
+      const localChanges = await getLocalChanges(lastSync);
       const localTombstones = await db.tombstones.toArray();
+
+      const hasLocalChanges = Object.values(localChanges).some(r => r.length > 0) || localTombstones.length > 0;
 
       let uploaded = 0;
 
-      for (const [table, rows] of Object.entries(localChanges)) {
-        const cloudTable = CLOUD_TABLE_MAP[table];
-        if (!cloudTable || rows.length === 0) continue;
+      if (hasLocalChanges) {
+        for (const [table, rows] of Object.entries(localChanges)) {
+          const cloudTable = CLOUD_TABLE_MAP[table];
+          if (!cloudTable || rows.length === 0) continue;
 
-        for (const row of rows) {
-          const { data: existing } = await supabase
+          const localIds = rows.map(r => r.id);
+          const { data: existingRows } = await supabase
             .from(cloudTable)
-            .select("id, version, diubah_pada")
+            .select("id, local_id, version, diubah_pada")
             .eq("user_id", userId)
-            .eq("local_id", row.id)
-            .maybeSingle();
+            .in("local_id", localIds);
 
-          if (existing) {
-            if ((row.diubahPada || 0) >= (existing.diubah_pada || 0)) {
-              await supabase
-                .from(cloudTable)
-                .update({ ...buildCloudRow(row, now), version: existing.version + 1 })
-                .eq("id", existing.id);
-              uploaded++;
+          const existingMap = new Map(
+            (existingRows || []).map((r: any) => [r.local_id, r])
+          );
+
+          const toInsert: any[] = [];
+          const toUpdate: any[] = [];
+
+          for (const row of rows) {
+            const existing = existingMap.get(row.id);
+            if (existing) {
+              if ((row.diubahPada || 0) >= (existing.diubah_pada || 0)) {
+                toUpdate.push({ ...buildCloudRow(row, now), version: existing.version + 1, _eq_id: existing.id });
+              }
+            } else {
+              toInsert.push({ ...buildCloudRow(row, now), user_id: userId, local_id: row.id });
             }
-          } else {
-            const { error } = await supabase
-              .from(cloudTable)
-              .insert({ ...buildCloudRow(row, now), user_id: userId, local_id: row.id });
-            if (!error) uploaded++;
+          }
+
+          if (toInsert.length > 0) {
+            const { error } = await supabase.from(cloudTable).insert(toInsert);
+            if (!error) uploaded += toInsert.length;
+          }
+
+          for (const item of toUpdate) {
+            const { _eq_id, ...updateData } = item;
+            await supabase.from(cloudTable).update(updateData).eq("id", _eq_id);
+            uploaded++;
+          }
+        }
+
+        for (const tomb of localTombstones) {
+          const cloudTable = CLOUD_TABLE_MAP[tomb.entityType];
+          if (cloudTable) {
+            await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
+            await supabase.from("cloud_tombstones").insert({
+              user_id: userId,
+              entity_type: tomb.entityType,
+              local_id: tomb.localId,
+              deleted_at: now,
+            });
           }
         }
       }
 
-      for (const tomb of localTombstones) {
-        const cloudTable = CLOUD_TABLE_MAP[tomb.entityType];
-        if (cloudTable) {
-          await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
-          await supabase.from("cloud_tombstones").insert({
-            user_id: userId,
-            entity_type: tomb.entityType,
-            local_id: tomb.localId,
-            deleted_at: now,
-          });
-        }
-      }
-
-      const tables = [
-        "schools", "teachers", "academicYears", "classrooms",
-        "students", "attendanceSessions", "attendanceRecords", "calendarEntries",
-      ];
-
+      const hasCloud = await this.hasCloudChanges(email);
       let downloaded = 0;
-      let hasChanges = false;
+      let hasChanges = hasLocalChanges || hasCloud;
 
-      for (const table of tables) {
-        const cloudTable = CLOUD_TABLE_MAP[table];
-        const { data: cloudRows } = await supabase
-          .from(cloudTable)
-          .select("*")
-          .eq("user_id", userId)
-          .gt("last_synced_at", lastSync);
+      if (hasCloud) {
+        for (const table of SYNC_TABLES) {
+          const cloudTable = CLOUD_TABLE_MAP[table];
+          const { data: cloudRows } = await supabase
+            .from(cloudTable)
+            .select("*")
+            .eq("user_id", userId)
+            .gt("last_synced_at", lastSync);
 
-        if (cloudRows && cloudRows.length > 0) {
-          hasChanges = true;
-          for (const cloudRow of cloudRows) {
-            const localId = cloudRow.local_id;
-            if (!localId || isNaN(localId)) continue;
+          if (cloudRows && cloudRows.length > 0) {
+            for (const cloudRow of cloudRows) {
+              const localId = cloudRow.local_id;
+              if (!localId || isNaN(localId)) continue;
 
-            const existing = await db.table(table).get(localId);
-            if (existing) {
-              if ((cloudRow.diubah_pada || 0) >= ((existing as any).diubahPada || 0)) {
+              const existing = await db.table(table).get(localId);
+              if (existing) {
+                if ((cloudRow.diubah_pada || 0) >= ((existing as any).diubahPada || 0)) {
+                  const localData = convertCloudToLocal(cloudRow);
+                  await db.table(table).put(localData);
+                  downloaded++;
+                }
+              } else {
                 const localData = convertCloudToLocal(cloudRow);
                 await db.table(table).put(localData);
                 downloaded++;
               }
-            } else {
-              const localData = convertCloudToLocal(cloudRow);
-              await db.table(table).put(localData);
-              downloaded++;
             }
           }
         }
-      }
 
-      const { data: cloudTombstones } = await supabase
-        .from("cloud_tombstones")
-        .select("id, entity_type, local_id, deleted_at")
-        .eq("user_id", userId)
-        .gt("deleted_at", lastSync);
+        const { data: cloudTombstones } = await supabase
+          .from("cloud_tombstones")
+          .select("id, entity_type, local_id, deleted_at")
+          .eq("user_id", userId)
+          .gt("deleted_at", lastSync);
 
-      if (cloudTombstones && cloudTombstones.length > 0) {
-        hasChanges = true;
-        for (const tomb of cloudTombstones) {
-          if (!tomb.local_id || isNaN(tomb.local_id)) continue;
-          await db.table(tomb.entity_type).delete(tomb.local_id);
+        if (cloudTombstones && cloudTombstones.length > 0) {
+          for (const tomb of cloudTombstones) {
+            if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+            await db.table(tomb.entity_type).delete(tomb.local_id);
+          }
         }
       }
 
       await db.tombstones.clear();
       saveLastSyncTimestamp(now);
 
-      if (hasChanges && downloaded > 0) {
+      if (downloaded > 0) {
         window.dispatchEvent(new Event("data-changed"));
       }
 
@@ -380,6 +343,7 @@ export const syncService = {
 
   resetSyncState() {
     localStorage.removeItem(LAST_SYNC_KEY);
+    _userIdCache = null;
   },
 };
 

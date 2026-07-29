@@ -5,6 +5,7 @@ import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
+const POLL_INTERVAL = 60 * 1000;
 
 export function useAutoSync() {
   const { user } = useAuth();
@@ -30,15 +31,15 @@ export function useAutoSync() {
 
     const triggerSync = () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = setTimeout(() => sync(true), 1000);
+      syncTimerRef.current = setTimeout(() => sync(true), 2000);
     };
 
     const handleDataChange = () => triggerSync();
 
     window.addEventListener("data-changed", handleDataChange);
 
-    const pollTimer = setInterval(() => sync(false), 30 * 1000);
-    const initTimer = setTimeout(() => sync(true), 3000);
+    const pollTimer = setInterval(() => sync(false), POLL_INTERVAL);
+    const initTimer = setTimeout(() => sync(true), 5000);
 
     return () => {
       window.removeEventListener("data-changed", handleDataChange);

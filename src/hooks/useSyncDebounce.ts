@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { syncService } from "@/services/sync.service";
 
-const MIN_INTERVAL = 30 * 1000;
+const MIN_INTERVAL = 60 * 1000;
 const RETRY_BASE = 10_000;
 const RETRY_MAX = 60_000;
 
