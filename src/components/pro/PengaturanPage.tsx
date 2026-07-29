@@ -6,6 +6,7 @@ import { licenseRepo } from "@/repositories/dexie/license.repo";
 import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { MAX_STUDENTS_FREE, PRO_PRICE } from "@/lib/constants";
 import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -59,6 +60,7 @@ export function PengaturanPage() {
   const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
   const { isCloudConnected, cloudUser, setCloudEmail, clearCloudEmail } = useCloudAuth();
+  const syncStatus = useSyncStatus();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -597,31 +599,62 @@ export function PengaturanPage() {
 
       {/* Cloud Sync Status (PRO only) */}
       {isPRO && isCloudConnected && (
-        <div className="bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-800 p-[14px] mb-3">
+        <div className={`rounded-xl border p-[14px] mb-3 ${
+          syncStatus.status === "synced"
+            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+            : syncStatus.status === "syncing"
+            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+            : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+        }`}>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[0.75rem] font-bold text-green-900 dark:text-green-100">
-              Auto-Sync Aktif — Data Otomatis Tersinkronisasi
+            <div className={`w-2 h-2 rounded-full animate-pulse ${
+              syncStatus.status === "synced" ? "bg-green-500"
+                : syncStatus.status === "syncing" ? "bg-blue-500"
+                : "bg-amber-500"
+            }`}></div>
+            <span className={`text-[0.75rem] font-bold ${
+              syncStatus.status === "synced" ? "text-green-900 dark:text-green-100"
+                : syncStatus.status === "syncing" ? "text-blue-900 dark:text-blue-100"
+                : "text-amber-900 dark:text-amber-100"
+            }`}>
+              {syncStatus.status === "synced"
+                ? "Auto-Sync Aktif — Data Tersinkronisasi"
+                : syncStatus.status === "syncing"
+                ? "Sedang Menyinkronkan..."
+                : syncStatus.status === "offline"
+                ? "Offline — Sync Menunggu Koneksi"
+                : "Menunggu Sinkronisasi Pertama..."
+              }
             </span>
           </div>
-          <div className="text-[0.68rem] text-green-700 dark:text-green-300 mb-2">
+          <div className={`text-[0.68rem] mb-2 ${
+            syncStatus.status === "synced" ? "text-green-700 dark:text-green-300"
+              : "text-amber-700 dark:text-amber-300"
+          }`}>
             <Mail size={11} className="inline mr-1" />{cloudUser?.email}
           </div>
-          {localStorage.getItem("presensi_last_sync") ? (
-            <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
-              Terakhir sync: {formatRelativeTime(parseInt(localStorage.getItem("presensi_last_sync")!))}
+          {syncStatus.lastSync > 0 ? (
+            <div className={`text-[0.65rem] mb-3 ${
+              syncStatus.status === "synced" ? "text-green-600 dark:text-green-400"
+                : "text-amber-600 dark:text-amber-400"
+            }`}>
+              Terakhir sync: {formatRelativeTime(syncStatus.lastSync)}
             </div>
           ) : (
-            <div className="text-[0.65rem] text-green-600 dark:text-green-400 mb-3">
-              Menunggu sync pertama...
+            <div className="text-[0.65rem] text-amber-600 dark:text-amber-400 mb-3">
+              Data akan otomatis tersinkron — tidak perlu klik manual
             </div>
           )}
           <div className="flex gap-2">
             <button
               onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
-              className="flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 font-bold text-[0.75rem] cursor-pointer bg-transparent"
+              className={`flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer bg-transparent ${
+                syncStatus.status === "synced"
+                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300"
+                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300"
+              }`}
             >
-              <RefreshCw size={13} /> Pengaturan Cloud Sync
+              <RefreshCw size={13} /> Pengaturan Cloud
             </button>
           </div>
         </div>
