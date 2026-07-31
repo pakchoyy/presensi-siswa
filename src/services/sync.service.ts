@@ -166,13 +166,16 @@ export const syncService = {
 
       const lastSync = getLastSyncTimestamp();
 
-      const { count } = await supabase
-        .from("cloud_attendance_records")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .gt("last_synced_at", lastSync);
+      for (const table of SYNC_TABLES) {
+        const cloudTable = CLOUD_TABLE_MAP[table];
+        const { count } = await supabase
+          .from(cloudTable)
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .gt("last_synced_at", lastSync);
 
-      if (count && count > 0) return true;
+        if (count && count > 0) return true;
+      }
 
       const { count: tombCount } = await supabase
         .from("cloud_tombstones")
