@@ -16,6 +16,10 @@ const SYNC_TABLES = [
   "calendarEntries",
 ] as const;
 
+// Tabel yang TIDAK boleh dihapus/overwrite saat force sync
+// karena berisi data auth & lisensi (tier PRO) yang hidupnya di lokal
+const PROTECTED_TABLES = new Set(["schools", "teachers"]);
+
 const CLOUD_TABLE_MAP: Record<string, string> = {
   schools: "cloud_schools",
   teachers: "cloud_teachers",
@@ -86,6 +90,9 @@ export const syncService = {
         const rows = allData[i];
         const cloudTable = CLOUD_TABLE_MAP[table];
 
+        // Skip tabel protected (schools, teachers) — biar cloud gak ke-timpa data auth/lisensi
+        if (PROTECTED_TABLES.has(table)) continue;
+
         // Hapus dulu semua data lama di cloud untuk user ini, biar jadi clean slate
         await supabase.from(cloudTable).delete().eq("user_id", userId);
 
@@ -120,6 +127,9 @@ export const syncService = {
 
       await db.transaction("rw", SYNC_TABLES.map(t => db.table(t)), async () => {
         for (const table of SYNC_TABLES) {
+          // Skip tabel protected (schools, teachers) biar tier PRO & sekolah gak berubah
+          if (PROTECTED_TABLES.has(table)) continue;
+
           // Hapus dulu semua data lokal biar jadi clean slate
           await db.table(table).clear();
 
@@ -148,6 +158,8 @@ export const syncService = {
         if (tombstones) {
           for (const tomb of tombstones) {
             if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+            // Jangan hapus tabel protected via tombstone juga
+            if (PROTECTED_TABLES.has(tomb.entity_type)) continue;
             await db.table(tomb.entity_type).delete(tomb.local_id);
           }
         }
