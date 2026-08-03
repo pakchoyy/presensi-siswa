@@ -117,7 +117,9 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
     );
 
     channel.subscribe((status) => {
-      setConnected(status === "SUBSCRIBED");
+      const connected = status === "SUBSCRIBED";
+      setConnected(connected);
+      window.dispatchEvent(new CustomEvent("realtime-status", { detail: { connected } }));
     });
 
     channelRef.current = channel;

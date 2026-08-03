@@ -43,11 +43,19 @@ export function useAutoSync() {
 
     window.addEventListener("data-changed", handleDataChange);
 
+    const handleVisibility = () => {
+      if (document.hidden) return;
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => sync(true), 1000);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     const pollTimer = setInterval(() => sync(false), POLL_INTERVAL);
     const initTimer = setTimeout(() => sync(true), 5000);
 
     return () => {
       window.removeEventListener("data-changed", handleDataChange);
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       if (pollTimer) clearInterval(pollTimer);
       clearTimeout(initTimer);

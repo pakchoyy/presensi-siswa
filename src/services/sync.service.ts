@@ -111,6 +111,8 @@ export const syncService = {
       // Hapus tombstones lama
       await supabase.from("cloud_tombstones").delete().eq("user_id", userId);
 
+      saveLastSyncTimestamp(Date.now());
+
       return totalUploaded;
     } catch (error) {
       console.error("Initial upload failed:", error);
@@ -168,6 +170,8 @@ export const syncService = {
       if (count > 0) {
         window.dispatchEvent(new Event("data-changed"));
       }
+
+      saveLastSyncTimestamp(Date.now());
 
       return count;
     } catch (error) {

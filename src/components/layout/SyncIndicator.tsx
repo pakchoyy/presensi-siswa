@@ -1,7 +1,13 @@
 import { useSyncStatus, type SyncStatus } from "@/hooks/useSyncStatus";
-import { CloudOff, Cloud, WifiOff, RefreshCw } from "lucide-react";
+import { CloudOff, Cloud, WifiOff, RefreshCw, Radio } from "lucide-react";
 
 const STATUS_CONFIG: Record<SyncStatus, { bg: string; icon: React.ReactNode; label: string; title: string }> = {
+  realtime: {
+    bg: "rgba(14,165,233,0.25)",
+    icon: <Radio size={11} />,
+    label: "Live",
+    title: "Tersinkron real-time — data otomatis sinkron antar perangkat",
+  },
   synced: {
     bg: "rgba(22,163,74,0.25)",
     icon: <Cloud size={11} />,
