@@ -61,6 +61,9 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
         }
       }
 
+      // Tandai bahwa perubahan ini datang dari cloud, agar tidak di-upload ulang
+      (window as any).__realtimeDirty = true;
+      window.dispatchEvent(new Event("data-changed"));
       window.dispatchEvent(new CustomEvent("realtime-update", { detail: { table: localTable } }));
     } catch (err) {
       console.error(`[Realtime] Error handling ${eventType} on ${tableName}:`, err);

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
@@ -8,14 +7,13 @@ const LAST_SYNC_KEY = "presensi_last_sync";
 const POLL_INTERVAL = 60 * 1000;
 
 export function useAutoSync() {
-  const { user } = useAuth();
-  const { cloudEmail, isCloudConnected } = useCloudAuth();
+  const { cloudEmail, cloudUser, isCloudConnected } = useCloudAuth();
   const { sync, isSyncing, lastSync } = useSyncDebounce(cloudEmail);
   const syncTimerRef = useRef<number>();
 
-  const useRealtime = !!(user?.id && isCloudConnected);
+  const useRealtime = !!(cloudUser?.id && isCloudConnected);
   const { connected: realtimeConnected } = useCloudRealtime(
-    user?.id || null,
+    cloudUser?.id || null,
     useRealtime
   );
 
@@ -34,7 +32,14 @@ export function useAutoSync() {
       syncTimerRef.current = setTimeout(() => sync(true), 2000);
     };
 
-    const handleDataChange = () => triggerSync();
+    const handleDataChange = () => {
+      // Perubahan yang datang dari realtime cloud tidak perlu di-upload ulang
+      if ((window as any).__realtimeDirty) {
+        (window as any).__realtimeDirty = false;
+        return;
+      }
+      triggerSync();
+    };
 
     window.addEventListener("data-changed", handleDataChange);
 
