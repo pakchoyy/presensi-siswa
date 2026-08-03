@@ -5,6 +5,7 @@ import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
+import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -73,6 +74,7 @@ export function PengaturanPage() {
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [devices, setDevices] = useState<any[]>([]);
+  const [syncLog, setSyncLog] = useState<SyncLogEntry | null>(() => getSyncLog());
   const [licenseInfo, setLicenseInfo] = useState<Awaited<
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
@@ -233,6 +235,18 @@ export function PengaturanPage() {
     };
     fetchDevices();
   }, [cloudUser?.id]);
+
+  useEffect(() => {
+    const refreshLog = () => setSyncLog(getSyncLog());
+    window.addEventListener("sync-log-updated", refreshLog);
+    window.addEventListener("data-changed", refreshLog);
+    const interval = setInterval(refreshLog, 5000);
+    return () => {
+      window.removeEventListener("sync-log-updated", refreshLog);
+      window.removeEventListener("data-changed", refreshLog);
+      clearInterval(interval);
+    };
+  }, []);
 
   const saveHariAktifSettings = async (mode: string, days: string) => {
     setHariAktif(mode);
@@ -704,6 +718,22 @@ export function PengaturanPage() {
             </div>
             <div className="text-[var(--text-light)]">Cloud: {cloudUser?.email}</div>
           </div>
+
+          {syncLog && (
+            <div
+              className={`mb-3 text-[0.68rem] p-2 rounded-lg border ${
+                syncLog.ok
+                  ? "bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-900 dark:text-green-200"
+                  : "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200"
+              }`}
+            >
+              {syncLog.ok
+                ? `✅ ${syncLog.action === "upload" ? "Upload" : "Sync"} OK` +
+                  (syncLog.uploaded ? ` · ${syncLog.uploaded} ter-upload` : "") +
+                  (syncLog.downloaded ? ` · ${syncLog.downloaded} ter-download` : "")
+                : `❌ ${syncLog.action === "upload" ? "Upload" : "Sync"} gagal: ${syncLog.error || "error tidak diketahui"}`}
+            </div>
+          )}
 
           <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
             💡 <b>Data HP & laptop beda?</b> Device yang benar → Upload. Device lain → Tarik.

@@ -4,6 +4,32 @@ import { supabase } from "@/lib/supabase";
 export type SyncStatus = "tersinkron" | "menyinkronkan" | "menunggu" | "error";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
+const SYNC_LOG_KEY = "presensi_sync_log";
+
+export interface SyncLogEntry {
+  at: number;
+  action: string;
+  ok: boolean;
+  uploaded?: number;
+  downloaded?: number;
+  error?: string;
+}
+
+export function saveSyncLog(entry: SyncLogEntry) {
+  try {
+    localStorage.setItem(SYNC_LOG_KEY, JSON.stringify(entry));
+    window.dispatchEvent(new Event("sync-log-updated"));
+  } catch {}
+}
+
+export function getSyncLog(): SyncLogEntry | null {
+  try {
+    const raw = localStorage.getItem(SYNC_LOG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 const SYNC_TABLES = [
   "schools",
@@ -78,12 +104,16 @@ export const syncService = {
   async initialUpload(email: string): Promise<number> {
     try {
       const userId = await getUserIdByEmail(email);
-      if (!userId) return 0;
+      if (!userId) {
+        saveSyncLog({ at: Date.now(), action: "upload", ok: false, uploaded: 0, error: "Email tidak terdaftar di cloud" });
+        return 0;
+      }
 
       const allData = await Promise.all(SYNC_TABLES.map(t => db.table(t).toArray()));
       const now = Date.now();
 
       let totalUploaded = 0;
+      let lastError: string | null = null;
 
       for (let i = 0; i < SYNC_TABLES.length; i++) {
         const table = SYNC_TABLES[i];
@@ -94,7 +124,11 @@ export const syncService = {
         if (PROTECTED_TABLES.has(table)) continue;
 
         // Hapus dulu semua data lama di cloud untuk user ini, biar jadi clean slate
-        await supabase.from(cloudTable).delete().eq("user_id", userId);
+        const { error: delErr } = await supabase.from(cloudTable).delete().eq("user_id", userId);
+        if (delErr) {
+          lastError = `hapus ${cloudTable}: ${delErr.message}`;
+          continue;
+        }
 
         if (rows.length === 0) continue;
 
@@ -107,16 +141,19 @@ export const syncService = {
         // Sudah clean slate di atas, cukup insert (upsert onConflict butuh unique constraint yang tak ada)
         const { error } = await supabase.from(cloudTable).insert(batch);
         if (!error) totalUploaded += batch.length;
+        else lastError = `${cloudTable}: ${error.message}`;
       }
 
       // Hapus tombstones lama
       await supabase.from("cloud_tombstones").delete().eq("user_id", userId);
 
       saveLastSyncTimestamp(Date.now());
+      saveSyncLog({ at: Date.now(), action: "upload", ok: totalUploaded > 0 && !lastError, uploaded: totalUploaded, error: lastError || undefined });
 
       return totalUploaded;
     } catch (error) {
       console.error("Initial upload failed:", error);
+      saveSyncLog({ at: Date.now(), action: "upload", ok: false, uploaded: 0, error: (error as Error)?.message || "Upload gagal" });
       return 0;
     }
   },
@@ -225,6 +262,7 @@ export const syncService = {
       const hasLocalChanges = Object.values(localChanges).some(r => r.length > 0) || localTombstones.length > 0;
 
       let uploaded = 0;
+      let lastError: string | null = null;
 
       if (hasLocalChanges) {
         for (const [table, rows] of Object.entries(localChanges)) {
@@ -259,12 +297,14 @@ export const syncService = {
           if (toInsert.length > 0) {
             const { error } = await supabase.from(cloudTable).insert(toInsert);
             if (!error) uploaded += toInsert.length;
+            else lastError = `insert ${cloudTable}: ${error.message}`;
           }
 
           for (const item of toUpdate) {
             const { _eq_id, ...updateData } = item;
-            await supabase.from(cloudTable).update(updateData).eq("id", _eq_id);
-            uploaded++;
+            const { error } = await supabase.from(cloudTable).update(updateData).eq("id", _eq_id);
+            if (!error) uploaded++;
+            else lastError = `update ${cloudTable}: ${error.message}`;
           }
         }
 
@@ -332,6 +372,7 @@ export const syncService = {
 
       await db.tombstones.clear();
       saveLastSyncTimestamp(now);
+      saveSyncLog({ at: now, action: "sync", ok: !lastError, uploaded, downloaded, error: lastError || undefined });
 
       if (downloaded > 0) {
         window.dispatchEvent(new Event("data-changed"));
@@ -340,6 +381,7 @@ export const syncService = {
       return { uploaded, downloaded, hasChanges };
     } catch (error) {
       console.error("Incremental sync failed:", error);
+      saveSyncLog({ at: Date.now(), action: "sync", ok: false, uploaded: 0, downloaded: 0, error: (error as Error)?.message || "Sinkronisasi gagal" });
       return { uploaded: 0, downloaded: 0, hasChanges: false };
     }
   },
