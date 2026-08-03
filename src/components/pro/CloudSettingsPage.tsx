@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
 import { listCloudBackups, deleteCloudBackup } from "@/services/backup.service";
 import { useToast } from "@/components/shared/Toast";
+import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useApp } from "@/contexts/AppContext";
 import { 
   ArrowLeft, Smartphone, Cloud, Upload, 
@@ -71,17 +72,24 @@ export function CloudSettingsPage() {
 
   const handleForceDownload = async () => {
     if (!cloudEmail) return;
-    if (!confirm("⚠️ Ini akan MENIMPA semua data lokal dengan data dari cloud. Data lokal yang belum ter-upload akan HILANG. Lanjutkan?")) return;
-    
+    const ok = await showConfirmDialog({
+      title: "Tarik Data dari Cloud?",
+      message: "Semua data lokal akan DITIMPA dengan data dari cloud. Pastikan data di cloud sudah yang terbaru.",
+      confirmText: "Ya, Tarik",
+      cancelText: "Batal",
+      danger: true,
+    });
+    if (!ok) return;
+
     setDownloading(true);
     try {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudEmail);
       localStorage.setItem("presensi_last_sync", Date.now().toString());
-      toast(`✅ Tarik data selesai: ${downloaded} data didownload`);
+      toast(`✅ ${downloaded} data ditarik dari cloud`, "success");
       window.location.reload();
     } catch (error) {
-      toast("❌ Gagal tarik data dari cloud");
+      toast("❌ Gagal tarik data dari cloud", "error");
     } finally {
       setDownloading(false);
     }
@@ -89,17 +97,24 @@ export function CloudSettingsPage() {
 
   const handleForceUpload = async () => {
     if (!cloudEmail) return;
-    if (!confirm("⚠️ Ini akan MENIMPA semua data di cloud dengan data lokal. Data cloud dari device lain akan HILANG. Lanjutkan?")) return;
-    
+    const ok = await showConfirmDialog({
+      title: "Upload Data ke Cloud?",
+      message: "Semua data di cloud akan DITIMPA dengan data lokal device ini. Data di device lain akan diganti.",
+      confirmText: "Ya, Upload",
+      cancelText: "Batal",
+      danger: true,
+    });
+    if (!ok) return;
+
     setUploading(true);
     try {
       syncService.resetSyncState();
       const uploaded = await syncService.initialUpload(cloudEmail);
       localStorage.setItem("presensi_last_sync", Date.now().toString());
-      toast(`✅ Upload data selesai: ${uploaded} data diupload`);
+      toast(`✅ ${uploaded} data diupload ke cloud`, "success");
       window.location.reload();
     } catch (error) {
-      toast("❌ Gagal upload data ke cloud");
+      toast("❌ Gagal upload data ke cloud", "error");
     } finally {
       setUploading(false);
     }

@@ -82,7 +82,13 @@ export const syncService = {
       let totalUploaded = 0;
 
       for (let i = 0; i < SYNC_TABLES.length; i++) {
+        const table = SYNC_TABLES[i];
         const rows = allData[i];
+        const cloudTable = CLOUD_TABLE_MAP[table];
+
+        // Hapus dulu semua data lama di cloud untuk user ini, biar jadi clean slate
+        await supabase.from(cloudTable).delete().eq("user_id", userId);
+
         if (rows.length === 0) continue;
 
         const batch = rows.map((row: any) => ({
@@ -91,10 +97,12 @@ export const syncService = {
           ...buildCloudRow(row, now),
         }));
 
-        const { error } = await supabase.from(CLOUD_TABLE_MAP[SYNC_TABLES[i]])
-          .upsert(batch, { onConflict: "user_id,local_id" });
+        const { error } = await supabase.from(cloudTable).upsert(batch, { onConflict: "user_id,local_id" });
         if (!error) totalUploaded += batch.length;
       }
+
+      // Hapus tombstones lama
+      await supabase.from("cloud_tombstones").delete().eq("user_id", userId);
 
       return totalUploaded;
     } catch (error) {
@@ -112,6 +120,9 @@ export const syncService = {
 
       await db.transaction("rw", SYNC_TABLES.map(t => db.table(t)), async () => {
         for (const table of SYNC_TABLES) {
+          // Hapus dulu semua data lokal biar jadi clean slate
+          await db.table(table).clear();
+
           const { data: cloudRows } = await supabase
             .from(CLOUD_TABLE_MAP[table])
             .select("*")

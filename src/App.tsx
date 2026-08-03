@@ -2,6 +2,7 @@ import { AppProvider, useApp } from "@/contexts/AppContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
 import { ToastProvider } from "@/components/shared/Toast";
+import { ConfirmDialogProvider } from "@/components/shared/ConfirmDialog";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -117,6 +118,7 @@ export default function App() {
       <CloudAuthProvider>
         <AppProvider>
           <ToastProvider>
+            <ConfirmDialogProvider />
             <AppContent />
           </ToastProvider>
         </AppProvider>
