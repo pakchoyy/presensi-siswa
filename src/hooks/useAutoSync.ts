@@ -24,6 +24,14 @@ export function useAutoSync() {
     }
   }, [lastSync]);
 
+  // Sync awal sekali saat app dibuka / cloud pertama terhubung
+  useEffect(() => {
+    if (!isCloudConnected || !cloudEmail) return;
+    const t = setTimeout(() => sync(true), 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudEmail, isCloudConnected]);
+
   useEffect(() => {
     if (!isCloudConnected || !cloudEmail) return;
 
@@ -56,7 +64,6 @@ export function useAutoSync() {
     window.addEventListener("focus", handleFocus);
 
     const pollTimer = setInterval(() => sync(false), POLL_INTERVAL);
-    const initTimer = setTimeout(() => sync(true), 5000);
 
     return () => {
       window.removeEventListener("data-changed", handleDataChange);
@@ -64,7 +71,6 @@ export function useAutoSync() {
       window.removeEventListener("focus", handleFocus);
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       if (pollTimer) clearInterval(pollTimer);
-      clearTimeout(initTimer);
     };
   }, [cloudEmail, isCloudConnected, sync, realtimeConnected]);
 }
