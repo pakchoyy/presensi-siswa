@@ -349,8 +349,14 @@ export function PengaturanPage() {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudUser.email);
       localStorage.setItem("presensi_last_sync", Date.now().toString());
-      toast(`✅ ${downloaded} data ditarik dari cloud`, "success");
-      window.location.reload();
+      await refreshTeacher();
+      window.dispatchEvent(new Event("data-changed"));
+      toast(
+        downloaded > 0
+          ? `✅ ${downloaded} data ditarik dari cloud`
+          : "⚠️ Tidak ada data baru di cloud untuk ditarik",
+        downloaded > 0 ? "success" : "info"
+      );
     } catch (error) {
       toast("❌ Gagal tarik data dari cloud", "error");
     } finally {
@@ -374,8 +380,14 @@ export function PengaturanPage() {
       syncService.resetSyncState();
       const uploaded = await syncService.initialUpload(cloudUser.email);
       localStorage.setItem("presensi_last_sync", Date.now().toString());
-      toast(`✅ ${uploaded} data diupload ke cloud`, "success");
-      window.location.reload();
+      await refreshTeacher();
+      window.dispatchEvent(new Event("data-changed"));
+      toast(
+        uploaded > 0
+          ? `✅ ${uploaded} data diupload ke cloud`
+          : "⚠️ Tidak ada data untuk di-upload (semua sudah pernah di-upload?)",
+        uploaded > 0 ? "success" : "info"
+      );
     } catch (error) {
       toast("❌ Gagal upload data ke cloud", "error");
     } finally {
@@ -736,25 +748,27 @@ export function PengaturanPage() {
           )}
 
           <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-            💡 <b>Data HP & laptop beda?</b> Device yang benar → Upload. Device lain → Tarik.
+            💡 <b>Data beda antar device?</b><br />
+            • Punya data di device ini yang belum ada di device lain → <b className="text-sky-600 dark:text-sky-300">Upload Cloud</b><br />
+            • Mau ambil data terbaru dari device lain → <b className="text-emerald-600 dark:text-emerald-300">Tarik Cloud</b>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={handleForceDownload}
-              disabled={downloading}
-              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-transparent"
-            >
-              <Download size={13} className={downloading ? "animate-bounce" : ""} />
-              {downloading ? "Menarik..." : "Tarik Cloud"}
-            </button>
-            <button
               onClick={handleForceUpload}
               disabled={uploading}
-              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-transparent"
+              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] cursor-pointer disabled:opacity-50"
             >
               <Upload size={13} className={uploading ? "animate-bounce" : ""} />
               {uploading ? "Upload..." : "Upload Cloud"}
+            </button>
+            <button
+              onClick={handleForceDownload}
+              disabled={downloading}
+              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#3b82f6] text-[#3b82f6] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-sky-500/10"
+            >
+              <Download size={13} className={downloading ? "animate-bounce" : ""} />
+              {downloading ? "Menarik..." : "Tarik Cloud"}
             </button>
           </div>
         </div>
