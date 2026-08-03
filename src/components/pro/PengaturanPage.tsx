@@ -75,6 +75,7 @@ export function PengaturanPage() {
   const [downloading, setDownloading] = useState(false);
   const [devices, setDevices] = useState<any[]>([]);
   const [syncLog, setSyncLog] = useState<SyncLogEntry | null>(() => getSyncLog());
+  const thisDeviceId = localStorage.getItem("presensi_device_id");
   const [licenseInfo, setLicenseInfo] = useState<Awaited<
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
@@ -229,7 +230,7 @@ export function PengaturanPage() {
     const fetchDevices = async () => {
       const { data } = await supabase
         .from("devices")
-        .select("id, device_name, last_active_at")
+        .select("id, device_id, device_name, last_active_at")
         .eq("user_id", cloudUser.id);
       setDevices(data || []);
     };
@@ -708,6 +709,11 @@ export function PengaturanPage() {
                 <div key={device.id} className="text-[0.68rem] text-[var(--text-light)] flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-[#0ea5a0]"></div>
                   {device.device_name} • {formatRelativeTime(device.last_active_at)}
+                  {device.device_id === thisDeviceId && (
+                    <span className="ml-auto text-[0.58rem] font-bold bg-[#0ea5a0]/20 text-[#0ea5a0] px-1.5 py-0.5 rounded-full">
+                      Device ini
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -719,19 +725,38 @@ export function PengaturanPage() {
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[0.62rem] ${
                   syncStatus.status === "realtime"
                     ? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
+                    : syncStatus.status === "synced" || syncStatus.status === "syncing"
+                    ? "bg-green-500/20 text-green-700 dark:text-green-300"
                     : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
                 }`}
               >
-                {syncStatus.status === "realtime" ? "● Live" : "● Menunggu sinkron"}
+                {syncStatus.status === "realtime"
+                  ? "● Live"
+                  : syncStatus.status === "synced"
+                  ? "● Tersinkron"
+                  : syncStatus.status === "syncing"
+                  ? "● Sinkronisasi..."
+                  : syncStatus.status === "offline"
+                  ? "● Offline"
+                  : syncStatus.status === "not-connected"
+                  ? "● Belum terhubung"
+                  : "● Menunggu sinkron"}
               </span>
               <span className="text-[var(--text-light)]">
                 {syncStatus.lastSync > 0 ? `Sync ${formatRelativeTime(syncStatus.lastSync)}` : "Belum pernah sync"}
               </span>
             </div>
-            <div className="text-[var(--text-light)]">Cloud: {cloudUser?.email}</div>
+            <div className="text-[var(--text-light)]">
+              Cloud: {cloudUser?.email}
+              {cloudUser?.email === teacher?.email && (
+                <span className="ml-1 text-[0.58rem] font-bold bg-green-500/20 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full">
+                  Email device ini
+                </span>
+              )}
+            </div>
           </div>
 
-          {syncLog && (
+          {syncLog && ((syncLog.uploaded || 0) > 0 || (syncLog.downloaded || 0) > 0 || !syncLog.ok) && (
             <div
               className={`mb-3 text-[0.68rem] p-2 rounded-lg border ${
                 syncLog.ok
