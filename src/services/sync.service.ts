@@ -101,10 +101,11 @@ export const syncService = {
         const batch = rows.map((row: any) => ({
           user_id: userId,
           local_id: row.id,
-          ...buildCloudRow(row, now),
+          ...buildCloudRow(table, row, now),
         }));
 
-        const { error } = await supabase.from(cloudTable).upsert(batch, { onConflict: "user_id,local_id" });
+        // Sudah clean slate di atas, cukup insert (upsert onConflict butuh unique constraint yang tak ada)
+        const { error } = await supabase.from(cloudTable).insert(batch);
         if (!error) totalUploaded += batch.length;
       }
 
@@ -248,10 +249,10 @@ export const syncService = {
             const existing = existingMap.get(row.id);
             if (existing) {
               if ((row.diubahPada || 0) >= (existing.diubah_pada || 0)) {
-                toUpdate.push({ ...buildCloudRow(row, now), version: existing.version + 1, _eq_id: existing.id });
+                toUpdate.push({ ...buildCloudRow(table, row, now), version: existing.version + 1, _eq_id: existing.id });
               }
             } else {
-              toInsert.push({ ...buildCloudRow(row, now), user_id: userId, local_id: row.id });
+              toInsert.push({ ...buildCloudRow(table, row, now), user_id: userId, local_id: row.id });
             }
           }
 
@@ -371,38 +372,96 @@ export const syncService = {
   },
 };
 
-function buildCloudRow(row: any, now: number): Record<string, any> {
-  return {
-    nama: row.nama,
-    jenjang: row.jenjang,
-    logo_url: row.logoUrl || null,
-    alamat: row.alamat || null,
-    email: row.email,
-    sekolah_id: row.sekolahId || 0,
-    tier: row.tier || "FREE",
-    guru_id: row.guruId || 0,
-    label: row.label,
-    tanggal_mulai: row.tanggalMulai,
-    tanggal_selesai: row.tanggalSelesai,
-    semester_aktif: row.semesterAktif,
-    tahun_ajaran_id: row.tahunAjaranId || 0,
-    status_aktif: row.statusAktif,
-    kelas_id: row.kelasId || 0,
-    nisn: row.nisn || null,
-    jenis_kelamin: row.jenisKelamin || null,
-    urutan: row.urutan || 0,
-    tanggal: row.tanggal,
-    sesi_id: row.sesiId || 0,
-    siswa_id: row.siswaId || 0,
-    status: row.status,
-    catatan: row.catatan || null,
-    keterangan: row.keterangan || null,
-    sumber: row.sumber,
-    dibuat_pada: row.dibuatPada || now,
-    diubah_pada: row.diubahPada || now,
-    last_synced_at: now,
-    version: 1,
-  };
+function buildCloudRow(table: string, row: any, now: number): Record<string, any> {
+  switch (table) {
+    case "schools":
+      return {
+        nama: row.nama,
+        jenjang: row.jenjang,
+        logo_url: row.logoUrl || null,
+        alamat: row.alamat || null,
+        dibuat_pada: row.dibuatPada || now,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "teachers":
+      return {
+        nama: row.nama,
+        email: row.email,
+        sekolah_id: row.sekolahId || 0,
+        tier: row.tier || "FREE",
+        dibuat_pada: row.dibuatPada || now,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "academicYears":
+      return {
+        guru_id: row.guruId || 0,
+        label: row.label,
+        tanggal_mulai: row.tanggalMulai,
+        tanggal_selesai: row.tanggalSelesai,
+        semester_aktif: row.semesterAktif,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "classrooms":
+      return {
+        tahun_ajaran_id: row.tahunAjaranId || 0,
+        guru_id: row.guruId || 0,
+        nama: row.nama,
+        status_aktif: !!row.statusAktif,
+        dibuat_pada: row.dibuatPada || now,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "students":
+      return {
+        kelas_id: row.kelasId || 0,
+        nama: row.nama,
+        nisn: row.nisn || null,
+        jenis_kelamin: row.jenisKelamin || null,
+        urutan: row.urutan || 0,
+        status_aktif: !!row.statusAktif,
+        dibuat_pada: row.dibuatPada || now,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "attendanceSessions":
+      return {
+        kelas_id: row.kelasId || 0,
+        tanggal: row.tanggal,
+        dibuat_pada: row.dibuatPada || now,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "attendanceRecords":
+      return {
+        sesi_id: row.sesiId || 0,
+        siswa_id: row.siswaId || 0,
+        status: row.status,
+        catatan: row.catatan || null,
+        diubah_pada: row.diubahPada || now,
+        last_synced_at: now,
+        version: 1,
+      };
+    case "calendarEntries":
+      return {
+        tahun_ajaran_id: row.tahunAjaranId || 0,
+        tanggal: row.tanggal,
+        jenis: row.jenis,
+        keterangan: row.keterangan || null,
+        sumber: row.sumber,
+        last_synced_at: now,
+        version: 1,
+      };
+    default:
+      return { last_synced_at: now, version: 1 };
+  }
 }
 
 function convertCloudToLocal(cloudRow: any): any {
