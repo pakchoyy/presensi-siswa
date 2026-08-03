@@ -107,7 +107,7 @@ async function checkDeviceLimit(userId: string): Promise<{ allowed: boolean; dev
   return { allowed: true, devices, tier, limit };
 }
 
-async function trackDevice(userId: string) {
+export async function trackDevice(userId: string) {
   const deviceId = getDeviceId();
   const deviceName = getDeviceName();
 

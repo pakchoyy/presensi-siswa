@@ -331,7 +331,11 @@ export const syncService = {
         }
       }
 
-      const hasCloud = await this.hasCloudChanges(email);
+      // Batasi cek perubahan cloud (beberapa query) maksimal tiap 30 detik biar hemat kuota
+      let hasCloud = false;
+      if (now - lastSync >= 30_000) {
+        hasCloud = await this.hasCloudChanges(email);
+      }
       let downloaded = 0;
       let hasChanges = hasLocalChanges || hasCloud;
 

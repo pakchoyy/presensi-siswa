@@ -7,11 +7,11 @@ import type { License } from "@/types/entities";
 import { syncService } from "@/services/sync.service";
 import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
-import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { MAX_STUDENTS_FREE, PRO_PRICE } from "@/lib/constants";
 import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { trackDevice } from "@/contexts/AuthContext";
 import {
   Settings,
   ArrowUpCircle,
@@ -63,7 +63,6 @@ export function PengaturanPage() {
   const { teacher, school, refreshTeacher, setActivePage } = useApp();
   const { toast } = useToast();
   const { isCloudConnected, cloudUser, setCloudEmail, clearCloudEmail } = useCloudAuth();
-  const syncStatus = useSyncStatus();
 
   const isPRO = teacher?.tier === Tier.PRO;
 
@@ -523,6 +522,10 @@ export function PengaturanPage() {
       } else {
         await supabase.from("profiles").insert({ email: emailAddress, tier: "PRO", updated_at: new Date().toISOString() });
       }
+
+      if (existingProfile) {
+        trackDevice(existingProfile.id).catch(() => {});
+      }
       
       localStorage.setItem("presensi_cloud_email", emailAddress);
       
@@ -720,40 +723,7 @@ export function PengaturanPage() {
           )}
 
           <div className="mb-3 space-y-1 text-[0.68rem]">
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[0.62rem] ${
-                  syncStatus.status === "realtime"
-                    ? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
-                    : syncStatus.status === "synced" || syncStatus.status === "syncing"
-                    ? "bg-green-500/20 text-green-700 dark:text-green-300"
-                    : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                }`}
-              >
-                {syncStatus.status === "realtime"
-                  ? "● Live"
-                  : syncStatus.status === "synced"
-                  ? "● Tersinkron"
-                  : syncStatus.status === "syncing"
-                  ? "● Sinkronisasi..."
-                  : syncStatus.status === "offline"
-                  ? "● Offline"
-                  : syncStatus.status === "not-connected"
-                  ? "● Belum terhubung"
-                  : "● Menunggu sinkron"}
-              </span>
-              <span className="text-[var(--text-light)]">
-                {syncStatus.lastSync > 0 ? `Sync ${formatRelativeTime(syncStatus.lastSync)}` : "Belum pernah sync"}
-              </span>
-            </div>
-            <div className="text-[var(--text-light)]">
-              Cloud: {cloudUser?.email}
-              {cloudUser?.email === teacher?.email && (
-                <span className="ml-1 text-[0.58rem] font-bold bg-green-500/20 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full">
-                  Email device ini
-                </span>
-              )}
-            </div>
+            <div className="text-[var(--text-light)]">Terhubung sebagai: {cloudUser?.email}</div>
           </div>
 
           {syncLog && ((syncLog.uploaded || 0) > 0 || (syncLog.downloaded || 0) > 0 || !syncLog.ok) && (
