@@ -687,6 +687,24 @@ export function PengaturanPage() {
             </div>
           )}
 
+          <div className="mb-3 space-y-1 text-[0.68rem]">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[0.62rem] ${
+                  syncStatus.status === "realtime"
+                    ? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
+                    : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                {syncStatus.status === "realtime" ? "● Live" : "● Menunggu sinkron"}
+              </span>
+              <span className="text-[var(--text-light)]">
+                {syncStatus.lastSync > 0 ? `Sync ${formatRelativeTime(syncStatus.lastSync)}` : "Belum pernah sync"}
+              </span>
+            </div>
+            <div className="text-[var(--text-light)]">Cloud: {cloudUser?.email}</div>
+          </div>
+
           <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
             💡 <b>Data HP & laptop beda?</b> Device yang benar → Upload. Device lain → Tarik.
           </div>

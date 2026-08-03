@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { syncService } from "@/services/sync.service";
 import { useToast } from "@/components/shared/Toast";
 
-const MIN_INTERVAL = 60 * 1000;
+const MIN_INTERVAL = 15 * 1000;
 const RETRY_BASE = 10_000;
 const RETRY_MAX = 60_000;
 

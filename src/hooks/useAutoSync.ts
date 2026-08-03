@@ -4,7 +4,7 @@ import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
-const POLL_INTERVAL = 60 * 1000;
+const POLL_INTERVAL = 15 * 1000;
 
 export function useAutoSync() {
   const { cloudEmail, cloudUser, isCloudConnected } = useCloudAuth();
@@ -48,7 +48,12 @@ export function useAutoSync() {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => sync(true), 1000);
     };
+    const handleFocus = () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => sync(true), 1000);
+    };
     document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
 
     const pollTimer = setInterval(() => sync(false), POLL_INTERVAL);
     const initTimer = setTimeout(() => sync(true), 5000);
@@ -56,6 +61,7 @@ export function useAutoSync() {
     return () => {
       window.removeEventListener("data-changed", handleDataChange);
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       if (pollTimer) clearInterval(pollTimer);
       clearTimeout(initTimer);
