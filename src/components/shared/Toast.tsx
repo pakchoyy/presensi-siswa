@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useCallback, type ReactNode } from "react";
+import { useState, createContext, useContext, useCallback, type ReactNode } from "react";
 import { CheckCircle2, AlertTriangle, X, Info, Loader2 } from "lucide-react";
 
 type ToastType = "success" | "error" | "info" | "loading";
@@ -15,24 +15,28 @@ interface ToastCtx {
 
 const ToastCtx = createContext<ToastCtx>({ toast: () => {} });
 
-const TOAST_STYLE: Record<ToastType, { icon: ReactNode; bar: string; ring: string }> = {
+const TOAST_STYLE: Record<ToastType, { icon: ReactNode; iconBg: string; bar: string; ring: string }> = {
   success: {
-    icon: <CheckCircle2 size={16} className="text-[#16a34a]" />,
+    icon: <CheckCircle2 size={22} className="text-[#16a34a]" />,
+    iconBg: "bg-green-500/15",
     bar: "bg-gradient-to-r from-[#16a34a] to-[#15803d]",
     ring: "border-green-200 dark:border-green-800",
   },
   error: {
-    icon: <AlertTriangle size={16} className="text-[#ef4444]" />,
+    icon: <AlertTriangle size={22} className="text-[#ef4444]" />,
+    iconBg: "bg-red-500/15",
     bar: "bg-gradient-to-r from-[#ef4444] to-[#dc2626]",
     ring: "border-red-200 dark:border-red-800",
   },
   info: {
-    icon: <Info size={16} className="text-[#0ea5a0]" />,
+    icon: <Info size={22} className="text-[#0ea5a0]" />,
+    iconBg: "bg-teal-500/15",
     bar: "bg-gradient-to-r from-[#0ea5a0] to-[#0d7a8a]",
     ring: "border-teal-200 dark:border-teal-800",
   },
   loading: {
-    icon: <Loader2 size={16} className="text-[#0ea5a0] animate-spin" />,
+    icon: <Loader2 size={22} className="text-[#0ea5a0] animate-spin" />,
+    iconBg: "bg-teal-500/15",
     bar: "bg-gradient-to-r from-[#0ea5a0] to-[#0d7a8a]",
     ring: "border-teal-200 dark:border-teal-800",
   },
@@ -57,23 +61,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={{ toast }}>
       {children}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-[min(92%,360px)] pointer-events-none">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-[min(94%,430px)] pointer-events-none">
         {toasts.map((t) => {
           const s = TOAST_STYLE[t.type];
           return (
             <div
               key={t.id}
-              className={`relative overflow-hidden bg-white dark:bg-[#1e293b] border ${s.ring} shadow-xl rounded-[12px] px-[14px] py-[11px] flex items-center gap-[10px] pointer-events-auto animate-[slideDown_.25s_ease]`}
+              className={`relative overflow-hidden bg-white dark:bg-[#1e293b] border ${s.ring} shadow-2xl rounded-[16px] py-[14px] pr-[14px] pl-[14px] flex items-center gap-[12px] pointer-events-auto animate-slide-down`}
             >
-              <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${s.bar}`} />
-              <span className="flex-shrink-0">{s.icon}</span>
-              <span className="text-[0.78rem] font-semibold text-[var(--text)] flex-1">{t.msg}</span>
+              <span className={`flex-shrink-0 w-[42px] h-[42px] rounded-full ${s.iconBg} flex items-center justify-center`}>
+                {s.icon}
+              </span>
+              <span className="text-[0.85rem] font-bold text-[var(--text)] flex-1 leading-snug">{t.msg}</span>
               <button
                 onClick={() => remove(t.id)}
                 className="text-[var(--text-light)] hover:text-[var(--text)] cursor-pointer bg-transparent border-none p-0"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
+              {t.type !== "loading" && (
+                <div className={`absolute left-0 bottom-0 h-[3px] ${s.bar} animate-toast-progress`} />
+              )}
             </div>
           );
         })}
