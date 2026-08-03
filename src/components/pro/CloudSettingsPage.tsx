@@ -75,7 +75,9 @@ export function CloudSettingsPage() {
     
     setDownloading(true);
     try {
+      syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudEmail);
+      localStorage.setItem("presensi_last_sync", Date.now().toString());
       toast(`✅ Tarik data selesai: ${downloaded} data didownload`);
       window.location.reload();
     } catch (error) {
@@ -91,9 +93,11 @@ export function CloudSettingsPage() {
     
     setUploading(true);
     try {
+      syncService.resetSyncState();
       const uploaded = await syncService.initialUpload(cloudEmail);
+      localStorage.setItem("presensi_last_sync", Date.now().toString());
       toast(`✅ Upload data selesai: ${uploaded} data diupload`);
-      await loadData();
+      window.location.reload();
     } catch (error) {
       toast("❌ Gagal upload data ke cloud");
     } finally {
@@ -253,52 +257,38 @@ export function CloudSettingsPage() {
         </div>
       </div>
 
-      {/* Sync Sekarang (combined) */}
+      {/* Sync Sekarang — with dropdown options */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="flex items-center justify-between">
-          <div className="text-[0.8rem] font-bold flex items-center gap-2">
-            <RefreshCw size={15} className="text-[#0ea5a0]" /> Sync Semua
-          </div>
+        <div className="text-[0.8rem] font-bold flex items-center gap-2 mb-3">
+          <RefreshCw size={15} className="text-[#0ea5a0]" /> Manual Sync
+        </div>
+        <div className="text-[0.68rem] text-[var(--text-light)] mb-3">
+          Pilih opsi sync sesuai kebutuhan. <b>Tarik dari Cloud</b> untuk dapat data terbaru dari device lain. <b>Upload ke Cloud</b> untuk share data lokal ke device lain.
+        </div>
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={handleManualSync}
             disabled={syncing}
-            className="flex items-center gap-[5px] px-[14px] py-[8px] rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] border-none cursor-pointer disabled:opacity-50"
+            className="flex flex-col items-center gap-1 py-3 rounded-[10px] bg-[#0ea5a0] text-white font-bold text-[0.72rem] cursor-pointer disabled:opacity-50 border-none"
           >
-            <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
-            {syncing ? "Menyinkronkan..." : "Sync Sekarang"}
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            <span>{syncing ? "Sync..." : "Sync Biasa"}</span>
           </button>
-        </div>
-        <div className="text-[0.68rem] text-[var(--text-light)] mt-2">
-          Upload + Tarik sekaligus. Semua device akan mendapat data terbaru.
-        </div>
-      </div>
-
-      {/* Force Sync — Manual Override */}
-      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold text-amber-900 dark:text-amber-100 mb-2">
-          ⚠️ Data Tidak Sinkron Antar Device?
-        </div>
-        <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3">
-          Jika data di HP dan laptop berbeda, gunakan tombol di bawah untuk memaksa sinkronisasi. <b>Hati-hati:</b> data akan ditimpa!
-        </div>
-        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleForceDownload}
             disabled={downloading}
-            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-amber-400 dark:border-amber-600 bg-white dark:bg-transparent text-amber-900 dark:text-amber-100 font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
+            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-[#0ea5a0] bg-white dark:bg-transparent text-[#0ea5a0] font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
           >
             <Download size={16} className={downloading ? "animate-bounce" : ""} />
-            <span>{downloading ? "Menarik..." : "Tarik dari Cloud"}</span>
-            <span className="text-[0.6rem] font-normal opacity-70">Timpa lokal</span>
+            <span>{downloading ? "Menarik..." : "Tarik Cloud"}</span>
           </button>
           <button
             onClick={handleForceUpload}
             disabled={uploading}
-            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-amber-400 dark:border-amber-600 bg-white dark:bg-transparent text-amber-900 dark:text-amber-100 font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
+            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-[#0ea5a0] bg-white dark:bg-transparent text-[#0ea5a0] font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
           >
             <Upload size={16} className={uploading ? "animate-bounce" : ""} />
-            <span>{uploading ? "Mengupload..." : "Upload ke Cloud"}</span>
-            <span className="text-[0.6rem] font-normal opacity-70">Timpa cloud</span>
+            <span>{uploading ? "Upload..." : "Upload Cloud"}</span>
           </button>
         </div>
       </div>
