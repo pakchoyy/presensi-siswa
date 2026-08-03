@@ -765,10 +765,11 @@ export function PengaturanPage() {
               }`}
             >
               {syncLog.ok
-                ? `✅ ${syncLog.action === "upload" ? "Upload" : "Sync"} OK` +
+                ? `✅ ${syncLog.action === "upload" ? "Upload" : syncLog.action === "download" ? "Tarik" : "Sync"} OK` +
                   (syncLog.uploaded ? ` · ${syncLog.uploaded} ter-upload` : "") +
-                  (syncLog.downloaded ? ` · ${syncLog.downloaded} ter-download` : "")
-                : `❌ ${syncLog.action === "upload" ? "Upload" : "Sync"} gagal: ${syncLog.error || "error tidak diketahui"}`}
+                  (syncLog.downloaded ? ` · ${syncLog.downloaded} ter-download` : "") +
+                  formatSyncDetail(syncLog.detail)
+                : `❌ ${syncLog.action === "upload" ? "Upload" : syncLog.action === "download" ? "Tarik" : "Sync"} gagal: ${syncLog.error || "error tidak diketahui"}`}
             </div>
           )}
 
@@ -1404,4 +1405,21 @@ function formatRelativeTime(ts: number): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} jam lalu`;
   return `${Math.floor(hours / 24)} hari lalu`;
+}
+
+const SYNC_DETAIL_LABEL: Record<string, string> = {
+  schools: "sekolah",
+  teachers: "guru",
+  academicYears: "tahun ajaran",
+  classrooms: "kelas",
+  students: "siswa",
+  attendanceSessions: "sesi",
+  attendanceRecords: "catatan",
+  calendarEntries: "kalender",
+};
+
+function formatSyncDetail(detail?: Record<string, number>): string {
+  if (!detail || Object.keys(detail).length === 0) return "";
+  const parts = Object.entries(detail).map(([key, val]) => `${val} ${SYNC_DETAIL_LABEL[key] || key}`);
+  return ` (${parts.join(" · ")})`;
 }

@@ -13,6 +13,7 @@ export interface SyncLogEntry {
   uploaded?: number;
   downloaded?: number;
   error?: string;
+  detail?: Record<string, number>;
 }
 
 export function saveSyncLog(entry: SyncLogEntry) {
@@ -114,6 +115,7 @@ export const syncService = {
 
       let totalUploaded = 0;
       let lastError: string | null = null;
+      const detail: Record<string, number> = {};
 
       for (let i = 0; i < SYNC_TABLES.length; i++) {
         const table = SYNC_TABLES[i];
@@ -140,15 +142,17 @@ export const syncService = {
 
         // Sudah clean slate di atas, cukup insert (upsert onConflict butuh unique constraint yang tak ada)
         const { error } = await supabase.from(cloudTable).insert(batch);
-        if (!error) totalUploaded += batch.length;
-        else lastError = `${cloudTable}: ${error.message}`;
+        if (!error) {
+          totalUploaded += batch.length;
+          detail[table] = batch.length;
+        } else lastError = `${cloudTable}: ${error.message}`;
       }
 
       // Hapus tombstones lama
       await supabase.from("cloud_tombstones").delete().eq("user_id", userId);
 
       saveLastSyncTimestamp(Date.now());
-      saveSyncLog({ at: Date.now(), action: "upload", ok: totalUploaded > 0 && !lastError, uploaded: totalUploaded, error: lastError || undefined });
+      saveSyncLog({ at: Date.now(), action: "upload", ok: totalUploaded > 0 && !lastError, uploaded: totalUploaded, error: lastError || undefined, detail });
 
       return totalUploaded;
     } catch (error) {
@@ -164,6 +168,7 @@ export const syncService = {
       if (!userId) return 0;
 
       let count = 0;
+      const detail: Record<string, number> = {};
 
       await db.transaction("rw", SYNC_TABLES.map(t => db.table(t)), async () => {
         for (const table of SYNC_TABLES) {
@@ -179,6 +184,8 @@ export const syncService = {
             .eq("user_id", userId);
 
           if (!cloudRows || cloudRows.length === 0) continue;
+
+          detail[table] = cloudRows.length;
 
           for (const cloudRow of cloudRows) {
             const localId = cloudRow.local_id;
@@ -210,10 +217,12 @@ export const syncService = {
       }
 
       saveLastSyncTimestamp(Date.now());
+      saveSyncLog({ at: Date.now(), action: "download", ok: count > 0, downloaded: count, detail });
 
       return count;
     } catch (error) {
       console.error("Download all failed:", error);
+      saveSyncLog({ at: Date.now(), action: "download", ok: false, downloaded: 0, error: (error as Error)?.message || "Download gagal" });
       return 0;
     }
   },
