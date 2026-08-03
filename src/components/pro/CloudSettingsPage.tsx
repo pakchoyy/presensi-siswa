@@ -16,6 +16,8 @@ export function CloudSettingsPage() {
   const { toast } = useToast();
   const { setActivePage } = useApp();
   const [syncing, setSyncing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [activeDevices, setActiveDevices] = useState<any[]>([]);
@@ -64,6 +66,38 @@ export function CloudSettingsPage() {
       toast("❌ Sync gagal. Coba lagi.");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleForceDownload = async () => {
+    if (!cloudEmail) return;
+    if (!confirm("⚠️ Ini akan MENIMPA semua data lokal dengan data dari cloud. Data lokal yang belum ter-upload akan HILANG. Lanjutkan?")) return;
+    
+    setDownloading(true);
+    try {
+      const downloaded = await syncService.downloadAll(cloudEmail);
+      toast(`✅ Tarik data selesai: ${downloaded} data didownload`);
+      window.location.reload();
+    } catch (error) {
+      toast("❌ Gagal tarik data dari cloud");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleForceUpload = async () => {
+    if (!cloudEmail) return;
+    if (!confirm("⚠️ Ini akan MENIMPA semua data di cloud dengan data lokal. Data cloud dari device lain akan HILANG. Lanjutkan?")) return;
+    
+    setUploading(true);
+    try {
+      const uploaded = await syncService.initialUpload(cloudEmail);
+      toast(`✅ Upload data selesai: ${uploaded} data diupload`);
+      await loadData();
+    } catch (error) {
+      toast("❌ Gagal upload data ke cloud");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -236,6 +270,36 @@ export function CloudSettingsPage() {
         </div>
         <div className="text-[0.68rem] text-[var(--text-light)] mt-2">
           Upload + Tarik sekaligus. Semua device akan mendapat data terbaru.
+        </div>
+      </div>
+
+      {/* Force Sync — Manual Override */}
+      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800 p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold text-amber-900 dark:text-amber-100 mb-2">
+          ⚠️ Data Tidak Sinkron Antar Device?
+        </div>
+        <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3">
+          Jika data di HP dan laptop berbeda, gunakan tombol di bawah untuk memaksa sinkronisasi. <b>Hati-hati:</b> data akan ditimpa!
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleForceDownload}
+            disabled={downloading}
+            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-amber-400 dark:border-amber-600 bg-white dark:bg-transparent text-amber-900 dark:text-amber-100 font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
+          >
+            <Download size={16} className={downloading ? "animate-bounce" : ""} />
+            <span>{downloading ? "Menarik..." : "Tarik dari Cloud"}</span>
+            <span className="text-[0.6rem] font-normal opacity-70">Timpa lokal</span>
+          </button>
+          <button
+            onClick={handleForceUpload}
+            disabled={uploading}
+            className="flex flex-col items-center gap-1 py-3 rounded-[10px] border-[1.5px] border-amber-400 dark:border-amber-600 bg-white dark:bg-transparent text-amber-900 dark:text-amber-100 font-bold text-[0.72rem] cursor-pointer disabled:opacity-50"
+          >
+            <Upload size={16} className={uploading ? "animate-bounce" : ""} />
+            <span>{uploading ? "Mengupload..." : "Upload ke Cloud"}</span>
+            <span className="text-[0.6rem] font-normal opacity-70">Timpa cloud</span>
+          </button>
         </div>
       </div>
 
