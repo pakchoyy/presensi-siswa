@@ -29,6 +29,7 @@ import {
   School,
   Info,
   Upload,
+  Download,
   LogOut,
   RefreshCw,
   Smartphone,
@@ -68,6 +69,8 @@ export function PengaturanPage() {
   const [kode, setKode] = useState("");
   const [activating, setActivating] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [licenseInfo, setLicenseInfo] = useState<Awaited<
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
@@ -299,6 +302,42 @@ export function PengaturanPage() {
       setLicenseInfo(status);
     } else {
       toast(result.message);
+    }
+  };
+
+  const handleForceDownload = async () => {
+    if (!cloudUser?.email) return;
+    if (!confirm("⚠️ Tarik semua data dari cloud dan timpa data lokal. Lanjut?")) return;
+    
+    setDownloading(true);
+    try {
+      syncService.resetSyncState();
+      const downloaded = await syncService.downloadAll(cloudUser.email);
+      localStorage.setItem("presensi_last_sync", Date.now().toString());
+      toast(`✅ ${downloaded} data ditarik`);
+      window.location.reload();
+    } catch (error) {
+      toast("❌ Gagal tarik data");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleForceUpload = async () => {
+    if (!cloudUser?.email) return;
+    if (!confirm("⚠️ Upload semua data lokal ke cloud dan timpa data cloud. Lanjut?")) return;
+    
+    setUploading(true);
+    try {
+      syncService.resetSyncState();
+      const uploaded = await syncService.initialUpload(cloudUser.email);
+      localStorage.setItem("presensi_last_sync", Date.now().toString());
+      toast(`✅ ${uploaded} data diupload`);
+      window.location.reload();
+    } catch (error) {
+      toast("❌ Gagal upload data");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -645,16 +684,30 @@ export function PengaturanPage() {
               Data akan otomatis tersinkron — tidak perlu klik manual
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => setActivePage(PageName.CLOUD_SETTINGS)}
-              className={`flex-1 flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer bg-transparent ${
+              onClick={handleForceDownload}
+              disabled={downloading}
+              className={`flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 ${
                 syncStatus.status === "synced"
-                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300"
-                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300"
+                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 bg-transparent"
+                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 bg-transparent"
               }`}
             >
-              <RefreshCw size={13} /> Pengaturan Cloud
+              <Download size={13} className={downloading ? "animate-bounce" : ""} />
+              {downloading ? "Menarik..." : "Tarik Cloud"}
+            </button>
+            <button
+              onClick={handleForceUpload}
+              disabled={uploading}
+              className={`flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 ${
+                syncStatus.status === "synced"
+                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 bg-transparent"
+                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 bg-transparent"
+              }`}
+            >
+              <Upload size={13} className={uploading ? "animate-bounce" : ""} />
+              {uploading ? "Upload..." : "Upload Cloud"}
             </button>
           </div>
         </div>
