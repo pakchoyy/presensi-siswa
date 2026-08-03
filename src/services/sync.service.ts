@@ -91,7 +91,8 @@ export const syncService = {
           ...buildCloudRow(row, now),
         }));
 
-        const { error } = await supabase.from(CLOUD_TABLE_MAP[SYNC_TABLES[i]]).insert(batch);
+        const { error } = await supabase.from(CLOUD_TABLE_MAP[SYNC_TABLES[i]])
+          .upsert(batch, { onConflict: "user_id,local_id" });
         if (!error) totalUploaded += batch.length;
       }
 
@@ -121,13 +122,6 @@ export const syncService = {
           for (const cloudRow of cloudRows) {
             const localId = cloudRow.local_id;
             if (!localId || typeof localId !== "number" || isNaN(localId)) continue;
-
-            const existing = await db.table(table).get(localId);
-            if (existing) {
-              const localTime = (existing as any).diubahPada || 0;
-              const cloudTime = cloudRow.diubah_pada || 0;
-              if (cloudTime < localTime) continue;
-            }
 
             const localData = convertCloudToLocal(cloudRow);
             await db.table(table).put(localData);

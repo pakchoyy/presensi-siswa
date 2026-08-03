@@ -645,45 +645,35 @@ export function PengaturanPage() {
             ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
             : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
         }`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-2 h-2 rounded-full animate-pulse ${
-              syncStatus.status === "synced" ? "bg-green-500"
-                : syncStatus.status === "syncing" ? "bg-blue-500"
-                : "bg-amber-500"
-            }`}></div>
-            <span className={`text-[0.75rem] font-bold ${
-              syncStatus.status === "synced" ? "text-green-900 dark:text-green-100"
-                : syncStatus.status === "syncing" ? "text-blue-900 dark:text-blue-100"
-                : "text-amber-900 dark:text-amber-100"
-            }`}>
-              {syncStatus.status === "synced"
-                ? "Auto-Sync Aktif — Data Tersinkronisasi"
-                : syncStatus.status === "syncing"
-                ? "Sedang Menyinkronkan..."
-                : syncStatus.status === "offline"
-                ? "Offline — Sync Menunggu Koneksi"
-                : "Menunggu Sinkronisasi Pertama..."
-              }
-            </span>
-          </div>
-          <div className={`text-[0.68rem] mb-2 ${
-            syncStatus.status === "synced" ? "text-green-700 dark:text-green-300"
-              : "text-amber-700 dark:text-amber-300"
-          }`}>
-            <Mail size={11} className="inline mr-1" />{cloudUser?.email}
-          </div>
-          {syncStatus.lastSync > 0 ? (
-            <div className={`text-[0.65rem] mb-3 ${
-              syncStatus.status === "synced" ? "text-green-600 dark:text-green-400"
-                : "text-amber-600 dark:text-amber-400"
-            }`}>
-              Terakhir sync: {formatRelativeTime(syncStatus.lastSync)}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                syncStatus.status === "synced" ? "bg-green-500"
+                  : syncStatus.status === "syncing" ? "bg-blue-500"
+                  : "bg-amber-500"
+              }`}></div>
+              <span className={`text-[0.75rem] font-bold ${
+                syncStatus.status === "synced" ? "text-green-900 dark:text-green-100"
+                  : syncStatus.status === "syncing" ? "text-blue-900 dark:text-blue-100"
+                  : "text-amber-900 dark:text-amber-100"
+              }`}>
+                {syncStatus.status === "synced" ? "Tersinkron" : syncStatus.status === "syncing" ? "Syncing..." : "Menunggu Sync"}
+              </span>
             </div>
-          ) : (
-            <div className="text-[0.65rem] text-amber-600 dark:text-amber-400 mb-3">
-              Data akan otomatis tersinkron — tidak perlu klik manual
-            </div>
-          )}
+            {syncStatus.lastSync > 0 && (
+              <span className={`text-[0.65rem] ${
+                syncStatus.status === "synced" ? "text-green-600 dark:text-green-400"
+                  : "text-amber-600 dark:text-amber-400"
+              }`}>
+                {formatRelativeTime(syncStatus.lastSync)}
+              </span>
+            )}
+          </div>
+          
+          <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+            💡 <b>Data HP & laptop beda?</b> Pilih device yang benar → klik Upload. Device lain → klik Tarik.
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleForceDownload}
