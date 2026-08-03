@@ -71,6 +71,7 @@ export function PengaturanPage() {
   const [renewing, setRenewing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [devices, setDevices] = useState<any[]>([]);
   const [licenseInfo, setLicenseInfo] = useState<Awaited<
     ReturnType<typeof licenseService.getStatus>
   > | null>(null);
@@ -219,6 +220,18 @@ export function PengaturanPage() {
       })();
     }
   }, [teacher?.id, isPRO]);
+
+  useEffect(() => {
+    if (!cloudUser?.id) return;
+    const fetchDevices = async () => {
+      const { data } = await supabase
+        .from("devices")
+        .select("id, device_name, last_active_at")
+        .eq("user_id", cloudUser.id);
+      setDevices(data || []);
+    };
+    fetchDevices();
+  }, [cloudUser?.id]);
 
   const saveHariAktifSettings = async (mode: string, days: string) => {
     setHariAktif(mode);
@@ -636,53 +649,38 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Cloud Sync Status (PRO only) */}
+      {/* Cloud Sync — Simplified (PRO only) */}
       {isPRO && isCloudConnected && (
-        <div className={`rounded-xl border p-[14px] mb-3 ${
-          syncStatus.status === "synced"
-            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-            : syncStatus.status === "syncing"
-            ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
-            : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
-        }`}>
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${
-                syncStatus.status === "synced" ? "bg-green-500"
-                  : syncStatus.status === "syncing" ? "bg-blue-500"
-                  : "bg-amber-500"
-              }`}></div>
-              <span className={`text-[0.75rem] font-bold ${
-                syncStatus.status === "synced" ? "text-green-900 dark:text-green-100"
-                  : syncStatus.status === "syncing" ? "text-blue-900 dark:text-blue-100"
-                  : "text-amber-900 dark:text-amber-100"
-              }`}>
-                {syncStatus.status === "synced" ? "Tersinkron" : syncStatus.status === "syncing" ? "Syncing..." : "Menunggu Sync"}
+              <Smartphone size={15} className="text-[#0ea5a0]" />
+              <span className="text-[0.8rem] font-bold text-[var(--text)]">
+                Cloud Sync — {devices.length} Device
               </span>
             </div>
-            {syncStatus.lastSync > 0 && (
-              <span className={`text-[0.65rem] ${
-                syncStatus.status === "synced" ? "text-green-600 dark:text-green-400"
-                  : "text-amber-600 dark:text-amber-400"
-              }`}>
-                {formatRelativeTime(syncStatus.lastSync)}
-              </span>
-            )}
           </div>
           
+          {devices.length > 0 && (
+            <div className="mb-3 space-y-1">
+              {devices.slice(0, 3).map((device: any) => (
+                <div key={device.id} className="text-[0.68rem] text-[var(--text-light)] flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-[#0ea5a0]"></div>
+                  {device.device_name} • {formatRelativeTime(device.last_active_at)}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-            💡 <b>Data HP & laptop beda?</b> Pilih device yang benar → klik Upload. Device lain → klik Tarik.
+            💡 <b>Data HP & laptop beda?</b> Device yang benar → Upload. Device lain → Tarik.
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleForceDownload}
               disabled={downloading}
-              className={`flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 ${
-                syncStatus.status === "synced"
-                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 bg-transparent"
-                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 bg-transparent"
-              }`}
+              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-transparent"
             >
               <Download size={13} className={downloading ? "animate-bounce" : ""} />
               {downloading ? "Menarik..." : "Tarik Cloud"}
@@ -690,11 +688,7 @@ export function PengaturanPage() {
             <button
               onClick={handleForceUpload}
               disabled={uploading}
-              className={`flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 ${
-                syncStatus.status === "synced"
-                  ? "border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 bg-transparent"
-                  : "border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 bg-transparent"
-              }`}
+              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#0ea5a0] text-[#0ea5a0] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-transparent"
             >
               <Upload size={13} className={uploading ? "animate-bounce" : ""} />
               {uploading ? "Upload..." : "Upload Cloud"}
