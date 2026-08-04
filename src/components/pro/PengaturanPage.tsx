@@ -526,19 +526,48 @@ export function PengaturanPage() {
       }
 
       // Pastikan profile ada agar CloudAuthContext mendeteksi cloud connected
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: profileCheckErr } = await supabase
         .from("profiles")
         .select("id")
         .eq("email", emailAddress)
         .maybeSingle();
-      if (existingProfile) {
-        await supabase.from("profiles").update({ tier: "PRO", updated_at: new Date().toISOString() }).eq("id", existingProfile.id);
-      } else {
-        await supabase.from("profiles").insert({ email: emailAddress, tier: "PRO", updated_at: new Date().toISOString() });
+      if (profileCheckErr) {
+        console.error("profile check error:", profileCheckErr);
+        toast("❌ Gagal cek profile di cloud: " + (profileCheckErr.message || "unknown"));
+        setConnecting(false);
+        return;
       }
 
+      let profileId: string | null = null;
       if (existingProfile) {
-        trackDevice(existingProfile.id).catch(() => {});
+        const { error: updErr } = await supabase
+          .from("profiles")
+          .update({ tier: "PRO", updated_at: new Date().toISOString() })
+          .eq("id", existingProfile.id);
+        if (updErr) {
+          console.error("profile update error:", updErr);
+          toast("❌ Gagal update profile cloud: " + (updErr.message || "unknown"));
+          setConnecting(false);
+          return;
+        }
+        profileId = existingProfile.id;
+      } else {
+        const { data: inserted, error: insErr } = await supabase
+          .from("profiles")
+          .insert({ email: emailAddress, tier: "PRO", updated_at: new Date().toISOString() })
+          .select("id")
+          .single();
+        if (insErr) {
+          console.error("profile insert error:", insErr);
+          toast("❌ Gagal daftarkan email di cloud: " + (insErr.message || "unknown"));
+          setConnecting(false);
+          return;
+        }
+        profileId = inserted?.id ?? null;
+      }
+
+      if (profileId) {
+        trackDevice(profileId).catch(() => {});
       }
       
       localStorage.setItem("presensi_cloud_email", emailAddress);
