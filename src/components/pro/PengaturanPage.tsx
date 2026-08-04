@@ -479,7 +479,10 @@ export function PengaturanPage() {
   const manfaat = licenseService.getManfaat();
 
   const handleDeviceLogin = async () => {
-    if (!teacher) return;
+    if (!teacher) {
+      toast("❌ Data guru belum dimuat. Muat ulang halaman lalu coba lagi.");
+      return;
+    }
     
     const emailAddress = (loginEmail || teacher?.email || "").trim().toLowerCase();
     if (!emailAddress || !emailAddress.includes('@')) {
@@ -490,22 +493,33 @@ export function PengaturanPage() {
     setConnecting(true);
     
     try {
-      const { data: licenseData } = await supabase
+      // Cek izin baca ke Supabase (RLS). Kalau di-block, tampilkan pesan nyata.
+      const { error: accessErr } = await supabase.from("profiles").select("id").limit(1);
+      if (accessErr) {
+        console.error("RLS/profiles access error:", accessErr);
+        toast("❌ Tidak bisa akses cloud. Cek izin/RLS profile di dashboard. (" + (accessErr.message || "unknown") + ")");
+        setConnecting(false);
+        return;
+      }
+
+      const { data: licenseData, error: licenseErr } = await supabase
         .from("licenses")
         .select("tanggal_berakhir, status")
         .eq("email", emailAddress)
         .eq("status", "digunakan")
         .maybeSingle();
+      if (licenseErr) console.error("license query error:", licenseErr);
 
       if (!licenseData) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select("tier")
           .eq("email", emailAddress)
           .maybeSingle();
+        if (profileErr) console.error("profile query error:", profileErr);
 
         if (!profile || profile.tier !== "PRO") {
-          toast("❌ Email tidak ditemukan atau belum PRO");
+          toast("❌ Email tidak ditemukan di cloud (belum PRO / belum terdaftar).");
           setConnecting(false);
           return;
         }
