@@ -554,7 +554,13 @@ export function PengaturanPage() {
       } else {
         const { data: inserted, error: insErr } = await supabase
           .from("profiles")
-          .insert({ id: crypto.randomUUID(), email: emailAddress, tier: "PRO", updated_at: new Date().toISOString() })
+          .insert({
+            id: crypto.randomUUID(),
+            email: emailAddress,
+            name: teacher?.nama || emailAddress.split("@")[0] || "User",
+            tier: "PRO",
+            updated_at: new Date().toISOString(),
+          })
           .select("id")
           .single();
         if (insErr) {
