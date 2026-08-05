@@ -209,20 +209,20 @@ export const syncService = {
       let count = 0;
       const detail: Record<string, number> = {};
 
-      await db.transaction("rw", SYNC_TABLES.map(t => db.table(t)), async () => {
-        for (const table of SYNC_TABLES) {
-          // Skip tabel protected (schools, teachers) biar tier PRO & sekolah gak berubah
-          if (PROTECTED_TABLES.has(table)) continue;
+      // Proses per tabel (bukan 1 transaksi besar) untuk hindari "commit too large"
+      for (const table of SYNC_TABLES) {
+        // Skip tabel protected (schools, teachers) biar tier PRO & sekolah gak berubah
+        if (PROTECTED_TABLES.has(table)) continue;
 
-          const { data: cloudRows } = await supabase
-            .from(CLOUD_TABLE_MAP[table])
-            .select("*")
-            .eq("user_id", userId);
+        const { data: cloudRows } = await supabase
+          .from(CLOUD_TABLE_MAP[table])
+          .select("*")
+          .eq("user_id", userId);
 
-          if (!cloudRows || cloudRows.length === 0) continue;
+        if (!cloudRows || cloudRows.length === 0) continue;
 
-          // MERGE: cloud data menimpa lokal hanya jika timestamp cloud >= lokal
-          // Ini mencegah data lokal hilang jika cloud kosong/error
+        // Transaksi per tabel (lebih kecil, aman dari "commit too large")
+        await db.transaction("rw", db.table(table), async () => {
           let tableDownloaded = 0;
           for (const cloudRow of cloudRows) {
             const localId = cloudRow.local_id;
@@ -243,22 +243,22 @@ export const syncService = {
           if (tableDownloaded > 0) {
             detail[table] = tableDownloaded;
           }
-        }
+        });
+      }
 
-        const { data: tombstones } = await supabase
-          .from("cloud_tombstones")
-          .select("id, entity_type, local_id, deleted_at")
-          .eq("user_id", userId);
+      // Tombstones (hapus data yang di-delete)
+      const { data: tombstones } = await supabase
+        .from("cloud_tombstones")
+        .select("id, entity_type, local_id, deleted_at")
+        .eq("user_id", userId);
 
-        if (tombstones) {
-          for (const tomb of tombstones) {
-            if (!tomb.local_id || isNaN(tomb.local_id)) continue;
-            // Jangan hapus tabel protected via tombstone juga
-            if (PROTECTED_TABLES.has(tomb.entity_type)) continue;
-            await db.table(tomb.entity_type).delete(tomb.local_id);
-          }
+      if (tombstones) {
+        for (const tomb of tombstones) {
+          if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+          if (PROTECTED_TABLES.has(tomb.entity_type)) continue;
+          await db.table(tomb.entity_type).delete(tomb.local_id);
         }
-      });
+      }
 
       if (count > 0) {
         window.dispatchEvent(new Event("data-changed"));
