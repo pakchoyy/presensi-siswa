@@ -4,7 +4,7 @@ import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
-const POLL_INTERVAL = 60 * 1000;
+const POLL_INTERVAL = 5 * 60 * 1000; // 5 menit (hemat kuota, cukup untuk kerja aktif)
 
 export function useAutoSync() {
   const { cloudEmail, cloudUser, isCloudConnected } = useCloudAuth();

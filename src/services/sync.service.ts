@@ -125,27 +125,66 @@ export const syncService = {
         // Skip tabel protected (schools, teachers) — biar cloud gak ke-timpa data auth/lisensi
         if (PROTECTED_TABLES.has(table)) continue;
 
-        // Hapus dulu semua data lama di cloud untuk user ini, biar jadi clean slate
-        const { error: delErr } = await supabase.from(cloudTable).delete().eq("user_id", userId);
-        if (delErr) {
-          lastError = `hapus ${cloudTable}: ${delErr.message}`;
-          continue;
-        }
-
         if (rows.length === 0) continue;
 
-        const batch = rows.map((row: any) => ({
-          user_id: userId,
-          local_id: row.id,
-          ...buildCloudRow(table, row, now),
-        }));
+        // MERGE: cek data cloud yang sudah ada, hanya overwrite jika lokal lebih baru
+        const localIds = rows.map(r => r.id);
+        const { data: existingRows } = await supabase
+          .from(cloudTable)
+          .select("id, local_id, diubah_pada")
+          .eq("user_id", userId)
+          .in("local_id", localIds);
 
-        // Sudah clean slate di atas, cukup insert (upsert onConflict butuh unique constraint yang tak ada)
-        const { error } = await supabase.from(cloudTable).insert(batch);
-        if (!error) {
-          totalUploaded += batch.length;
-          detail[table] = batch.length;
-        } else lastError = `${cloudTable}: ${error.message}`;
+        const existingMap = new Map(
+          (existingRows || []).map((r: any) => [r.local_id, { cloudId: r.id, timestamp: r.diubah_pada || 0 }])
+        );
+
+        const toInsert: any[] = [];
+        const toUpdate: any[] = [];
+
+        for (const row of rows) {
+          const existing = existingMap.get(row.id);
+          const localTimestamp = row.diubahPada || row.dibuatPada || 0;
+
+          if (!existing) {
+            // Belum ada di cloud → insert
+            toInsert.push({
+              user_id: userId,
+              local_id: row.id,
+              ...buildCloudRow(table, row, now),
+            });
+          } else if (localTimestamp >= existing.timestamp) {
+            // Lokal lebih baru → update
+            toUpdate.push({
+              cloudId: existing.cloudId,
+              data: buildCloudRow(table, row, now),
+            });
+          }
+          // else: cloud lebih baru, skip (biarkan cloud data menang)
+        }
+
+        if (toInsert.length > 0) {
+          const { error } = await supabase.from(cloudTable).insert(toInsert);
+          if (!error) {
+            totalUploaded += toInsert.length;
+            detail[table] = (detail[table] || 0) + toInsert.length;
+          } else {
+            lastError = `${cloudTable} insert: ${error.message}`;
+          }
+        }
+
+        for (const item of toUpdate) {
+          const { error } = await supabase
+            .from(cloudTable)
+            .update(item.data)
+            .eq("id", item.cloudId);
+          if (!error) {
+            totalUploaded++;
+            detail[table] = (detail[table] || 0) + 1;
+          } else {
+            lastError = `${cloudTable} update: ${error.message}`;
+          }
+        }
       }
 
       // Hapus tombstones lama
@@ -175,9 +214,6 @@ export const syncService = {
           // Skip tabel protected (schools, teachers) biar tier PRO & sekolah gak berubah
           if (PROTECTED_TABLES.has(table)) continue;
 
-          // Hapus dulu semua data lokal biar jadi clean slate
-          await db.table(table).clear();
-
           const { data: cloudRows } = await supabase
             .from(CLOUD_TABLE_MAP[table])
             .select("*")
@@ -187,13 +223,22 @@ export const syncService = {
 
           detail[table] = cloudRows.length;
 
+          // MERGE: cloud data menimpa lokal hanya jika timestamp cloud >= lokal
+          // Ini mencegah data lokal hilang jika cloud kosong/error
           for (const cloudRow of cloudRows) {
             const localId = cloudRow.local_id;
             if (!localId || typeof localId !== "number" || isNaN(localId)) continue;
 
-            const localData = convertCloudToLocal(cloudRow);
-            await db.table(table).put(localData);
-            count++;
+            const existing = await db.table(table).get(localId);
+            const cloudTimestamp = cloudRow.diubah_pada || 0;
+            const localTimestamp = existing ? ((existing as any).diubahPada || 0) : 0;
+
+            // Cloud menang jika lebih baru ATAU lokal belum ada
+            if (!existing || cloudTimestamp >= localTimestamp) {
+              const localData = convertCloudToLocal(cloudRow);
+              await db.table(table).put(localData);
+              count++;
+            }
           }
         }
 

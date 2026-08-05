@@ -100,6 +100,7 @@ export function PengaturanPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showEmergencyTools, setShowEmergencyTools] = useState(false);
 
   const [showSyncPrompt, setShowSyncPrompt] = useState(false);
 
@@ -792,30 +793,47 @@ export function PengaturanPage() {
             </div>
           )}
 
-          <div className="text-[0.68rem] text-amber-800 dark:text-amber-200 mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-            💡 <b>Data beda antar device?</b><br />
-            • Punya data di device ini yang belum ada di device lain → <b className="text-sky-600 dark:text-sky-300">Upload Cloud</b><br />
-            • Mau ambil data terbaru dari device lain → <b className="text-emerald-600 dark:text-emerald-300">Tarik Cloud</b>
+          <div className="text-[0.68rem] text-blue-800 dark:text-blue-200 mb-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            ✨ <b>Sync Otomatis Aktif</b><br />
+            Data otomatis tersinkronisasi antar device saat kamu edit atau buka app (maksimal 5 menit delay).
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={handleForceUpload}
-              disabled={uploading}
-              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] cursor-pointer disabled:opacity-50"
-            >
-              <Upload size={13} className={uploading ? "animate-bounce" : ""} />
-              {uploading ? "Upload..." : "Upload Cloud"}
-            </button>
-            <button
-              onClick={handleForceDownload}
-              disabled={downloading}
-              className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#3b82f6] text-[#3b82f6] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-sky-500/10"
-            >
-              <Download size={13} className={downloading ? "animate-bounce" : ""} />
-              {downloading ? "Menarik..." : "Tarik Cloud"}
-            </button>
-          </div>
+          {/* Tombol darurat tersembunyi */}
+          <button
+            onClick={() => setShowEmergencyTools(!showEmergencyTools)}
+            className="w-full text-[0.68rem] text-gray-500 dark:text-gray-400 py-2 mb-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/30"
+          >
+            {showEmergencyTools ? "▼" : "▶"} Alat Sinkronisasi Darurat (hanya jika ada masalah)
+          </button>
+
+          {showEmergencyTools && (
+            <div className="mb-3">
+              <div className="text-[0.68rem] text-red-800 dark:text-red-200 mb-2 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-800">
+                ⚠️ <b>PERINGATAN:</b> Gunakan hanya jika data benar-benar berbeda antar device!<br />
+                • <b>Upload Cloud</b> = kirim data device ini ke cloud (overwrite jika lebih baru)<br />
+                • <b>Tarik Cloud</b> = ambil data cloud ke device ini (merge dengan lokal)
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleForceUpload}
+                  disabled={uploading}
+                  className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] bg-[#0ea5a0] text-white font-bold text-[0.75rem] cursor-pointer disabled:opacity-50"
+                >
+                  <Upload size={13} className={uploading ? "animate-bounce" : ""} />
+                  {uploading ? "Upload..." : "Upload Cloud"}
+                </button>
+                <button
+                  onClick={handleForceDownload}
+                  disabled={downloading}
+                  className="flex items-center justify-center gap-[6px] py-[8px] rounded-[9px] border-[1.5px] border-[#3b82f6] text-[#3b82f6] font-bold text-[0.75rem] cursor-pointer disabled:opacity-50 bg-sky-500/10"
+                >
+                  <Download size={13} className={downloading ? "animate-bounce" : ""} />
+                  {downloading ? "Menarik..." : "Tarik Cloud"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
