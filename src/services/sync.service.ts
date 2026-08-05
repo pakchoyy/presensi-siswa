@@ -221,10 +221,9 @@ export const syncService = {
 
           if (!cloudRows || cloudRows.length === 0) continue;
 
-          detail[table] = cloudRows.length;
-
           // MERGE: cloud data menimpa lokal hanya jika timestamp cloud >= lokal
           // Ini mencegah data lokal hilang jika cloud kosong/error
+          let tableDownloaded = 0;
           for (const cloudRow of cloudRows) {
             const localId = cloudRow.local_id;
             if (!localId || typeof localId !== "number" || isNaN(localId)) continue;
@@ -238,7 +237,11 @@ export const syncService = {
               const localData = convertCloudToLocal(cloudRow);
               await db.table(table).put(localData);
               count++;
+              tableDownloaded++;
             }
+          }
+          if (tableDownloaded > 0) {
+            detail[table] = tableDownloaded;
           }
         }
 
