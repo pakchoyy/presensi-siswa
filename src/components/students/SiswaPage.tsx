@@ -403,6 +403,10 @@ export function SiswaPage() {
         await studentRepo.softDelete(student.id);
       }
       
+      // Record tombstones agar deletion propagate ke cloud & semua device
+      const tombstones = allStudents.map((s) => ({ entityType: "students", localId: s.id }));
+      await tombstoneRepo.addMany(tombstones);
+      
       setShowDeleteAll(false);
       await loadStudents(targetKelas.id);
       await loadCounts();
