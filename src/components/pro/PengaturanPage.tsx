@@ -579,14 +579,12 @@ export function PengaturanPage() {
       
       localStorage.setItem("presensi_cloud_email", emailAddress);
       
-      toast("⏳ Menghubungkan ke cloud...");
-      
       try {
         const downloaded = await syncService.downloadAll(emailAddress);
         if (downloaded > 0) {
           toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
         } else {
-          toast("☁️ Cloud sync aktif");
+          toast("✅ Device berhasil terhubung!");
         }
       } catch (error) {
         console.error("Download error:", error);
@@ -623,11 +621,9 @@ export function PengaturanPage() {
       
       await refreshTeacher();
       
-      setTimeout(() => {
-        setConnecting(false);
-        toast("✅ Device berhasil terhubung!");
-        setTimeout(() => window.location.reload(), 1000);
-      }, 1500);
+      setConnecting(false);
+      toast("✅ Device berhasil terhubung!");
+      window.location.reload();
     } catch (error) {
       console.error("Device login error:", error);
       toast("❌ Gagal menghubungkan. Coba lagi.");

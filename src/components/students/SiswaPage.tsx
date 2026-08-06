@@ -393,14 +393,17 @@ export function SiswaPage() {
     setDeletingAll(true);
     
     try {
-      for (const student of students) {
+      // Query SEMUA siswa di kelas ini (bukan cuma yang tampil di layar)
+      const allStudents = await studentRepo.getByClass(targetKelas.id);
+      
+      for (const student of allStudents) {
         await studentRepo.softDelete(student.id);
       }
       
       setShowDeleteAll(false);
       await loadStudents(targetKelas.id);
       await loadCounts();
-      toast(`✅ ${students.length} siswa berhasil dihapus`);
+      toast(`✅ ${allStudents.length} siswa berhasil dihapus`);
     } catch (error) {
       toast("❌ Gagal menghapus siswa");
     } finally {
