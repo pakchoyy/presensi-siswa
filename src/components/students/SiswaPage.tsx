@@ -393,8 +393,11 @@ export function SiswaPage() {
     setDeletingAll(true);
     
     try {
-      // Query SEMUA siswa di kelas ini (bukan cuma yang tampil di layar)
-      const allStudents = await studentRepo.getByClass(targetKelas.id);
+      // Query SEMUA siswa di kelas ini (termasuk yang statusAktif=false)
+      const allStudents = await db.students
+        .where("kelasId")
+        .equals(targetKelas.id)
+        .toArray();
       
       for (const student of allStudents) {
         await studentRepo.softDelete(student.id);
