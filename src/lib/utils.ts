@@ -42,6 +42,30 @@ export function generateId(): number {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
+// Hash 64-bit ke integer 53-bit yang aman (cyrb53 adaptation).
+// Dipakai untuk id deterministik supaya peranti yg sama menghasilkan id sama
+// (mencegah sesi/record ganda saat 2 perangkat membuka pada waktu bersamaan).
+function hashString(value: string): number {
+  let h1 = 0xdeadbeef ^ 0;
+  let h2 = 0x41c6ce57 ^ 0;
+  for (let i = 0; i < value.length; i++) {
+    const ch = value.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+export function sessionIdFrom(kelasId: number, tanggal: string): number {
+  return hashString(`session:${kelasId}:${tanggal}`);
+}
+
+export function recordIdFrom(sesiId: number, siswaId: number): number {
+  return hashString(`record:${sesiId}:${siswaId}`);
+}
+
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);

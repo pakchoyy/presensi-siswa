@@ -94,7 +94,11 @@ export function RekapPage() {
     setRekap(data || {});
 
     let h = 0, s = 0, i = 0, a = 0;
-    for (const r of Object.values(data || {})) {
+    // Akumulasi hanya untuk siswa yang aktif & tampil di tabel, agar total
+    // tidak ikut menjumlahkan record siswa yang sudah dinonaktifkan.
+    for (const st of siswa) {
+      const r = (data || {})[st.id];
+      if (!r) continue;
       h += r.H || 0;
       s += r.S || 0;
       i += r.I || 0;

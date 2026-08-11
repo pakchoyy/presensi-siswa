@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { AppProvider, useApp } from "@/contexts/AppContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
 import { ToastProvider } from "@/components/shared/Toast";
 import { ConfirmDialogProvider } from "@/components/shared/ConfirmDialog";
+import { studentRepo } from "@/repositories/dexie/student.repo";
+import { attendanceRepo } from "@/repositories/dexie/attendance.repo";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -88,6 +91,33 @@ function AppContent() {
   
   // Enable auto-sync for cloud-connected users
   useAutoSync();
+
+  // Sekali jalan: gabungkan siswa "hantu" (nonaktif) ke siswa aktif yang
+  // senama, agar riwayat absensi lama tidak hilang setelah soft-delete lalu
+  // re-add/import (sumber bug "masuk terus tapi itungan beda").
+  useEffect(() => {
+    if (localStorage.getItem("bgy_repair_students_v1")) return;
+    studentRepo
+      .mergeDuplicateStudents()
+      .then((n) => {
+        if (n > 0) console.log(`[Repair] ${n} siswa hantu digabung`);
+        localStorage.setItem("bgy_repair_students_v1", "1");
+      })
+      .catch((err) => console.error("[Repair] gagal:", err));
+  }, []);
+
+  // Sekali jalan: gabungkan sesi duplikat (kelas+tanggal sama) yang terlanjur ada,
+  // agar rekap tidak menghitung dua kali untuk hari yang sama.
+  useEffect(() => {
+    if (localStorage.getItem("bgy_repair_sessions_v1")) return;
+    attendanceRepo
+      .mergeAllDuplicateSessions()
+      .then((n) => {
+        if (n > 0) console.log(`[Repair] ${n} tanggal sesi ganda digabung`);
+        localStorage.setItem("bgy_repair_sessions_v1", "1");
+      })
+      .catch((err) => console.error("[Repair] sesi gagal:", err));
+  }, []);
 
   // Show login page only for PRO users or users trying to use cloud features
   // For now, make auth optional - users can use app without login (local only)

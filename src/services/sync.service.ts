@@ -84,6 +84,22 @@ async function getUserIdByEmail(email: string): Promise<string | null> {
   return data?.id || null;
 }
 
+// Cek apakah baris data masih ada di cloud. Dipakai untuk tombstones:
+// kalau data ternyata masih ada (di-create ulang setelah tombstones tercatat),
+// tombstone dianggap basi dan TIDAK boleh menghapus data lokal.
+async function cloudDataExists(cloudTable: string, userId: string, localId: number): Promise<boolean> {
+  try {
+    const { count } = await supabase
+      .from(cloudTable)
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("local_id", localId);
+    return (count || 0) > 0;
+  } catch {
+    return true; // gagal cek → jangan hapus data (lebih aman)
+  }
+}
+
 async function getLocalChanges(since: number): Promise<Record<string, any[]>> {
   const changes: Record<string, any[]> = {};
   for (const table of SYNC_TABLES) {
@@ -164,7 +180,10 @@ export const syncService = {
         }
 
         if (toInsert.length > 0) {
-          const { error } = await supabase.from(cloudTable).insert(toInsert);
+          // UPSERT supaya tidak membuat baris duplikat (user_id+local_id unik)
+          const { error } = await supabase
+            .from(cloudTable)
+            .upsert(toInsert, { onConflict: "user_id,local_id" });
           if (!error) {
             totalUploaded += toInsert.length;
             detail[table] = (detail[table] || 0) + toInsert.length;
@@ -187,8 +206,9 @@ export const syncService = {
         }
       }
 
-      // Hapus tombstones lama
-      await supabase.from("cloud_tombstones").delete().eq("user_id", userId);
+      // NOTE: cloud tombstones TIDAK dihapus di sini. Tombstone lama dipakai
+      // downloadAll/incrementalSync dengan guard "data masih ada di cloud?"
+      // supaya data yang di-create-ulang tidak ikut terhapus di device lain.
 
       saveLastSyncTimestamp(Date.now());
       saveSyncLog({ at: Date.now(), action: "upload", ok: totalUploaded > 0 && !lastError, uploaded: totalUploaded, error: lastError || undefined, detail });
@@ -254,8 +274,16 @@ export const syncService = {
 
       if (tombstones) {
         for (const tomb of tombstones) {
-          if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+          if (!tomb.local_id || typeof tomb.local_id !== "number" || isNaN(tomb.local_id)) continue;
           if (PROTECTED_TABLES.has(tomb.entity_type)) continue;
+          const cloudTable = CLOUD_TABLE_MAP[tomb.entity_type];
+          // Guard: kalau baris data masih ada di cloud berarti data dibuat ulang
+          // setelah tombstones tercatat (mis. re-import siswa yang sama) → tombstone
+          // basi, jangan hapus data lokal, dan buang tombstone-nya dari cloud.
+          if (cloudTable && (await cloudDataExists(cloudTable, userId, tomb.local_id))) {
+            await supabase.from("cloud_tombstones").delete().eq("id", tomb.id);
+            continue;
+          }
           await db.table(tomb.entity_type).delete(tomb.local_id);
         }
       }
@@ -352,7 +380,10 @@ export const syncService = {
           }
 
           if (toInsert.length > 0) {
-            const { error } = await supabase.from(cloudTable).insert(toInsert);
+            // UPSERT agar tidak menciptakan baris duplikat di cloud
+            const { error } = await supabase
+              .from(cloudTable)
+              .upsert(toInsert, { onConflict: "user_id,local_id" });
             if (!error) uploaded += toInsert.length;
             else lastError = `insert ${cloudTable}: ${error.message}`;
           }
@@ -367,15 +398,21 @@ export const syncService = {
 
         for (const tomb of localTombstones) {
           const cloudTable = CLOUD_TABLE_MAP[tomb.entityType];
-          if (cloudTable) {
-            await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
-            await supabase.from("cloud_tombstones").insert({
+          if (!cloudTable) continue;
+          // Guard: kalau data masih ada di lokal (dibuat ulang setelah tombstone
+          // tercatat, mis. re-add siswa senama), tombstone basi — jangan hapus cloud.
+          const localRow = await db.table(tomb.entityType).get(tomb.localId).catch(() => undefined);
+          if (localRow) continue;
+          await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
+          // UPSERT tombstone agar tidak duplikat
+          await supabase
+            .from("cloud_tombstones")
+            .upsert({
               user_id: userId,
               entity_type: tomb.entityType,
               local_id: tomb.localId,
               deleted_at: now,
-            });
-          }
+            }, { onConflict: "user_id,entity_type,local_id" });
         }
       }
 
@@ -425,7 +462,13 @@ export const syncService = {
 
         if (cloudTombstones && cloudTombstones.length > 0) {
           for (const tomb of cloudTombstones) {
-            if (!tomb.local_id || isNaN(tomb.local_id)) continue;
+            if (!tomb.local_id || typeof tomb.local_id !== "number" || isNaN(tomb.local_id)) continue;
+            const cloudTable = CLOUD_TABLE_MAP[tomb.entity_type];
+            // Guard tombstone basi (data di-create ulang) — jangan hapus data lokal
+            if (cloudTable && (await cloudDataExists(cloudTable, userId, tomb.local_id))) {
+              await supabase.from("cloud_tombstones").delete().eq("id", tomb.id);
+              continue;
+            }
             await db.table(tomb.entity_type).delete(tomb.local_id);
           }
         }

@@ -32,6 +32,8 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   const handleChange = useCallback(async (tableName: string, payload: any) => {
     const localTable = CLOUD_TO_LOCAL[tableName];
@@ -43,6 +45,18 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
       if (eventType === "DELETE") {
         const old = payload.old;
         if (old?.local_id && !isNaN(old.local_id)) {
+          // Amankan: jangan hapus data lokal kalau masih ada baris lain di cloud
+          // dengan local_id yang sama (mis. saat pembersihan duplikat cloud
+          // menghapus baris kembar — data asli tidak boleh ikut hilang).
+          const uid = userIdRef.current;
+          if (uid) {
+            const { count } = await supabase
+              .from(tableName)
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", uid)
+              .eq("local_id", old.local_id);
+            if (count && count > 0) return; // masih ada salinannya → jangan hapus
+          }
           await db.table(localTable).delete(old.local_id);
         }
       } else {
@@ -76,7 +90,23 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
         const row = payload.new;
         if (!row || !row.local_id || isNaN(row.local_id)) return;
         const localTable = row.entity_type;
-        if (localTable && CLOUD_TO_LOCAL[`cloud_${localTable}`]) {
+        const cloudTable = localTable ? `cloud_${localTable}` : null;
+        if (cloudTable && CLOUD_TO_LOCAL[cloudTable]) {
+          // Guard: kalau baris data masih ada di cloud berarti data dibuat ulang
+          // (tombstone basi) → jangan hapus data lokal.
+          const uid = userIdRef.current;
+          if (uid) {
+            try {
+              const { count } = await supabase
+                .from(cloudTable)
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", uid)
+                .eq("local_id", row.local_id);
+              if (count && count > 0) return;
+            } catch {
+              return;
+            }
+          }
           await db.table(localTable).delete(row.local_id);
         }
       }

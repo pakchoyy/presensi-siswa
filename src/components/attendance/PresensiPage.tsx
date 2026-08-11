@@ -10,7 +10,7 @@ import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
-import { todayStr, isDayActive } from "@/lib/utils";
+import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
@@ -174,7 +174,8 @@ export function PresensiPage() {
       updatedRecords.set(selectedStudent.id, { ...existing, status });
     } else {
       updatedRecords.set(selectedStudent.id, {
-        id: 0,
+        // Id deterministik, sama dengan yang dipakai ubahStatus saat disimpan
+        id: recordIdFrom(sessionId, selectedStudent.id),
         sesiId: sessionId,
         siswaId: selectedStudent.id,
         status,
@@ -211,8 +212,13 @@ export function PresensiPage() {
     [AttendanceStatus.ALPHA]: 0,
   };
 
-  for (const r of records.values()) {
-    counts[r.status]++;
+  // Hitung berdasarkan baris yang TAMPIL (daftar siswa aktif), bukan dari
+  // record yang ada di DB. Saat auto-hadir AKTIF, siswa tanpa record dianggap
+  // Hadir — sehingga RingkasanBar konsisten dengan daftar siswa.
+  for (const st of students) {
+    const status = records.get(st.id)?.status;
+    const effective = autoHadir ? status || AttendanceStatus.HADIR : status;
+    if (effective) counts[effective]++;
   }
 
   return (
@@ -276,7 +282,11 @@ export function PresensiPage() {
                 {/* Overall summary */}
                 {(() => {
                   const total = { H: 0, S: 0, I: 0, A: 0 };
-                  for (const r of Object.values(rekapAjaran)) {
+                  // Hanya akumulasi dari siswa yang tampil (aktif), bukan dari
+                  // record siswa yang sudah dinonaktifkan (siswa "hantu")
+                  for (const s of students) {
+                    const r = rekapAjaran[s.id];
+                    if (!r) continue;
                     total.H += r.H || 0;
                     total.S += r.S || 0;
                     total.I += r.I || 0;

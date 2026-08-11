@@ -8,14 +8,14 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
-import { tombstoneRepo } from "@/repositories/dexie/tombstone.repo";
+
 import { db } from "@/repositories/dexie/db";
 import type { Student, Classroom } from "@/types/entities";
 import { inisial, generateId, timestamp } from "@/lib/utils";
 import { siswaToImportResult } from "@/services/import.service";
 import type { ImportResult } from "@/services/import.service";
 import { Tier } from "@/types/enums";
-import { MAX_STUDENTS_FREE } from "@/lib/constants";
+import { MAX_STUDENTS_FREE, MAX_KELAS_FREE } from "@/lib/constants";
 import { getCache, setCache, clearCache } from "@/lib/cache";
 
 function formatKelasLabel(namaKelas: string): string {
@@ -148,14 +148,12 @@ export function SiswaPage() {
       }
       
       const now = timestamp();
-      const students = await db.students.where('kelasId').equals(cls.id).toArray();
       await db.students.where('kelasId').equals(cls.id).modify({ statusAktif: false, diubahPada: now });
       await classroomRepo.softDelete(cls.id);
-
-      // Record tombstones so deletion propagates to cloud & all devices
-      const tombstones = students.map((s) => ({ entityType: "students", localId: s.id }));
-      tombstones.push({ entityType: "classrooms", localId: cls.id });
-      await tombstoneRepo.addMany(tombstones);
+      // NOTE: tidak membuat tombstones di sini. Soft-delete (statusAktif=false)
+      // sudah tersinkronisasi ke cloud/device lain lewat data sync biasa. Tombstone
+      // justru membuat data ikut TERHAPUS permanen di device lain + siswa hantu
+      // saat data di-create ulang.
 
       triggerAutoSync();
       await refreshClassrooms();
@@ -203,7 +201,9 @@ export function SiswaPage() {
         dibuatPada: now,
         diubahPada: now,
       };
-      await studentRepo.save(s);
+      // addOrRestore: kalau ada siswa nonaktif senama, dihidupkan lagi
+      // (bukan bikin baris baru) supaya riwayat absensi lama tidak terputus.
+      await studentRepo.addOrRestore(s);
       setModalNama("");
       setShowModal(false);
       clearCache(`students_${targetKelas.id}`);
@@ -264,7 +264,11 @@ export function SiswaPage() {
     // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
     const newStudents = siswaToImportResult(result, targetKelas.id, isPRO ? updatedClassrooms : undefined);
     
-    await studentRepo.bulkSave(newStudents);
+    // addOrRestore per siswa: siswa yang timbul dari import lama (setelah soft-delete)
+    // dihidupkan lagi, bukan dibuat baris baru yang memutus riwayat absensi.
+    for (const s of newStudents) {
+      await studentRepo.addOrRestore(s);
+    }
     
     // Reload all classes' student counts
     await loadCounts();
@@ -361,6 +365,16 @@ export function SiswaPage() {
         setAddingClass(false);
         return;
       }
+
+      // Limit FREE: hanya 1 kelas
+      if (!isPRO) {
+        const activeClassCount = classrooms.filter(c => c.statusAktif !== false).length;
+        if (activeClassCount >= MAX_KELAS_FREE) {
+          toast(`⚠️ Limit FREE: maksimal ${MAX_KELAS_FREE} kelas. Upgrade ke PRO untuk unlimited kelas.`);
+          setAddingClass(false);
+          return;
+        }
+      }
       
       const newCls: Classroom = {
         id: generateId(),
@@ -402,10 +416,8 @@ export function SiswaPage() {
       for (const student of allStudents) {
         await studentRepo.softDelete(student.id);
       }
-      
-      // Record tombstones agar deletion propagate ke cloud & semua device
-      const tombstones = allStudents.map((s) => ({ entityType: "students", localId: s.id }));
-      await tombstoneRepo.addMany(tombstones);
+      // NOTE: tanpa tombstones — soft-delete menyebar via data sync biasa, sehingga
+      // tidak menghapus permanen data di device lain / cloud.
       
       setShowDeleteAll(false);
       await loadStudents(targetKelas.id);

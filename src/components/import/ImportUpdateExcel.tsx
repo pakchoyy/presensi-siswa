@@ -4,7 +4,7 @@ import { studentRepo } from "@/repositories/dexie/student.repo";
 import { useToast } from "@/components/shared/Toast";
 import type { Student } from "@/types/entities";
 import { FileSpreadsheet, Download, Upload, Check, X, RefreshCw } from "lucide-react";
-import { inisial } from "@/lib/utils";
+import { inisial, generateId } from "@/lib/utils";
 
 interface Props {
   kelasId: number;
@@ -97,7 +97,8 @@ export function ImportUpdateExcel({ kelasId, existingCount, onDone }: Props) {
     // Add new students
     if (comparison.baru.length > 0) {
       const newStudents: Student[] = comparison.baru.map((s, i) => ({
-        id: now + i + 1000,
+        // generateId + offset agar id unik & tidak bentrok dengan id lain
+        id: generateId() + i,
         kelasId,
         nama: s.nama,
         nisn: s.nisn,

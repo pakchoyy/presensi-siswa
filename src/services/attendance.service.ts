@@ -3,7 +3,7 @@ import { studentRepo } from "@/repositories/dexie/student.repo";
 import { db } from "@/repositories/dexie/db";
 import type { AttendanceSession, AttendanceRecord } from "@/types/entities";
 import { AttendanceStatus, CalendarEntryType } from "@/types/enums";
-import { timestamp, generateId } from "@/lib/utils";
+import { timestamp, sessionIdFrom, recordIdFrom } from "@/lib/utils";
 
 export const attendanceService = {
   async bukaSesiPresensi(
@@ -13,12 +13,15 @@ export const attendanceService = {
     if (!kelasId || !tanggal) {
       throw new Error('Invalid parameters for bukaSesiPresensi');
     }
+    // getSession otomatis menggabungkan sesi duplikat untuk kelas+tanggal ini
     let session = await attendanceRepo.getSession(kelasId, tanggal);
 
     if (!session) {
       const now = timestamp();
+      // Id deterministik dari kelas+tanggal → semua perangkat menghasilkan id
+      // yang sama, sehingga dua perangkat tidak membuat dua sesi berbeda.
       session = {
-        id: generateId(),
+        id: sessionIdFrom(kelasId, tanggal),
         kelasId,
         tanggal,
         dibuatPada: now,
@@ -66,7 +69,9 @@ export const attendanceService = {
       record = { ...existing, status: statusBaru, diubahPada: now };
     } else {
       record = {
-        id: generateId(),
+        // Id deterministik → peranti lain yang mengubah siswa yang sama di sesi
+        // yang sama menghasilkan id yang sama (bukan record ganda).
+        id: recordIdFrom(sesiId, siswaId),
         sesiId,
         siswaId,
         status: statusBaru,
