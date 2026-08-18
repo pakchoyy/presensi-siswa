@@ -4,7 +4,8 @@ import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import type { Student, AttendanceRecord, Classroom } from "@/types/entities";
-import { AttendanceStatus, PageName } from "@/types/enums";
+import { AttendanceStatus, CalendarEntryType, PageName } from "@/types/enums";
+import { db } from "@/repositories/dexie/db";
 import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
@@ -35,6 +36,9 @@ export function PresensiPage() {
   // Academic year
   const [activeAy, setActiveAy] = useState<{ tanggalMulai: string; tanggalSelesai: string; semesterAktif: string } | null>(null);
 
+  // Hari libur dari kalender (selain akhir pekan / hari non-aktif)
+  const [liburKalender, setLiburKalender] = useState<string | null>(null);
+
   // State for "Sejak Awal Ajaran" ringkasan
   const [rekapAjaran, setRekapAjaran] = useState<Record<number, Record<string, number>> | null>(null);
   const [totalHariAjaran, setTotalHariAjaran] = useState(0);
@@ -42,11 +46,26 @@ export function PresensiPage() {
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [semesterOnly, setSemesterOnly] = useState(true);
 
-  const isLibur = isWeekend(tanggalAktif);
+  const isLibur = isWeekend(tanggalAktif) || !!liburKalender;
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
   const isSesudahPeriode = activeAy ? tanggalAktif > activeAy.tanggalSelesai : false;
   const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
   const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
+
+  // Cek apakah tanggal aktif ditandai "Hari Libur" di kalender
+  const loadLiburKalender = useCallback(async () => {
+    if (!tanggalAktif) return;
+    const libur = await db.calendarEntries
+      .where("tanggal")
+      .equals(tanggalAktif)
+      .filter((e) => e.jenis === CalendarEntryType.HARI_LIBUR)
+      .first();
+    setLiburKalender(libur ? libur.keterangan || "Hari Libur" : null);
+  }, [tanggalAktif]);
+
+  useEffect(() => {
+    loadLiburKalender();
+  }, [loadLiburKalender]);
 
   const loadData = useCallback(async () => {
     if (!activeClassroom || isLibur || diLuarPeriode) {
@@ -408,7 +427,9 @@ export function PresensiPage() {
                 ? (isSebelumPeriode
                     ? `Periode ajaran dimulai ${activeAy?.tanggalMulai}`
                     : `Periode ajaran berakhir ${activeAy?.tanggalSelesai}`)
-                : "Tidak ada presensi (hari libur / tidak aktif)"
+                : liburKalender
+                  ? `Tidak ada presensi · ${liburKalender}`
+                  : "Tidak ada presensi (hari libur / tidak aktif)"
               }
             </div>
           </div>

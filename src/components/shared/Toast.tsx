@@ -15,29 +15,25 @@ interface ToastCtx {
 
 const ToastCtx = createContext<ToastCtx>({ toast: () => {} });
 
-const TOAST_STYLE: Record<ToastType, { icon: ReactNode; iconBg: string; bar: string; ring: string }> = {
+const TOAST_STYLE: Record<ToastType, { icon: ReactNode; iconBg: string; ring: string }> = {
   success: {
     icon: <CheckCircle2 size={22} className="text-[#16a34a]" />,
     iconBg: "bg-green-500/15",
-    bar: "bg-gradient-to-r from-[#16a34a] to-[#15803d]",
     ring: "border-green-200 dark:border-green-800",
   },
   error: {
     icon: <AlertTriangle size={22} className="text-[#ef4444]" />,
     iconBg: "bg-red-500/15",
-    bar: "bg-gradient-to-r from-[#ef4444] to-[#dc2626]",
     ring: "border-red-200 dark:border-red-800",
   },
   info: {
     icon: <Info size={22} className="text-[#0ea5a0]" />,
     iconBg: "bg-teal-500/15",
-    bar: "bg-gradient-to-r from-[#0ea5a0] to-[#0d7a8a]",
     ring: "border-teal-200 dark:border-teal-800",
   },
   loading: {
     icon: <Loader2 size={22} className="text-[#0ea5a0] animate-spin" />,
     iconBg: "bg-teal-500/15",
-    bar: "bg-gradient-to-r from-[#0ea5a0] to-[#0d7a8a]",
     ring: "border-teal-200 dark:border-teal-800",
   },
 };
@@ -79,9 +75,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               >
                 <X size={16} />
               </button>
-              {t.type !== "loading" && (
-                <div className={`absolute left-0 bottom-0 h-[3px] ${s.bar} animate-toast-progress`} />
-              )}
             </div>
           );
         })}

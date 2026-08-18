@@ -40,15 +40,6 @@ export function useSyncDebounce(email: string | null) {
       lastSyncRef.current = ts;
       setLastSync(ts);
       retryCount.current = 0;
-
-      const uploaded = result.uploaded || 0;
-      const downloaded = result.downloaded || 0;
-      if (uploaded + downloaded > 0) {
-        const parts: string[] = [];
-        if (uploaded > 0) parts.push(`${uploaded} ter-upload`);
-        if (downloaded > 0) parts.push(`${downloaded} ter-download`);
-        toast(`☁️ ${parts.join(" · ")}`, "success");
-      }
     } catch {
       retryCount.current++;
       const delay = Math.min(RETRY_BASE * Math.pow(2, retryCount.current - 1), RETRY_MAX);
