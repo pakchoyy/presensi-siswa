@@ -37,6 +37,7 @@ export interface Classroom {
   tahunAjaranId: number;
   guruId: number;
   statusAktif: boolean;
+  allowSiswaAbsenMandiri?: boolean;
   dibuatPada: number;
   diubahPada: number;
 }
@@ -49,6 +50,7 @@ export interface Student {
   jenisKelamin?: "L" | "P";
   urutan: number;
   statusAktif: boolean;
+  absenToken?: string;
   dibuatPada: number;
   diubahPada: number;
 }

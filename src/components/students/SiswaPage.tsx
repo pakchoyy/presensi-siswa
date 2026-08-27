@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2 } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { triggerAutoSync } from "@/hooks/useAutoSync";
@@ -85,6 +85,10 @@ export function SiswaPage() {
   const [addingClass, setAddingClass] = useState(false);
   const [deleteClassTarget, setDeleteClassTarget] = useState<Classroom | null>(null);
   const [deletingClass, setDeletingClass] = useState(false);
+  const [absenLinkGenerating, setAbsenLinkGenerating] = useState(false);
+  const [absenLinks, setAbsenLinks] = useState<{ nama: string; token: string; url: string }[] | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [togglingAbsen, setTogglingAbsen] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -430,6 +434,62 @@ export function SiswaPage() {
     }
   };
 
+  const handleToggleAbsenMandiri = async () => {
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!targetKelas) return;
+    setTogglingAbsen(true);
+    try {
+      const next = !targetKelas.allowSiswaAbsenMandiri;
+      await classroomRepo.save({ ...targetKelas, allowSiswaAbsenMandiri: next, diubahPada: timestamp() });
+      await refreshClassrooms();
+      // update selectedKelas local
+      setSelectedKelas({ ...targetKelas, allowSiswaAbsenMandiri: next });
+      toast(next ? "✅ Absen mandiri diaktifkan untuk kelas ini" : "Absen mandiri dinonaktifkan");
+    } catch {
+      toast("❌ Gagal mengubah pengaturan");
+    } finally {
+      setTogglingAbsen(false);
+    }
+  };
+
+  const handleGenerateLinks = async () => {
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!targetKelas || students.length === 0) { toast("Belum ada siswa"); return; }
+    setAbsenLinkGenerating(true);
+    try {
+      const links: { nama: string; token: string; url: string }[] = [];
+      const origin = window.location.origin;
+      for (const s of students) {
+        let token = s.absenToken;
+        if (!token) {
+          token = crypto.randomUUID();
+          await db.students.update(s.id, { absenToken: token, diubahPada: timestamp() } as Partial<Student>);
+        }
+        links.push({ nama: s.nama, token, url: `${origin}/s/${token}` });
+      }
+      // refresh local
+      clearCache(`students_${targetKelas.id}`);
+      await loadStudents(targetKelas.id, true);
+      triggerAutoSync();
+      setAbsenLinks(links);
+      toast(`✅ ${links.length} link absen siap`);
+    } catch {
+      toast("❌ Gagal generate link");
+    } finally {
+      setAbsenLinkGenerating(false);
+    }
+  };
+
+  const handleCopy = async (url: string, token: string) => {
+    try { await navigator.clipboard.writeText(url); setCopiedToken(token); setTimeout(() => setCopiedToken(null), 1500); toast("Link disalin"); } catch { toast(url); }
+  };
+
+  const handleCopyAll = async () => {
+    if (!absenLinks) return;
+    const text = absenLinks.map((l) => `${l.nama}: ${l.url}`).join("\n");
+    try { await navigator.clipboard.writeText(text); toast("Semua link disalin"); } catch { toast(text); }
+  };
+
   // View: Daftar Kelas (Cards)
   if (view === "kelas") {
     return (
@@ -603,6 +663,49 @@ export function SiswaPage() {
         {students.length} siswa terdaftar
         {!isPRO && <span className="text-[var(--text-light)]"> • Limit: {students.length}/{MAX_STUDENTS_FREE}</span>}
         {!isPRO && students.length >= MAX_STUDENTS_FREE && <span className="text-[#b45309] font-semibold"> • Penuh</span>}
+      </div>
+
+      {/* Absen Mandiri (trial 1-2 guru) */}
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-[0.78rem] font-bold"><Link2 size={14} className="text-[#0ea5a0]" /> Absen Mandiri (PJJ)</div>
+          <button
+            onClick={handleToggleAbsenMandiri}
+            disabled={togglingAbsen}
+            className={`relative w-[44px] h-[24px] rounded-full transition-colors ${((selectedKelas || activeClassroom)?.allowSiswaAbsenMandiri) ? "bg-[#0ea5a0]" : "bg-[var(--border)]"}`}
+          >
+            <span className={`absolute top-[2px] w-[20px] h-[20px] bg-white rounded-full shadow transition-all ${((selectedKelas || activeClassroom)?.allowSiswaAbsenMandiri) ? "left-[22px]" : "left-[2px]"}`} />
+          </button>
+        </div>
+        <div className="text-[0.68rem] text-[var(--text-light)] mb-2">
+          {(selectedKelas || activeClassroom)?.allowSiswaAbsenMandiri ? "Aktif — murid bisa absen via link pribadi" : "Nonaktif — hanya guru yang bisa input"}
+        </div>
+        {(selectedKelas || activeClassroom)?.allowSiswaAbsenMandiri && (
+          <button
+            onClick={handleGenerateLinks}
+            disabled={absenLinkGenerating || students.length === 0}
+            className="w-full flex items-center justify-center gap-2 py-[9px] rounded-[10px] text-white font-bold text-[0.78rem] disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+          >
+            <Share2 size={14} /> {absenLinkGenerating ? "Membuat..." : `Buat Link Absen (${students.length} siswa)`}
+          </button>
+        )}
+        {absenLinks && (
+          <div className="mt-3 max-h-[220px] overflow-y-auto border border-[var(--border)] rounded-lg p-2 bg-[var(--input-bg)]">
+            <div className="flex justify-end mb-2">
+              <button onClick={handleCopyAll} className="text-[0.7rem] font-bold text-[#0ea5a0] flex items-center gap-1"><Copy size={12} /> Salin Semua</button>
+            </div>
+            {absenLinks.map((l) => (
+              <div key={l.token} className="flex items-center gap-2 py-1.5 border-b border-[var(--border)] last:border-0">
+                <span className="flex-1 text-[0.75rem] font-semibold truncate">{l.nama}</span>
+                <span className="text-[0.65rem] text-[var(--text-light)] truncate max-w-[150px] hidden sm:inline">{l.url}</span>
+                <button onClick={() => handleCopy(l.url, l.token)} className="h-7 px-2 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] text-[0.7rem] font-bold flex items-center gap-1">
+                  {copiedToken === l.token ? <Check size={12} className="text-[#16a34a]" /> : <Copy size={12} />} {copiedToken === l.token ? "Tersalin" : "Salin"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="relative mb-3">

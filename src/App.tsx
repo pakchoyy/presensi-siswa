@@ -27,6 +27,12 @@ import { UpgradePage } from "@/components/pro/UpgradePage";
 import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
 import { PageName } from "@/types/enums";
+import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
+
+function getAbsenToken(): string | null {
+  const m = window.location.pathname.match(/^\/s\/([^/]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 function PageRouter() {
   const { activePage, setupSelesai, loading } = useApp();
@@ -143,6 +149,14 @@ function AppContent() {
 }
 
 export default function App() {
+  const token = typeof window !== "undefined" ? getAbsenToken() : null;
+  if (token) {
+    return (
+      <ToastProvider>
+        <AbsenSiswaPage token={token} />
+      </ToastProvider>
+    );
+  }
   return (
     <AuthProvider>
       <CloudAuthProvider>

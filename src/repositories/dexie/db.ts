@@ -53,6 +53,11 @@ export class PresensiDB extends Dexie {
       classrooms: "id, tahunAjaranId, guruId",
       students: "id, kelasId",
     });
+    // Version 6: absen mandiri (token per siswa, flag per kelas)
+    this.version(6).stores({
+      classrooms: "id, tahunAjaranId, guruId",
+      students: "id, kelasId, absenToken",
+    });
   }
 }
 
