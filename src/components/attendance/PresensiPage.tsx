@@ -208,6 +208,7 @@ export function PresensiPage() {
       S: "Sakit",
       I: "Izin",
       A: "Alpha",
+      T: "Terlambat",
     };
     toast(`Status disimpan — ${labelMap[status]}`);
   };
@@ -229,6 +230,7 @@ export function PresensiPage() {
     [AttendanceStatus.SAKIT]: 0,
     [AttendanceStatus.IZIN]: 0,
     [AttendanceStatus.ALPHA]: 0,
+    [AttendanceStatus.TERLAMBAT]: 0,
   };
 
   // Hitung berdasarkan baris yang TAMPIL (daftar siswa aktif), bukan dari
@@ -300,7 +302,7 @@ export function PresensiPage() {
                 </div>
                 {/* Overall summary */}
                 {(() => {
-                  const total = { H: 0, S: 0, I: 0, A: 0 };
+                  const total = { H: 0, S: 0, I: 0, A: 0, T: 0 };
                   // Hanya akumulasi dari siswa yang tampil (aktif), bukan dari
                   // record siswa yang sudah dinonaktifkan (siswa "hantu")
                   for (const s of students) {
@@ -310,9 +312,10 @@ export function PresensiPage() {
                     total.S += r.S || 0;
                     total.I += r.I || 0;
                     total.A += r.A || 0;
+                    total.T += (r as Record<string, number>).T || 0;
                   }
                   return (
-                    <div className="flex flex-nowrap gap-[10px] justify-between mb-3 text-[11px] font-semibold">
+                    <div className="flex flex-wrap gap-x-[10px] gap-y-[6px] mb-3 text-[11px] font-semibold">
                       <span className="flex items-center gap-[5px]">
                         <span className="w-2 h-2 rounded-full" style={{ background: "var(--hadir)" }} /> Hadir <b>{total.H}</b>
                       </span>
@@ -324,6 +327,9 @@ export function PresensiPage() {
                       </span>
                       <span className="flex items-center gap-[5px]">
                         <span className="w-2 h-2 rounded-full" style={{ background: "var(--alpha)" }} /> Alpha <b>{total.A}</b>
+                      </span>
+                      <span className="flex items-center gap-[5px]">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "var(--terlambat)" }} /> Terlambat <b>{total.T}</b>
                       </span>
                     </div>
                   );

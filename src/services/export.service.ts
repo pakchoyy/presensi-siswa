@@ -10,6 +10,7 @@ interface RekapData {
   S: number;
   I: number;
   A: number;
+  T: number;
 }
 
 interface ExportContext {
@@ -18,7 +19,7 @@ interface ExportContext {
   classroom: Classroom | null;
   periode: string;
   data: RekapData[];
-  total: { H: number; S: number; I: number; A: number };
+  total: { H: number; S: number; I: number; A: number; T: number };
 }
 
 function buildKop(doc: jsPDF, ctx: ExportContext) {
@@ -75,6 +76,7 @@ export async function exportPDF(ctx: ExportContext) {
     String(d.S),
     String(d.I),
     String(d.A),
+    String(d.T),
   ]);
 
   body.push([
@@ -83,11 +85,12 @@ export async function exportPDF(ctx: ExportContext) {
     String(ctx.total.S),
     String(ctx.total.I),
     String(ctx.total.A),
+    String(ctx.total.T),
   ]);
 
   autoTable(doc, {
     startY: startY || 60,
-    head: [["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha"]],
+    head: [["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat"]],
     body,
     theme: "grid",
     headStyles: {
@@ -122,16 +125,17 @@ export async function exportPDF(ctx: ExportContext) {
 export async function exportExcel(ctx: ExportContext) {
   const wb = XLSX.utils.book_new();
 
-  const header = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha"];
+  const header = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat"];
   const rows = ctx.data.map((d) => [
     d.student.nama,
     d.H,
     d.S,
     d.I,
     d.A,
+    d.T,
   ]);
 
-  rows.push(["TOTAL", ctx.total.H, ctx.total.S, ctx.total.I, ctx.total.A]);
+  rows.push(["TOTAL", ctx.total.H, ctx.total.S, ctx.total.I, ctx.total.A, ctx.total.T]);
 
   const info = [
     [`Sekolah: ${ctx.school?.nama || "-"}`],
@@ -144,7 +148,7 @@ export async function exportExcel(ctx: ExportContext) {
   const allRows = [...info, header, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(allRows);
 
-  ws["!cols"] = [{ wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+  ws["!cols"] = [{ wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
 

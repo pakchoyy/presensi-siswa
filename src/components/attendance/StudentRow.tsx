@@ -15,6 +15,7 @@ const STATUS_BORDER: Record<string, string> = {
   S: "#b45309",
   I: "#1d4ed8",
   A: "#dc2626",
+  T: "#f59e0b",
   undefined: "var(--border)",
 };
 
@@ -23,6 +24,7 @@ const STATUS_BG: Record<string, string> = {
   S: "var(--sakit-bg, #fef3c7)",
   I: "var(--izin-bg, #dbeafe)",
   A: "var(--alpha-bg, #fee2e2)",
+  T: "var(--terlambat-bg, #fef3c7)",
   undefined: "var(--input-bg)",
 };
 

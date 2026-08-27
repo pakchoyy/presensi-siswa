@@ -89,7 +89,7 @@ export const attendanceService = {
 
     for (const r of records) {
       if (!ringkasan[r.siswaId]) {
-        ringkasan[r.siswaId] = { H: 0, S: 0, I: 0, A: 0 };
+        ringkasan[r.siswaId] = { H: 0, S: 0, I: 0, A: 0, T: 0 };
       }
       ringkasan[r.siswaId][r.status]++;
     }
@@ -138,7 +138,7 @@ export const attendanceService = {
 
     for (const r of records) {
       if (!ringkasan[r.siswaId]) {
-        ringkasan[r.siswaId] = { H: 0, S: 0, I: 0, A: 0 };
+        ringkasan[r.siswaId] = { H: 0, S: 0, I: 0, A: 0, T: 0 };
       }
       ringkasan[r.siswaId][r.status]++;
     }

@@ -14,6 +14,7 @@ export function RingkasanBar({ counts }: Props) {
     { label: "Sakit", key: "S" as AttendanceStatus, color: "var(--sakit)" },
     { label: "Izin", key: "I" as AttendanceStatus, color: "var(--izin)" },
     { label: "Alpha", key: "A" as AttendanceStatus, color: "var(--alpha)" },
+    { label: "Terlambat", key: "T" as AttendanceStatus, color: "var(--terlambat)" },
   ];
 
   return (

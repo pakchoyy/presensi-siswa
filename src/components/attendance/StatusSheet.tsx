@@ -1,7 +1,6 @@
 import { AttendanceStatus } from "@/types/enums";
 import { STATUS_LABEL, STATUS_COLOR } from "@/lib/constants";
-import { CheckCircle2, Thermometer, FileText, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, Thermometer, FileText, XCircle, Clock } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -15,6 +14,7 @@ const STATUS_ICONS: Record<AttendanceStatus, typeof CheckCircle2> = {
   [AttendanceStatus.SAKIT]: Thermometer,
   [AttendanceStatus.IZIN]: FileText,
   [AttendanceStatus.ALPHA]: XCircle,
+  [AttendanceStatus.TERLAMBAT]: Clock,
 };
 
 const STATUSES: AttendanceStatus[] = [
@@ -22,6 +22,7 @@ const STATUSES: AttendanceStatus[] = [
   AttendanceStatus.SAKIT,
   AttendanceStatus.IZIN,
   AttendanceStatus.ALPHA,
+  AttendanceStatus.TERLAMBAT,
 ];
 
 export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
@@ -44,11 +45,12 @@ export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
         <div className="grid grid-cols-2 gap-[10px]">
           {STATUSES.map((status) => {
             const Icon = STATUS_ICONS[status];
+            const isLastOdd = STATUSES.length % 2 === 1 && status === STATUSES[STATUSES.length - 1];
             return (
               <button
                 key={status}
                 onClick={() => onSelect(status)}
-                className="flex flex-col items-center gap-[6px] py-4 px-2 rounded-xl border-[1.5px] border-[var(--border)] bg-[var(--input-bg)] cursor-pointer font-bold text-[0.82rem] active:scale-95 transition-transform"
+                className={`flex flex-col items-center gap-[6px] py-4 px-2 rounded-xl border-[1.5px] border-[var(--border)] bg-[var(--input-bg)] cursor-pointer font-bold text-[0.82rem] active:scale-95 transition-transform ${isLastOdd ? "col-span-2 max-w-[calc(50%-5px)] mx-auto w-full" : ""}`}
                 style={{ color: STATUS_COLOR[status] }}
               >
                 <Icon size={24} />

@@ -32,6 +32,7 @@ export function RekapPage() {
   const [totalS, setTotalS] = useState(0);
   const [totalI, setTotalI] = useState(0);
   const [totalA, setTotalA] = useState(0);
+  const [totalT, setTotalT] = useState(0);
 
   // Filter states
   const [bulanIndex, setBulanIndex] = useState(new Date().getMonth());
@@ -93,7 +94,7 @@ export function RekapPage() {
     setStudents(siswa);
     setRekap(data || {});
 
-    let h = 0, s = 0, i = 0, a = 0;
+    let h = 0, s = 0, i = 0, a = 0, t = 0;
     // Akumulasi hanya untuk siswa yang aktif & tampil di tabel, agar total
     // tidak ikut menjumlahkan record siswa yang sudah dinonaktifkan.
     for (const st of siswa) {
@@ -103,11 +104,13 @@ export function RekapPage() {
       s += r.S || 0;
       i += r.I || 0;
       a += r.A || 0;
+      t += (r as Record<string, number>).T || 0;
     }
     setTotalH(h);
     setTotalS(s);
     setTotalI(i);
     setTotalA(a);
+    setTotalT(t);
   }, [activeClassroom, dateRange]);
 
   useEffect(() => {
@@ -132,8 +135,9 @@ export function RekapPage() {
 
   const exportableData = useMemo(() => {
     return students.map((student) => {
-      const r = rekap[student.id] || { H: 0, S: 0, I: 0, A: 0 };
-      return { student, H: r.H, S: r.S, I: r.I, A: r.A };
+      const r = rekap[student.id] || { H: 0, S: 0, I: 0, A: 0, T: 0 };
+      const rr = r as Record<string, number>;
+      return { student, H: rr.H || 0, S: rr.S || 0, I: rr.I || 0, A: rr.A || 0, T: rr.T || 0 };
     });
   }, [students, rekap]);
 
@@ -147,7 +151,7 @@ export function RekapPage() {
         classroom: activeClassroom,
         periode: dateRange.label,
         data: exportableData,
-        total: { H: totalH, S: totalS, I: totalI, A: totalA },
+        total: { H: totalH, S: totalS, I: totalI, A: totalA, T: totalT },
       });
       toast("PDF berhasil diunduh");
     } catch {
@@ -167,7 +171,7 @@ export function RekapPage() {
         classroom: activeClassroom,
         periode: dateRange.label,
         data: exportableData,
-        total: { H: totalH, S: totalS, I: totalI, A: totalA },
+        total: { H: totalH, S: totalS, I: totalI, A: totalA, T: totalT },
       });
       toast("Excel berhasil diunduh");
     } catch {
@@ -297,12 +301,13 @@ export function RekapPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-5 gap-2 mb-3">
         {[
           { label: "HADIR", value: totalH, key: "H" },
           { label: "SAKIT", value: totalS, key: "S" },
           { label: "IZIN", value: totalI, key: "I" },
           { label: "ALPHA", value: totalA, key: "A" },
+          { label: "TERLAMBAT", value: totalT, key: "T" },
         ].map((item) => (
           <div
             key={item.key}
@@ -333,12 +338,13 @@ export function RekapPage() {
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.S }}>S</th>
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.I }}>I</th>
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.A }}>A</th>
+                <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.T }}>T</th>
               </tr>
             </thead>
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-[var(--text-light)] text-[0.75rem] py-[14px] text-center">Belum ada data</td>
+                  <td colSpan={6} className="text-[var(--text-light)] text-[0.75rem] py-[14px] text-center">Belum ada data</td>
                 </tr>
               ) : (
                 exportableData.map((d) => (
@@ -348,6 +354,7 @@ export function RekapPage() {
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.S}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.I}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.A}</td>
+                    <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.T}</td>
                   </tr>
                 ))
               )}
@@ -358,6 +365,7 @@ export function RekapPage() {
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalS}</td>
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalI}</td>
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalA}</td>
+                  <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalT}</td>
                 </tr>
               )}
             </tbody>

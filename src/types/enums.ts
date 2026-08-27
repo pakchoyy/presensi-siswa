@@ -3,6 +3,7 @@ export enum AttendanceStatus {
   SAKIT = "S",
   IZIN = "I",
   ALPHA = "A",
+  TERLAMBAT = "T",
 }
 
 export enum Tier {

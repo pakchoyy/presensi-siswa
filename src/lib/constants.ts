@@ -10,6 +10,7 @@ export const STATUS_LABEL: Record<AttendanceStatus, string> = {
   [AttendanceStatus.SAKIT]: "Sakit",
   [AttendanceStatus.IZIN]: "Izin",
   [AttendanceStatus.ALPHA]: "Alpha",
+  [AttendanceStatus.TERLAMBAT]: "Terlambat",
 };
 
 export const STATUS_COLOR: Record<AttendanceStatus, string> = {
@@ -17,6 +18,7 @@ export const STATUS_COLOR: Record<AttendanceStatus, string> = {
   [AttendanceStatus.SAKIT]: "#b45309",
   [AttendanceStatus.IZIN]: "#1d4ed8",
   [AttendanceStatus.ALPHA]: "#dc2626",
+  [AttendanceStatus.TERLAMBAT]: "#f59e0b",
 };
 
 export const STORAGE_KEY = "bgy_presensi";
