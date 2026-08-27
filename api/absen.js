@@ -112,16 +112,17 @@ export default async function handler(req, res) {
         if (insErr) return res.status(500).json({ error: insErr.message });
         sesiLocalId = localId;
       }
-      const { error: recErr } = await supabase.from("cloud_attendance_records").upsert({
-        user_id: userId, local_id: Date.now(), sesi_id: sesiLocalId, siswa_id: student.id,
-        status, diubah_pada: Date.now(), last_synced_at: Date.now(), version: 1
-      }, { onConflict: "user_id,sesi_id,siswa_id" });
-      // fallback: coba tanpa local_id jika constraint beda
-      if (recErr) {
-        const { error: recErr2 } = await supabase.from("cloud_attendance_records").upsert({
-          user_id: userId, sesi_id: sesiLocalId, siswa_id: student.id, status, diubah_pada: Date.now(), last_synced_at: Date.now(), version: 1
-        }, { onConflict: "user_id,sesi_id,siswa_id" });
-        if (recErr2) return res.status(500).json({ error: recErr2.message });
+      // cek record existing dulu (soal unique constraint di cloud bisa beda)
+      const { data: existingRec } = await supabase.from("cloud_attendance_records").select("id, local_id").eq("user_id", userId).eq("sesi_id", sesiLocalId).eq("siswa_id", student.id).maybeSingle();
+      if (existingRec) {
+        const { error: updErr } = await supabase.from("cloud_attendance_records").update({ status, diubah_pada: Date.now(), last_synced_at: Date.now() }).eq("id", existingRec.id);
+        if (updErr) return res.status(500).json({ error: updErr.message });
+      } else {
+        const { error: insErr } = await supabase.from("cloud_attendance_records").insert({
+          user_id: userId, local_id: Date.now() + Math.floor(Math.random() * 1000), sesi_id: sesiLocalId, siswa_id: student.id,
+          status, diubah_pada: Date.now(), last_synced_at: Date.now(), version: 1
+        });
+        if (insErr) return res.status(500).json({ error: insErr.message });
       }
     } else {
       let sesiId;
@@ -132,8 +133,14 @@ export default async function handler(req, res) {
         if (insErr) return res.status(500).json({ error: insErr.message });
         sesiId = ins.id;
       }
-      const { error: recErr } = await supabase.from("attendance_records").upsert({ sesi_id: sesiId, siswa_id: student.id, status, diubah_pada: Date.now() }, { onConflict: "sesi_id,siswa_id" });
-      if (recErr) return res.status(500).json({ error: recErr.message });
+      const { data: existingPub } = await supabase.from("attendance_records").select("id").eq("sesi_id", sesiId).eq("siswa_id", student.id).maybeSingle();
+      if (existingPub) {
+        const { error: updErr } = await supabase.from("attendance_records").update({ status, diubah_pada: Date.now() }).eq("id", existingPub.id);
+        if (updErr) return res.status(500).json({ error: updErr.message });
+      } else {
+        const { error: insErr } = await supabase.from("attendance_records").insert({ sesi_id: sesiId, siswa_id: student.id, status, diubah_pada: Date.now() });
+        if (insErr) return res.status(500).json({ error: insErr.message });
+      }
     }
 
     return res.status(200).json({ ok: true, tanggal: today, status });
