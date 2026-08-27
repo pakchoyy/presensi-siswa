@@ -8,6 +8,7 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import { syncService } from "@/services/sync.service";
 
 import { db } from "@/repositories/dexie/db";
 import type { Student, Classroom } from "@/types/entities";
@@ -471,8 +472,14 @@ export function SiswaPage() {
       clearCache(`students_${targetKelas.id}`);
       await loadStudents(targetKelas.id, true);
       triggerAutoSync();
+      // push token ke cloud segera (biar link langsung valid, tidak nunggu debounce 2 menit)
+      if (teacher?.email) {
+        syncService.initialUpload(teacher.email).catch(() => {});
+        // juga coba incremental sync cepat
+        setTimeout(() => triggerAutoSync(), 1000);
+      }
       setAbsenLinks(links);
-      toast(`✅ ${links.length} link absen siap`);
+      toast(`✅ ${links.length} link absen siap — tunggu ~5 detik lalu coba buka link`);
     } catch {
       toast("❌ Gagal generate link");
     } finally {
