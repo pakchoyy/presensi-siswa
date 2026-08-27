@@ -50,7 +50,9 @@ export function PresensiPage() {
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
   const isSesudahPeriode = activeAy ? tanggalAktif > activeAy.tanggalSelesai : false;
   const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
-  const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
+  const isAbsenMandiri = !!activeClassroom?.allowSiswaAbsenMandiri;
+  // untuk kelas mandiri (siswa absen sendiri) jangan auto-Hadir, biar "belum absen" kelihatan
+  const autoHadir = !isAbsenMandiri && localStorage.getItem("bgy_auto_hadir") !== "0";
 
   // Cek apakah tanggal aktif ditandai "Hari Libur" di kalender
   const loadLiburKalender = useCallback(async () => {
@@ -115,8 +117,19 @@ export function PresensiPage() {
       }
     };
     window.addEventListener("realtime-update", handleRealtimeUpdate);
-    return () => window.removeEventListener("realtime-update", handleRealtimeUpdate);
+    window.addEventListener("data-changed", handleRealtimeUpdate as EventListener);
+    return () => {
+      window.removeEventListener("realtime-update", handleRealtimeUpdate);
+      window.removeEventListener("data-changed", handleRealtimeUpdate as EventListener);
+    };
   }, [loadData]);
+
+  // untuk kelas mandiri: polling 10 detik sebagai fallback kalau realtime belum aktif
+  useEffect(() => {
+    if (!isAbsenMandiri || isLibur || diLuarPeriode) return;
+    const iv = setInterval(() => loadData(), 10000);
+    return () => clearInterval(iv);
+  }, [isAbsenMandiri, isLibur, diLuarPeriode, loadData]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

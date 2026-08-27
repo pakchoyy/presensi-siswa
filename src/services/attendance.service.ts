@@ -29,7 +29,14 @@ export const attendanceService = {
       };
       await attendanceRepo.createSession(session);
 
-      const autoHadir = localStorage.getItem("bgy_auto_hadir") !== "0";
+      const autoHadirGlobal = localStorage.getItem("bgy_auto_hadir") !== "0";
+      // untuk kelas mandiri jangan auto-Hadir biar siswa absen sendiri
+      let isMandiri = false;
+      try {
+        const cls = await db.classrooms.get(kelasId);
+        isMandiri = !!cls?.allowSiswaAbsenMandiri;
+      } catch {}
+      const autoHadir = autoHadirGlobal && !isMandiri;
       if (autoHadir) {
         const students = await studentRepo.getByClass(kelasId);
         const records = buildDefaultRecords(
