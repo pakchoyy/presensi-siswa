@@ -8,6 +8,7 @@ import { exportPDF, exportExcel } from "@/services/export.service";
 import type { Student, Classroom } from "@/types/entities";
 import { PageName } from "@/types/enums";
 import { STATUS_COLOR } from "@/lib/constants";
+import { todayStr, formatTanggalPendek } from "@/lib/utils";
 import { Filter, Table, FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
@@ -23,7 +24,7 @@ export function RekapPage() {
   const { activeClassroom, school, teacher, classrooms, setActiveClassroom, setActivePage } = useApp();
   const { toast } = useToast();
 
-  const [tab, setTab] = useState<"bulanan" | "semester">("bulanan");
+  const [tab, setTab] = useState<"bulanan" | "semester" | "rentang">("bulanan");
   const [classDropdown, setClassDropdown] = useState(false);
   const classRef = useRef<HTMLDivElement>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -33,6 +34,7 @@ export function RekapPage() {
   const [totalI, setTotalI] = useState(0);
   const [totalA, setTotalA] = useState(0);
   const [totalT, setTotalT] = useState(0);
+  const [totalHari, setTotalHari] = useState(0);
 
   // Filter states
   const [bulanIndex, setBulanIndex] = useState(new Date().getMonth());
@@ -40,6 +42,8 @@ export function RekapPage() {
   const [semesterIdx, setSemesterIdx] = useState(
     new Date().getMonth() >= 6 ? 0 : 1
   );
+  const [rentangStart, setRentangStart] = useState(todayStr());
+  const [rentangEnd, setRentangEnd] = useState(todayStr());
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const [taStart, setTaStart] = useState(`${new Date().getFullYear()}-07-01`);
   const [taEnd, setTaEnd] = useState(`${new Date().getFullYear() + 1}-06-30`);
@@ -62,6 +66,13 @@ export function RekapPage() {
       const lastDay = new Date(tahun, bulanIndex + 1, 0).getDate();
       const end = `${tahun}-${pad(bulanIndex + 1)}-${pad(lastDay)}`;
       return { start, end, label: `${MONTH_LABELS[bulanIndex]} ${tahun}` };
+    } else if (tab === "rentang") {
+      const start = rentangStart <= rentangEnd ? rentangStart : rentangEnd;
+      const end = rentangStart <= rentangEnd ? rentangEnd : rentangStart;
+      const label = start === end
+        ? formatTanggalPendek(start)
+        : `${formatTanggalPendek(start)} – ${formatTanggalPendek(end)}`;
+      return { start, end, label };
     } else {
       const year = parseInt(taStart.split("-")[0]);
       let start: string;
@@ -79,20 +90,22 @@ export function RekapPage() {
       }
       return { start, end, label };
     }
-  }, [tab, bulanIndex, tahun, semesterIdx, taStart]);
+  }, [tab, bulanIndex, tahun, semesterIdx, taStart, rentangStart, rentangEnd]);
 
   const loadRekap = useCallback(async () => {
     if (!activeClassroom) return;
-    const [siswa, data] = await Promise.all([
+    const [siswa, data, hari] = await Promise.all([
       studentRepo.getByClass(activeClassroom.id),
       attendanceService.hitungRekapRentang(
         activeClassroom.id,
         dateRange.start,
         dateRange.end
       ),
+      attendanceService.hitungHariSekolah(activeClassroom.id, dateRange.start, dateRange.end),
     ]);
     setStudents(siswa);
     setRekap(data || {});
+    setTotalHari(hari);
 
     let h = 0, s = 0, i = 0, a = 0, t = 0;
     // Akumulasi hanya untuk siswa yang aktif & tampil di tabel, agar total
@@ -137,9 +150,17 @@ export function RekapPage() {
     return students.map((student) => {
       const r = rekap[student.id] || { H: 0, S: 0, I: 0, A: 0, T: 0 };
       const rr = r as Record<string, number>;
-      return { student, H: rr.H || 0, S: rr.S || 0, I: rr.I || 0, A: rr.A || 0, T: rr.T || 0 };
+      const H = rr.H || 0, S = rr.S || 0, I = rr.I || 0, A = rr.A || 0, T = rr.T || 0;
+      // % kehadiran = Hadir ÷ total hari sekolah pada rentang
+      const persen = totalHari > 0 ? Math.round((H / totalHari) * 100) : 0;
+      return { student, H, S, I, A, T, persen };
     });
-  }, [students, rekap]);
+  }, [students, rekap, totalHari]);
+
+  // Rata-rata kehadiran kelas = total Hadir ÷ (hari sekolah × jumlah siswa)
+  const rataKelas = totalHari > 0 && students.length > 0
+    ? Math.round((totalH / (totalHari * students.length)) * 100)
+    : 0;
 
   const handleExportPDF = async () => {
     try {
@@ -152,6 +173,8 @@ export function RekapPage() {
         periode: dateRange.label,
         data: exportableData,
         total: { H: totalH, S: totalS, I: totalI, A: totalA, T: totalT },
+        totalHari,
+        rataPersen: rataKelas,
       });
       toast("PDF berhasil diunduh");
     } catch {
@@ -172,6 +195,8 @@ export function RekapPage() {
         periode: dateRange.label,
         data: exportableData,
         total: { H: totalH, S: totalS, I: totalI, A: totalA, T: totalT },
+        totalHari,
+        rataPersen: rataKelas,
       });
       toast("Excel berhasil diunduh");
     } catch {
@@ -249,6 +274,16 @@ export function RekapPage() {
         >
           Semester
         </button>
+        <button
+          onClick={() => setTab("rentang")}
+          className={`flex-1 py-[8px] rounded-[10px] text-[0.78rem] font-bold transition-colors ${
+            tab === "rentang"
+              ? "bg-[#0ea5a0] text-white"
+              : "text-[var(--text-light)]"
+          }`}
+        >
+          Tanggal
+        </button>
       </div>
 
       {/* Filter */}
@@ -282,6 +317,27 @@ export function RekapPage() {
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
+            </div>
+          </div>
+        ) : tab === "rentang" ? (
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">Dari</label>
+              <input
+                type="date"
+                value={rentangStart}
+                onChange={(e) => setRentangStart(e.target.value)}
+                className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none font-[inherit]"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-[0.65rem] font-bold text-[var(--text-light)] mb-1 uppercase">Sampai</label>
+              <input
+                type="date"
+                value={rentangEnd}
+                onChange={(e) => setRentangEnd(e.target.value)}
+                className="w-full px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none font-[inherit]"
+              />
             </div>
           </div>
         ) : (
@@ -324,6 +380,12 @@ export function RekapPage() {
         ))}
       </div>
 
+      {/* Rata-rata kehadiran */}
+      <div className="bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] rounded-[10px] py-[9px] px-[12px] mb-3 flex items-center justify-between text-[0.75rem]">
+        <span className="text-[var(--text-light)]">Hari Sekolah: <b className="text-[var(--text)]">{totalHari}</b></span>
+        <span className="text-[var(--text-light)]">Rata-rata Kehadiran: <b className="text-[#16a34a]">{rataKelas}%</b></span>
+      </div>
+
       {/* Detail Table */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
@@ -339,12 +401,13 @@ export function RekapPage() {
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.I }}>I</th>
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.A }}>A</th>
                 <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]" style={{ color: STATUS_COLOR.T }}>T</th>
+                <th className="py-[7px] px-[5px] text-center font-semibold text-[10px] text-[var(--text-light)] uppercase border-b border-[var(--border)]">%</th>
               </tr>
             </thead>
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-[var(--text-light)] text-[0.75rem] py-[14px] text-center">Belum ada data</td>
+                  <td colSpan={7} className="text-[var(--text-light)] text-[0.75rem] py-[14px] text-center">Belum ada data</td>
                 </tr>
               ) : (
                 exportableData.map((d) => (
@@ -355,6 +418,7 @@ export function RekapPage() {
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.I}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.A}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.T}</td>
+                    <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)] font-bold" style={{ color: d.persen >= 90 ? "#16a34a" : d.persen >= 75 ? "#b45309" : "#dc2626" }}>{d.persen}%</td>
                   </tr>
                 ))
               )}
@@ -366,6 +430,7 @@ export function RekapPage() {
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalI}</td>
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalA}</td>
                   <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{totalT}</td>
+                  <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]" style={{ color: "#16a34a" }}>{rataKelas}%</td>
                 </tr>
               )}
             </tbody>

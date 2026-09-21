@@ -11,6 +11,7 @@ interface RekapData {
   I: number;
   A: number;
   T: number;
+  persen: number;
 }
 
 interface ExportContext {
@@ -20,6 +21,8 @@ interface ExportContext {
   periode: string;
   data: RekapData[];
   total: { H: number; S: number; I: number; A: number; T: number };
+  totalHari?: number;
+  rataPersen?: number;
 }
 
 function buildKop(doc: jsPDF, ctx: ExportContext) {
@@ -77,6 +80,7 @@ export async function exportPDF(ctx: ExportContext) {
     String(d.I),
     String(d.A),
     String(d.T),
+    `${d.persen}%`,
   ]);
 
   body.push([
@@ -86,11 +90,12 @@ export async function exportPDF(ctx: ExportContext) {
     String(ctx.total.I),
     String(ctx.total.A),
     String(ctx.total.T),
+    `Rata-rata ${ctx.rataPersen ?? 0}%`,
   ]);
 
   autoTable(doc, {
     startY: startY || 60,
-    head: [["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat"]],
+    head: [["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat", "% Hadir"]],
     body,
     theme: "grid",
     headStyles: {
@@ -125,7 +130,7 @@ export async function exportPDF(ctx: ExportContext) {
 export async function exportExcel(ctx: ExportContext) {
   const wb = XLSX.utils.book_new();
 
-  const header = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat"];
+  const header = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Terlambat", "% Hadir"];
   const rows = ctx.data.map((d) => [
     d.student.nama,
     d.H,
@@ -133,9 +138,10 @@ export async function exportExcel(ctx: ExportContext) {
     d.I,
     d.A,
     d.T,
+    `${d.persen}%`,
   ]);
 
-  rows.push(["TOTAL", ctx.total.H, ctx.total.S, ctx.total.I, ctx.total.A, ctx.total.T]);
+  rows.push(["TOTAL", ctx.total.H, ctx.total.S, ctx.total.I, ctx.total.A, ctx.total.T, `Rata-rata ${ctx.rataPersen ?? 0}%`]);
 
   const info = [
     [`Sekolah: ${ctx.school?.nama || "-"}`],
@@ -148,7 +154,7 @@ export async function exportExcel(ctx: ExportContext) {
   const allRows = [...info, header, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(allRows);
 
-  ws["!cols"] = [{ wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+  ws["!cols"] = [{ wch: 30 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 9 }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
 
