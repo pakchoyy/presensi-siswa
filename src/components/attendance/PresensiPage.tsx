@@ -12,9 +12,11 @@ import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
-import { Info, ChevronDown, Plus, CalendarRange, Search } from "lucide-react";
+import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
+
+const BULAN_SINGKAT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 function isWeekend(dateStr: string): boolean {
   const d = new Date(dateStr + "T00:00:00");
@@ -33,6 +35,9 @@ export function PresensiPage() {
   const [classDropdown, setClassDropdown] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState("");
   const classRef = useRef<HTMLDivElement>(null);
+
+  // Tren kehadiran bulan ini vs bulan lalu
+  const [tren, setTren] = useState<{ label: string; p: number; labelPrev: string; pPrev: number; diff: number } | null>(null);
 
   // Academic year
   const [activeAy, setActiveAy] = useState<{ tanggalMulai: string; tanggalSelesai: string; semesterAktif: string } | null>(null);
@@ -241,6 +246,47 @@ export function PresensiPage() {
     ? students.filter((s) => s.nama.toLowerCase().includes(q))
     : students;
 
+  // Hitung tren kehadiran bulan ini vs bulan lalu (% hadir)
+  const loadTren = useCallback(async () => {
+    if (!activeClassroom || students.length === 0) { setTren(null); return; }
+    try {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const s1 = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      const e1 = todayStr();
+      const s2 = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-01`;
+      const e2 = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate())}`;
+      const [r1, h1, r2, h2] = await Promise.all([
+        attendanceService.hitungRekapRentang(activeClassroom.id, s1, e1),
+        attendanceService.hitungHariSekolah(activeClassroom.id, s1, e1),
+        attendanceService.hitungRekapRentang(activeClassroom.id, s2, e2),
+        attendanceService.hitungHariSekolah(activeClassroom.id, s2, e2),
+      ]);
+      const sumH = (r: Record<number, Record<string, number>>) => {
+        let H = 0;
+        for (const st of students) H += r[st.id]?.H || 0;
+        return H;
+      };
+      const p1 = h1 > 0 ? Math.round((sumH(r1) / (h1 * students.length)) * 100) : 0;
+      const p2 = h2 > 0 ? Math.round((sumH(r2) / (h2 * students.length)) * 100) : 0;
+      if (h1 === 0 && h2 === 0) { setTren(null); return; }
+      setTren({
+        label: BULAN_SINGKAT[now.getMonth()],
+        p: p1,
+        labelPrev: BULAN_SINGKAT[prev.getMonth()],
+        pPrev: p2,
+        diff: p1 - p2,
+      });
+    } catch {
+      setTren(null);
+    }
+  }, [activeClassroom, students]);
+
+  useEffect(() => {
+    loadTren();
+  }, [loadTren]);
+
 
 
   const activeIdx = activeClassroom
@@ -277,6 +323,24 @@ export function PresensiPage() {
         <div className="hidden lg:block mb-3">
           <RingkasanBar counts={counts} />
         </div>
+
+        {/* Tren kehadiran bulanan */}
+        {activeClassroom && !isLibur && tren && (
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[0.75rem] min-w-0">
+              <TrendingUp size={15} className="text-[#0ea5a0] flex-shrink-0" />
+              <span className="text-[var(--text-light)] truncate">
+                Kehadiran <b className="text-[var(--text)]">{tren.label}</b>:
+              </span>
+              <b className="text-[#0ea5a0]">{tren.p}%</b>
+            </div>
+            {tren.pPrev > 0 && (
+              <span className="text-[0.72rem] font-bold flex-shrink-0" style={{ color: tren.diff > 0 ? "#16a34a" : tren.diff < 0 ? "#dc2626" : "var(--text-light)" }}>
+                {tren.diff > 0 ? "▲" : tren.diff < 0 ? "▼" : "—"} {Math.abs(tren.diff)}% vs {tren.labelPrev} ({tren.pPrev}%)
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Sejak Awal Ajaran */}
         {activeClassroom && !isLibur && (
@@ -473,16 +537,25 @@ export function PresensiPage() {
           </div>
         ) : (
           <>
-            {students.length > 8 && (
-              <div className="relative mb-2">
-                <Search size={14} className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--text-light)]" />
+            {students.length > 5 && (
+              <div className="bg-[var(--card-bg)] border-[1.5px] border-[#0ea5a0]/40 rounded-xl mb-3 flex items-center gap-2 px-3 shadow-[0_0_0_3px_rgba(14,165,160,0.06)]">
+                <Search size={16} className="text-[#0ea5a0] flex-shrink-0" />
                 <input
                   type="text"
                   value={searchSiswa}
                   onChange={(e) => setSearchSiswa(e.target.value)}
-                  placeholder="Cari siswa..."
-                  className="w-full pl-[32px] pr-[11px] py-[8px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.8rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                  placeholder={`Cari siswa (${students.length} siswa)...`}
+                  className="flex-1 bg-transparent border-none outline-none py-[11px] text-[0.85rem] text-[var(--text)] font-[inherit] min-w-0"
                 />
+                {searchSiswa && (
+                  <button
+                    onClick={() => setSearchSiswa("")}
+                    className="p-1 cursor-pointer bg-transparent border-none flex-shrink-0"
+                    title="Hapus pencarian"
+                  >
+                    <X size={15} className="text-[var(--text-light)]" />
+                  </button>
+                )}
               </div>
             )}
             {tampilSiswa.length === 0 ? (
