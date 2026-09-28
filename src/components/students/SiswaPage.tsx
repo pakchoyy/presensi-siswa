@@ -86,6 +86,9 @@ export function SiswaPage() {
   const [addingClass, setAddingClass] = useState(false);
   const [deleteClassTarget, setDeleteClassTarget] = useState<Classroom | null>(null);
   const [deletingClass, setDeletingClass] = useState(false);
+  const [editClassTarget, setEditClassTarget] = useState<Classroom | null>(null);
+  const [editClassName, setEditClassName] = useState("");
+  const [editingClass, setEditingClass] = useState(false);
   const [absenLinkGenerating, setAbsenLinkGenerating] = useState(false);
   const [absenLinks, setAbsenLinks] = useState<{ nama: string; token: string; url: string }[] | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -405,6 +408,37 @@ export function SiswaPage() {
     }
   };
 
+  const handleRenameClass = async () => {
+    if (!editClassTarget) return;
+    const nama = editClassName.trim();
+    if (!nama) {
+      toast("Nama kelas tidak boleh kosong");
+      return;
+    }
+    if (nama === editClassTarget.nama) {
+      setEditClassTarget(null);
+      return;
+    }
+    // Cek duplikat (kecuali kelas ini sendiri)
+    const exists = classrooms.find(c => c.id !== editClassTarget.id && c.nama.toLowerCase() === nama.toLowerCase());
+    if (exists) {
+      toast("❌ Nama kelas sudah dipakai kelas lain");
+      return;
+    }
+    setEditingClass(true);
+    try {
+      await classroomRepo.save({ ...editClassTarget, nama, diubahPada: timestamp() });
+      await refreshClassrooms();
+      setSelectedKelas((prev) => (prev && prev.id === editClassTarget.id ? { ...prev, nama } : prev));
+      setEditClassTarget(null);
+      toast(`✅ Nama kelas diubah jadi ${formatKelasLabel(nama)}`);
+    } catch {
+      toast("❌ Gagal mengubah nama kelas");
+    } finally {
+      setEditingClass(false);
+    }
+  };
+
   const handleDeleteAll = async () => {
     const targetKelas = selectedKelas || activeClassroom;
     if (!targetKelas) return;
@@ -537,17 +571,30 @@ export function SiswaPage() {
                       : "border-[var(--border)] bg-[var(--card-bg)] hover:border-[#0ea5a0]/40"
                   }`}
                 >
-                  {/* Delete Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteClassTarget(cls);
-                    }}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/10 active:bg-red-500 text-red-600 active:text-white transition-colors flex items-center justify-center z-10"
-                    title="Hapus Kelas"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {/* Edit & Delete Button */}
+                  <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditClassTarget(cls);
+                        setEditClassName(cls.nama);
+                      }}
+                      className="w-8 h-8 rounded-full bg-[#0ea5a0]/10 active:bg-[#0ea5a0] text-[#0ea5a0] active:text-white transition-colors flex items-center justify-center"
+                      title="Edit Nama Kelas"
+                    >
+                      <PenLine size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteClassTarget(cls);
+                      }}
+                      className="w-8 h-8 rounded-full bg-red-500/10 active:bg-red-500 text-red-600 active:text-white transition-colors flex items-center justify-center"
+                      title="Hapus Kelas"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                   
                   <div className="w-10 h-10 rounded-xl mb-2 flex items-center justify-center text-white text-[1.1rem]"
                     style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}>
@@ -603,12 +650,53 @@ export function SiswaPage() {
             </div>
           </div>
         )}
+
+        {/* Edit Nama Kelas Modal */}
+        {editClassTarget && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-fade-in" onClick={() => setEditClassTarget(null)}>
+            <div className="bg-[var(--card-bg)] rounded-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="text-[0.9rem] font-bold mb-4">Edit Nama Kelas</div>
+              <div className="mb-4">
+                <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-2 uppercase">
+                  Nama Kelas
+                </label>
+                <input
+                  type="text"
+                  value={editClassName}
+                  onChange={(e) => setEditClassName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRenameClass()}
+                  placeholder="Contoh: 7A, XII IPA 1, Kelas 5"
+                  className="w-full px-3 py-2.5 border-[1.5px] border-[var(--border)] rounded-lg text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                  autoFocus
+                />
+                <div className="text-[0.65rem] text-[var(--text-light)] mt-1">
+                  Nama lama: <b>{editClassTarget.nama}</b>. Riwayat presensi kelas ini tidak berubah.
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditClassTarget(null)}
+                  className="flex-1 py-2.5 rounded-lg border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.8rem] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleRenameClass}
+                  disabled={editingClass || !editClassName.trim()}
+                  className="flex-1 py-2.5 rounded-lg text-white font-bold text-[0.8rem] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+                >
+                  {editingClass ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {showAddClassModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-fade-in" onClick={() => setShowAddClassModal(false)}>
             <div className="bg-[var(--card-bg)] rounded-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-              <div className="text-[0.9rem] font-bold mb-4">Tambah Kelas Baru</div>
-              
+              <div className="text-[0.9rem] font-bold mb-4">Tambah Kelas Baru</div>              
               <div className="mb-4">
                 <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-2 uppercase">
                   Nama Kelas
