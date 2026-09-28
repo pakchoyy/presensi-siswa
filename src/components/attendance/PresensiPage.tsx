@@ -12,7 +12,7 @@ import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
-import { Info, ChevronDown, Plus, CalendarRange } from "lucide-react";
+import { Info, ChevronDown, Plus, CalendarRange, Search } from "lucide-react";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -31,6 +31,7 @@ export function PresensiPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
   const [classDropdown, setClassDropdown] = useState(false);
+  const [searchSiswa, setSearchSiswa] = useState("");
   const classRef = useRef<HTMLDivElement>(null);
 
   // Academic year
@@ -189,13 +190,14 @@ export function PresensiPage() {
     loadRekapAjaran();
   }, [loadRekapAjaran]);
 
-  const handleSelectStatus = async (status: AttendanceStatus) => {
+  const handleSelectStatus = async (status: AttendanceStatus, catatan?: string) => {
     if (!selectedStudent || !sessionId) return;
 
     await attendanceService.ubahStatus(
       sessionId,
       selectedStudent.id,
-      status
+      status,
+      catatan
     );
 
     setSelectedStudent(null);
@@ -230,6 +232,14 @@ export function PresensiPage() {
     if (autoHadir) return records.get(siswaId)?.status || AttendanceStatus.HADIR;
     return records.get(siswaId)?.status;
   };
+
+  const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
+
+  // Filter siswa untuk pencarian
+  const q = searchSiswa.trim().toLowerCase();
+  const tampilSiswa = q
+    ? students.filter((s) => s.nama.toLowerCase().includes(q))
+    : students;
 
 
 
@@ -462,15 +472,36 @@ export function PresensiPage() {
             Belum ada siswa. Tambah siswa di menu Siswa.
           </div>
         ) : (
-          students.map((s, i) => (
-            <StudentRow
-              key={s.id}
-              student={s}
-              index={i}
-              status={getStatus(s.id)}
-              onClick={() => setSelectedStudent(s)}
-            />
-          ))
+          <>
+            {students.length > 8 && (
+              <div className="relative mb-2">
+                <Search size={14} className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--text-light)]" />
+                <input
+                  type="text"
+                  value={searchSiswa}
+                  onChange={(e) => setSearchSiswa(e.target.value)}
+                  placeholder="Cari siswa..."
+                  className="w-full pl-[32px] pr-[11px] py-[8px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.8rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+                />
+              </div>
+            )}
+            {tampilSiswa.length === 0 ? (
+              <div className="text-center py-[20px] text-[var(--text-light)] text-[0.78rem]">
+                Tidak ada siswa yang cocok dengan "{searchSiswa}"
+              </div>
+            ) : (
+              tampilSiswa.map((s, i) => (
+                <StudentRow
+                  key={s.id}
+                  student={s}
+                  index={i}
+                  status={getStatus(s.id)}
+                  catatan={getCatatan(s.id)}
+                  onClick={() => setSelectedStudent(s)}
+                />
+              ))
+            )}
+          </>
         )}
 
         <StatusSheet
@@ -478,6 +509,7 @@ export function PresensiPage() {
           onClose={() => setSelectedStudent(null)}
           onSelect={handleSelectStatus}
           studentName={selectedStudent?.nama || ""}
+          initialCatatan={selectedStudent ? getCatatan(selectedStudent.id) : undefined}
         />
       </div>
     </>

@@ -7,6 +7,7 @@ interface Props {
   student: Student;
   index: number;
   status?: AttendanceStatus;
+  catatan?: string;
   onClick: () => void;
 }
 
@@ -28,7 +29,7 @@ const STATUS_BG: Record<string, string> = {
   undefined: "var(--input-bg)",
 };
 
-export function StudentRow({ student, index, status, onClick }: Props) {
+export function StudentRow({ student, index, status, catatan, onClick }: Props) {
   const color = status ? STATUS_COLOR[status] : "var(--text-light)";
   const bg = status ? STATUS_BG[status] : "var(--input-bg)";
   const label = status ? STATUS_LABEL[status] : "?";
@@ -52,7 +53,13 @@ export function StudentRow({ student, index, status, onClick }: Props) {
         <div className="text-[0.86rem] font-bold whitespace-nowrap overflow-hidden text-ellipsis">
           {student.nama}
         </div>
-        <div className="text-[0.68rem] text-[var(--text-light)]">No. {index + 1}</div>
+        {catatan ? (
+          <div className="text-[0.65rem] text-[var(--text-light)] italic whitespace-nowrap overflow-hidden text-ellipsis" title={catatan}>
+            📝 {catatan}
+          </div>
+        ) : (
+          <div className="text-[0.68rem] text-[var(--text-light)]">No. {index + 1}</div>
+        )}
       </div>
       <div
         className="text-[11px] font-bold px-[9px] py-1 rounded-full flex-shrink-0"

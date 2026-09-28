@@ -1,12 +1,14 @@
+import { useEffect, useState } from "react";
 import { AttendanceStatus } from "@/types/enums";
 import { STATUS_LABEL, STATUS_COLOR } from "@/lib/constants";
-import { CheckCircle2, Thermometer, FileText, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, Thermometer, FileText, XCircle, Clock, PenLine } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (status: AttendanceStatus) => void;
+  onSelect: (status: AttendanceStatus, catatan?: string) => void;
   studentName: string;
+  initialCatatan?: string;
 }
 
 const STATUS_ICONS: Record<AttendanceStatus, typeof CheckCircle2> = {
@@ -25,7 +27,14 @@ const STATUSES: AttendanceStatus[] = [
   AttendanceStatus.TERLAMBAT,
 ];
 
-export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
+export function StatusSheet({ isOpen, onClose, onSelect, studentName, initialCatatan }: Props) {
+  const [catatan, setCatatan] = useState("");
+
+  // Reset catatan tiap kali sheet dibuka
+  useEffect(() => {
+    if (isOpen) setCatatan(initialCatatan || "");
+  }, [isOpen, initialCatatan]);
+
   if (!isOpen) return null;
 
   return (
@@ -49,7 +58,7 @@ export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
             return (
               <button
                 key={status}
-                onClick={() => onSelect(status)}
+                onClick={() => onSelect(status, catatan.trim() || undefined)}
                 className={`flex flex-col items-center gap-[6px] py-4 px-2 rounded-xl border-[1.5px] border-[var(--border)] bg-[var(--input-bg)] cursor-pointer font-bold text-[0.82rem] active:scale-95 transition-transform ${isLastOdd ? "col-span-2 max-w-[calc(50%-5px)] mx-auto w-full" : ""}`}
                 style={{ color: STATUS_COLOR[status] }}
               >
@@ -58,6 +67,25 @@ export function StatusSheet({ isOpen, onClose, onSelect, studentName }: Props) {
               </button>
             );
           })}
+        </div>
+        <div className="relative mt-3">
+          <PenLine size={14} className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--text-light)]" />
+          <input
+            type="text"
+            value={catatan}
+            onChange={(e) => setCatatan(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && catatan.trim()) {
+                onSelect(STATUSES[0], catatan.trim());
+              }
+            }}
+            placeholder="Catatan (opsional) — mis. sakit demam"
+            maxLength={100}
+            className="w-full pl-[32px] pr-[11px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.8rem] text-[var(--text)] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+          />
+        </div>
+        <div className="text-[0.65rem] text-[var(--text-light)] mt-[6px] text-center">
+          Isi catatan dulu lalu pilih status — catatan ikut tersimpan
         </div>
       </div>
     </>

@@ -27,7 +27,7 @@ export const STORAGE_DARK_KEY = "bgy_presensi_dark";
 export const APP_NAME = "Presensi Siswa";
 export const APP_BRAND = "Bantu Guru Yuk";
 
-export const WIZARD_TOTAL_STEPS = 5;
+export const WIZARD_TOTAL_STEPS = 6;
 
 export const PRO_PRICE = "Rp12.000/tahun";
 

@@ -61,7 +61,8 @@ export const attendanceService = {
   async ubahStatus(
     sesiId: number,
     siswaId: number,
-    statusBaru: AttendanceStatus
+    statusBaru: AttendanceStatus,
+    catatan?: string
   ): Promise<AttendanceRecord> {
     // Validate parameters before using in Dexie queries
     if (!sesiId || !siswaId) {
@@ -73,7 +74,7 @@ export const attendanceService = {
 
     let record: AttendanceRecord;
     if (existing) {
-      record = { ...existing, status: statusBaru, diubahPada: now };
+      record = { ...existing, status: statusBaru, catatan: catatan || undefined, diubahPada: now };
     } else {
       record = {
         // Id deterministik → peranti lain yang mengubah siswa yang sama di sesi
@@ -82,6 +83,7 @@ export const attendanceService = {
         sesiId,
         siswaId,
         status: statusBaru,
+        catatan: catatan || undefined,
         diubahPada: now,
       };
     }

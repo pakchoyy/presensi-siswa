@@ -18,7 +18,8 @@ export function WizardSetup() {
   const { toast } = useToast();
 
   const [step, setStep] = useState(1);
-  const [progress, setProgress] = useState(20);
+  // Progres mulai dari 1/6 (≈16.7%), bukan 20% — sinkron dengan WIZARD_TOTAL
+  const [progress, setProgress] = useState((1 / WIZARD_TOTAL) * 100);
 
   const [sekolah, setSekolah] = useState("");
   const [jenjang, setJenjang] = useState<Jenjang>(Jenjang.SD);
