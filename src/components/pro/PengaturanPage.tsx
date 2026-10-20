@@ -140,12 +140,8 @@ export function PengaturanPage() {
         // If PRO but no local license record, auto-fetch from Supabase
         if (!status.aktif && teacherTier === Tier.PRO && teacherEmail) {
           try {
-            const { data: licenseData } = await supabase
-              .from("licenses")
-              .select("email, tanggal_berakhir, status")
-              .eq("email", teacherEmail.toLowerCase().trim())
-              .eq("status", "digunakan")
-              .maybeSingle();
+            const lookup = await licenseService.lookupByEmail(teacherEmail.toLowerCase().trim());
+            const licenseData = lookup.found ? { tanggal_berakhir: lookup.tanggalBerakhir } : null;
 
             if (licenseData?.tanggal_berakhir) {
               const now = Date.now();
@@ -503,13 +499,13 @@ export function PengaturanPage() {
         return;
       }
 
-      const { data: licenseData, error: licenseErr } = await supabase
-        .from("licenses")
-        .select("tanggal_berakhir, status")
-        .eq("email", emailAddress)
-        .eq("status", "digunakan")
-        .maybeSingle();
-      if (licenseErr) console.error("license query error:", licenseErr);
+      let licenseData: { tanggal_berakhir: number | null } | null = null;
+      try {
+        const lookup = await licenseService.lookupByEmail(emailAddress);
+        if (lookup.found) licenseData = { tanggal_berakhir: lookup.tanggalBerakhir };
+      } catch (licenseErr) {
+        console.error("license query error:", licenseErr);
+      }
 
       if (!licenseData) {
         const { data: profile, error: profileErr } = await supabase
