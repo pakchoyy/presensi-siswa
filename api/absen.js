@@ -8,12 +8,20 @@ function getSupabase() {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  // WIB (UTC+7), supaya sebelum jam 07.00 tidak dianggap kemarin
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function isAllowedStatus(s) {
   return ["H", "S", "I", "A", "T"].includes(s);
 }
+
+// status yang diisi guru (izin/sakit/alfa) tidak boleh ditimpa lewat link siswa
+function isLockedStatus(s) {
+  return ["S", "I", "A"].includes(s);
+}
+
+const LOCKED_MSG = "Status presensi hari ini sudah diisi dan tidak bisa diubah. Hubungi wali kelas.";
 
 async function findStudentByToken(supabase, token) {
   // cek cloud_students dulu (hasil sync), lalu fallback ke public.students
@@ -113,8 +121,9 @@ export default async function handler(req, res) {
         sesiLocalId = localId;
       }
       // cek record existing dulu (soal unique constraint di cloud bisa beda)
-      const { data: existingRec } = await supabase.from("cloud_attendance_records").select("id, local_id").eq("user_id", userId).eq("sesi_id", sesiLocalId).eq("siswa_id", student.id).maybeSingle();
+      const { data: existingRec } = await supabase.from("cloud_attendance_records").select("id, local_id, status").eq("user_id", userId).eq("sesi_id", sesiLocalId).eq("siswa_id", student.id).maybeSingle();
       if (existingRec) {
+        if (isLockedStatus(existingRec.status)) return res.status(409).json({ error: LOCKED_MSG });
         const { error: updErr } = await supabase.from("cloud_attendance_records").update({ status, diubah_pada: Date.now(), last_synced_at: Date.now() }).eq("id", existingRec.id);
         if (updErr) return res.status(500).json({ error: updErr.message });
       } else {
@@ -133,8 +142,9 @@ export default async function handler(req, res) {
         if (insErr) return res.status(500).json({ error: insErr.message });
         sesiId = ins.id;
       }
-      const { data: existingPub } = await supabase.from("attendance_records").select("id").eq("sesi_id", sesiId).eq("siswa_id", student.id).maybeSingle();
+      const { data: existingPub } = await supabase.from("attendance_records").select("id, status").eq("sesi_id", sesiId).eq("siswa_id", student.id).maybeSingle();
       if (existingPub) {
+        if (isLockedStatus(existingPub.status)) return res.status(409).json({ error: LOCKED_MSG });
         const { error: updErr } = await supabase.from("attendance_records").update({ status, diubah_pada: Date.now() }).eq("id", existingPub.id);
         if (updErr) return res.status(500).json({ error: updErr.message });
       } else {
