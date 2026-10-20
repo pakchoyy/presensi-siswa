@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import type { License } from "@/types/entities";
@@ -14,7 +13,24 @@ export interface ActivationResult {
   tanggalBerakhir?: number;
 }
 
+async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; data: any }> {
+  const res = await fetch("/api/license", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
 export const licenseService = {
+  /** Cek lisensi aktif milik email lewat server (tabel licenses tidak dibaca langsung dari browser). */
+  async lookupByEmail(email: string): Promise<{ found: boolean; tanggalBerakhir: number | null }> {
+    const { ok, data } = await callLicenseApi({ action: "status", email });
+    if (!ok) throw new Error(data.error || "Gagal cek lisensi");
+    return { found: !!data.found, tanggalBerakhir: data.tanggalBerakhir ?? null };
+  },
+
   async validateKode(email: string, kode: string): Promise<ActivationResult> {
     if (!email || !email.includes("@")) {
       return { success: false, message: "Email tidak valid" };
@@ -42,49 +58,12 @@ export const licenseService = {
     const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      const { data: license, error: findError } = await supabase
-        .from("licenses")
-        .select("id, status")
-        .eq("kode", upperKode)
-        .maybeSingle();
-
-      if (findError || !license) {
-        return { success: false, message: "Kode lisensi tidak ditemukan" };
+      const { ok, status, data } = await callLicenseApi({ action: "activate", email: normalizedEmail, kode: upperKode, guruId });
+      if (!ok) {
+        return { success: false, message: status >= 500 ? "Gagal mengaktivasi lisensi" : data.error || "Gagal mengaktivasi lisensi" };
       }
-
-      if (license.status !== "tersedia") {
-        return { success: false, message: "Kode lisensi sudah digunakan" };
-      }
-
       const now = Date.now();
-      const tanggalBerakhir = now + 365 * 24 * 60 * 60 * 1000;
-
-      const { error: updateError } = await supabase
-        .from("licenses")
-        .update({
-          status: "digunakan",
-          email: normalizedEmail,
-          guru_id: guruId,
-          tanggal_aktivasi: now,
-          tanggal_berakhir: tanggalBerakhir,
-        })
-        .eq("id", license.id);
-
-      if (updateError) {
-        return { success: false, message: "Gagal mengaktivasi lisensi" };
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, tier")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-
-      if (profile) {
-        if (profile.tier !== "PRO") {
-          await supabase.from("profiles").update({ tier: "PRO", updated_at: new Date().toISOString() }).eq("id", profile.id);
-        }
-      }
+      const tanggalBerakhir: number = data.tanggalBerakhir;
 
       const license_: License = {
         id: generateId(),
@@ -169,46 +148,11 @@ export const licenseService = {
     const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      const { data: newCode, error: findError } = await supabase
-        .from("licenses")
-        .select("id, status")
-        .eq("kode", upperKode)
-        .maybeSingle();
-
-      if (findError || !newCode || newCode.status !== "tersedia") {
-        return { success: false, message: "Kode perpanjangan tidak valid atau sudah digunakan" };
+      const { ok, data } = await callLicenseApi({ action: "renew", email: normalizedEmail, kode: upperKode });
+      if (!ok) {
+        return { success: false, message: data.error || "Kode perpanjangan tidak valid atau sudah digunakan" };
       }
-
-      const { data: existingLicense } = await supabase
-        .from("licenses")
-        .select("id, tanggal_berakhir")
-        .eq("email", normalizedEmail)
-        .eq("status", "digunakan")
-        .maybeSingle();
-
-      const now = Date.now();
-      let newExpiry: number;
-
-      if (existingLicense && existingLicense.tanggal_berakhir) {
-        const base = Math.max(now, existingLicense.tanggal_berakhir);
-        newExpiry = base + 365 * 24 * 60 * 60 * 1000;
-        await supabase
-          .from("licenses")
-          .update({ tanggal_berakhir: newExpiry })
-          .eq("id", existingLicense.id);
-      } else {
-        newExpiry = now + 365 * 24 * 60 * 60 * 1000;
-      }
-
-      await supabase
-        .from("licenses")
-        .update({
-          status: "digunakan",
-          email: normalizedEmail,
-          tanggal_aktivasi: now,
-          tanggal_berakhir: newExpiry,
-        })
-        .eq("id", newCode.id);
+      const newExpiry: number = data.tanggalBerakhir;
 
       const license = await licenseRepo.getActive(guruId);
       if (license) {
@@ -220,24 +164,6 @@ export const licenseService = {
       }
 
       return { success: true, message: "✅ Lisensi berhasil diperpanjang 1 tahun!", tanggalBerakhir: newExpiry };
-    } catch {
-      return { success: false, message: "Gagal terhubung. Periksa internet." };
-    }
-  },
-
-  async claimCode(): Promise<ActivationResult & { kode?: string }> {
-    try {
-      const { data: available, error } = await supabase
-        .from("licenses")
-        .select("kode")
-        .eq("status", "tersedia")
-        .limit(1);
-
-      if (error || !available || available.length === 0) {
-        return { success: false, message: "Stok kode habis" };
-      }
-
-      return { success: true, message: "Kode berhasil diklaim!", kode: available[0].kode };
     } catch {
       return { success: false, message: "Gagal terhubung. Periksa internet." };
     }

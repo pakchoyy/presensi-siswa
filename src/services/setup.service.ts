@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { licenseService } from "@/services/license.service";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
@@ -39,12 +40,7 @@ export const setupService = {
       defaultTier = Tier.PRO;
     } else {
       try {
-        const { data: license } = await supabase
-          .from("licenses")
-          .select("tanggal_berakhir")
-          .eq("email", normalizedEmail)
-          .eq("status", "digunakan")
-          .maybeSingle();
+        const license = (await licenseService.lookupByEmail(normalizedEmail)).found;
 
         if (license) {
           defaultTier = Tier.PRO;

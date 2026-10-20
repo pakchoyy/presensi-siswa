@@ -64,12 +64,8 @@ export function UpgradePage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const { data: licenseData } = await supabase
-        .from("licenses")
-        .select("tanggal_berakhir, status")
-        .eq("email", normalizedEmail)
-        .eq("status", "digunakan")
-        .maybeSingle();
+      const lookup = await licenseService.lookupByEmail(normalizedEmail);
+      const licenseData = lookup.found ? { tanggal_berakhir: lookup.tanggalBerakhir } : null;
 
       if (licenseData) {
         const now = Date.now();
