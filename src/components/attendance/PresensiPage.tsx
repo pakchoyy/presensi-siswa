@@ -387,6 +387,27 @@ export function PresensiPage() {
           </div>
         )}
 
+        {/* PJJ mode help banner — one-time hint */}
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_pjj_mode") === "1" && localStorage.getItem("bgy_pjj_hint_seen") !== "1" && (
+          <div className="bg-[rgba(139,92,246,0.08)] border border-[#8b5cf6]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
+            <div className="flex-shrink-0 mt-[2px] text-[#8b5cf6]">💻</div>
+            <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
+              <b>Mode PJJ aktif.</b> Aktifkan <b>Absen Mandiri</b> per kelas di menu <b>Siswa</b>, lalu bagikan link ke siswa — siswa absen sendiri dari rumah.
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                localStorage.setItem("bgy_pjj_hint_seen", "1");
+                setForceUpdate(f => f + 1);
+              }}
+              className="text-[var(--text-light)] text-[1rem] px-1 bg-transparent border-none cursor-pointer leading-none"
+              aria-label="Tutup petunjuk"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Tren kehadiran bulanan */}
         {activeClassroom && !isLibur && tren && (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3 flex items-center justify-between gap-2">

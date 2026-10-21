@@ -82,6 +82,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             setQrMode(newVal);
             localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
             if (newVal) {
+              localStorage.setItem("bgy_pjj_mode", "0");
               localStorage.removeItem("bgy_qr_hint_seen");
               toast("✅ Mode QR: ON — Cetak kartu di menu Siswa, lalu scan dari navbar");
             } else {

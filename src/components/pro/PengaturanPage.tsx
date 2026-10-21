@@ -760,12 +760,15 @@ export function PengaturanPage() {
               const newVal = !qrMode;
               setQrMode(newVal);
               localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
-              if (newVal && pjjMode) {
-                setPjjMode(false);
-                localStorage.setItem("bgy_pjj_mode", "0");
+              if (newVal) {
+                localStorage.removeItem("bgy_qr_hint_seen");
+                if (pjjMode) {
+                  setPjjMode(false);
+                  localStorage.setItem("bgy_pjj_mode", "0");
+                }
               }
               window.dispatchEvent(new Event("storage"));
-              toast(newVal ? "✅ Mode QR: ON" : "Mode QR: OFF");
+              toast(newVal ? "✅ Mode QR: ON — Cetak kartu di menu Siswa" : "Mode QR: OFF");
             }}
             className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
               qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
@@ -795,9 +798,12 @@ export function PengaturanPage() {
               const newVal = !pjjMode;
               setPjjMode(newVal);
               localStorage.setItem("bgy_pjj_mode", newVal ? "1" : "0");
-              if (newVal && qrMode) {
-                setQrMode(false);
-                localStorage.setItem("bgy_qr_mode", "0");
+              if (newVal) {
+                localStorage.removeItem("bgy_pjj_hint_seen");
+                if (qrMode) {
+                  setQrMode(false);
+                  localStorage.setItem("bgy_qr_mode", "0");
+                }
               }
               window.dispatchEvent(new Event("storage"));
               toast(newVal ? "✅ Mode PJJ: ON — kirim link ke siswa" : "Mode PJJ: OFF");
