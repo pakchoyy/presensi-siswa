@@ -738,6 +738,39 @@ export function PengaturanPage() {
         </div>
       )}
 
+      {/* Mode QR Presensi */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+          <QrCode size={15} /> Mode QR Presensi
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[0.78rem] font-semibold text-[var(--text)]">Scan Kartu QR</div>
+            <div className="text-[0.68rem] text-[var(--text-light)]">Tampilkan tombol scan QR di navbar dan halaman presensi</div>
+          </div>
+          <button
+            onClick={() => {
+              const newVal = !qrMode;
+              setQrMode(newVal);
+              localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
+              toast(newVal ? "✅ Mode QR Presensi: ON" : "Mode QR Presensi: OFF");
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+              qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                qrMode ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+        <div className="text-[0.65rem] text-[var(--text-light)] mt-2">
+          Cetak kartu QR per siswa di menu Siswa, lalu scan untuk input presensi
+        </div>
+      </div>
+
       {/* Cloud Sync — Simplified (PRO only) */}
       {isPRO && isCloudConnected && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
@@ -1067,39 +1100,6 @@ export function PengaturanPage() {
               }`}
             />
           </button>
-        </div>
-      </div>
-
-      {/* Mode QR Presensi */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-          <QrCode size={15} /> Mode QR Presensi
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[0.78rem] font-semibold text-[var(--text)]">Scan Kartu QR</div>
-            <div className="text-[0.68rem] text-[var(--text-light)]">Tampilkan tombol scan QR di navbar dan halaman presensi</div>
-          </div>
-          <button
-            onClick={() => {
-              const newVal = !qrMode;
-              setQrMode(newVal);
-              localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
-              toast(newVal ? "✅ Mode QR Presensi: ON" : "Mode QR Presensi: OFF");
-            }}
-            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
-              qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
-            }`}
-          >
-            <span
-              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
-                qrMode ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </div>
-        <div className="text-[0.65rem] text-[var(--text-light)] mt-2">
-          Cetak kartu QR per siswa di menu Siswa, lalu scan untuk input presensi
         </div>
       </div>
 
