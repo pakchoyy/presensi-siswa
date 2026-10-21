@@ -6,10 +6,10 @@ interface CardOptions {
   namaKelas: string;
   namaSekolah?: string;
   logoUrl?: string;
+  baseUrl?: string;
 }
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
-  // Fetch the image as blob and convert to base64 — avoids canvas CORS issues
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
@@ -26,6 +26,13 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function qrPayload(student: Student, baseUrl?: string): string {
+  if (baseUrl && student.absenToken) {
+    return `${baseUrl}/s/${student.absenToken}`;
+  }
+  return `PRESENSI:${student.id}`;
 }
 
 export async function generateQrCardsPdf(
@@ -75,7 +82,7 @@ export async function generateQrCardsPdf(
     }
 
     // QR
-    const qrData = `PRESENSI:${students[i].id}`;
+    const qrData = qrPayload(students[i], options.baseUrl);
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 300,
       margin: 1,

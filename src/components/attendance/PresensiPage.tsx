@@ -245,25 +245,27 @@ export function PresensiPage() {
 
   const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
 
-  const handleQrScan = async (studentId: number) => {
+  const handleQrScan = async (payload: { studentId?: number; token?: string }) => {
     if (!sessionId) return;
-    const student = students.find((s) => s.id === studentId);
+    const student = payload.token
+      ? students.find((s) => s.absenToken === payload.token)
+      : students.find((s) => s.id === payload.studentId);
     if (!student) {
-      setLastScanned({ nama: "Siswa tidak ditemukan", status: "ID tidak cocok dengan kelas ini" });
+      setLastScanned({ nama: "Siswa tidak ditemukan", status: "QR tidak cocok dengan kelas ini" });
       return;
     }
-    const existing = records.get(studentId)?.status;
+    const existing = records.get(student.id)?.status;
     if (existing) {
       const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
       setLastScanned({ nama: student.nama, status: `Sudah tercatat: ${labelMap[existing]}` });
       return;
     }
-    await attendanceService.ubahStatus(sessionId, studentId, AttendanceStatus.HADIR);
+    await attendanceService.ubahStatus(sessionId, student.id, AttendanceStatus.HADIR);
     const updatedRecords = new Map(records);
-    updatedRecords.set(studentId, {
-      id: recordIdFrom(sessionId, studentId),
+    updatedRecords.set(student.id, {
+      id: recordIdFrom(sessionId, student.id),
       sesiId: sessionId,
-      siswaId: studentId,
+      siswaId: student.id,
       status: AttendanceStatus.HADIR,
       diubahPada: Date.now(),
     });

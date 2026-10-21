@@ -528,13 +528,41 @@ export function SiswaPage() {
     if (!targetKelas || students.length === 0) { toast("Belum ada siswa"); return; }
     setGeneratingQr(true);
     try {
-      const doc = await generateQrCardsPdf(students, {
+      // 1. Auto-enable absen mandiri agar link scan QR aktif
+      if (!targetKelas.allowSiswaAbsenMandiri) {
+        await classroomRepo.save({ ...targetKelas, allowSiswaAbsenMandiri: true, diubahPada: timestamp() });
+        if (selectedKelas) setSelectedKelas({ ...targetKelas, allowSiswaAbsenMandiri: true });
+        await refreshClassrooms();
+      }
+
+      // 2. Generate token untuk siswa yang belum punya
+      const studentsWithToken: Student[] = [];
+      for (const s of students) {
+        let token = s.absenToken;
+        if (!token) {
+          token = crypto.randomUUID();
+          await db.students.update(s.id, { absenToken: token, diubahPada: timestamp() } as Partial<Student>);
+        }
+        studentsWithToken.push({ ...s, absenToken: token });
+      }
+
+      // 3. Refresh local & push ke cloud supaya link langsung valid
+      clearCache(`students_${targetKelas.id}`);
+      await loadStudents(targetKelas.id, true);
+      triggerAutoSync();
+      if (teacher?.email) {
+        syncService.initialUpload(teacher.email).catch(() => {});
+      }
+
+      // 4. Generate PDF kartu QR dengan URL
+      const doc = await generateQrCardsPdf(studentsWithToken, {
         namaKelas: formatKelasLabel(targetKelas.nama),
         namaSekolah: school?.nama,
         logoUrl: school?.logoUrl || "/guru-cibisd2.png",
+        baseUrl: window.location.origin,
       });
       doc.save(`Kartu_QR_${targetKelas.nama}.pdf`);
-      toast(`✅ ${students.length} kartu QR berhasil dibuat`);
+      toast(`✅ ${studentsWithToken.length} kartu QR siap — scan pakai kamera HP langsung buka pilih status`);
     } catch {
       toast("❌ Gagal membuat kartu QR");
     } finally {

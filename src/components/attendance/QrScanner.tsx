@@ -3,12 +3,24 @@ import { Html5Qrcode } from "html5-qrcode";
 import { X, Camera, Volume2, VolumeX } from "lucide-react";
 
 interface QrScannerProps {
-  onScan: (studentId: number) => void;
+  onScan: (payload: { studentId?: number; token?: string }) => void;
   onClose: () => void;
   lastScanned?: { nama: string; status: string } | null;
 }
 
 const PREFIX = "PRESENSI:";
+
+function parseQr(text: string): { studentId?: number; token?: string } | null {
+  // URL kartu baru: https://.../s/<token>
+  const m = text.match(/\/s\/([a-zA-Z0-9-_]+)/);
+  if (m) return { token: m[1] };
+  // Legacy: PRESENSI:<id>
+  if (text.startsWith(PREFIX)) {
+    const id = parseInt(text.slice(PREFIX.length), 10);
+    if (!isNaN(id)) return { studentId: id };
+  }
+  return null;
+}
 
 export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -54,12 +66,11 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
           { fps: 10, qrbox: { width: boxSize, height: boxSize } },
           (text) => {
             if (cooldownRef.current) return;
-            if (!text.startsWith(PREFIX)) return;
-            const id = parseInt(text.slice(PREFIX.length), 10);
-            if (isNaN(id)) return;
+            const parsed = parseQr(text);
+            if (!parsed) return;
             cooldownRef.current = true;
             playBeep();
-            onScanRef.current(id);
+            onScanRef.current(parsed);
             setTimeout(() => { cooldownRef.current = false; }, 1500);
           },
           () => {}

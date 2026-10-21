@@ -48,22 +48,24 @@ export function BottomNav() {
 
   const isPRO = teacher?.tier === "PRO";
 
-  const handleQrScan = async (studentId: number) => {
+  const handleQrScan = async (payload: { studentId?: number; token?: string }) => {
     if (!activeClassroom || !tanggalAktif) return;
     const students = await studentRepo.getByClass(activeClassroom.id);
-    const student = students.find((s) => s.id === studentId);
+    const student = payload.token
+      ? students.find((s) => s.absenToken === payload.token)
+      : students.find((s) => s.id === payload.studentId);
     if (!student) {
       setLastScanned({ nama: "Tidak ditemukan", status: "Siswa bukan dari kelas ini" });
       return;
     }
     const result = await attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif);
-    const existing = result.records.find((r) => r.siswaId === studentId);
+    const existing = result.records.find((r) => r.siswaId === student.id);
     if (existing) {
       const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
       setLastScanned({ nama: student.nama, status: `Sudah: ${labelMap[existing.status]}` });
       return;
     }
-    await attendanceService.ubahStatus(result.session.id, studentId, AttendanceStatus.HADIR);
+    await attendanceService.ubahStatus(result.session.id, student.id, AttendanceStatus.HADIR);
     setLastScanned({ nama: student.nama, status: "Hadir ✓" });
     toast(`${student.nama} — Hadir`);
   };
