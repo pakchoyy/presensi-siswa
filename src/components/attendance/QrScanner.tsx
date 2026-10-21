@@ -198,9 +198,43 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
       )}
 
       {!pendingScan && lastScanned && (
-        <div className="mt-4 bg-[#0ea5a0] text-white px-5 py-3 rounded-xl text-center animate-fade-in">
-          <div className="text-[0.9rem] font-bold">{lastScanned.nama}</div>
-          <div className="text-[0.75rem] opacity-90">{lastScanned.status}</div>
+        <div
+          key={`${lastScanned.nama}-${lastScanned.status}`}
+          className="mt-5 bg-white rounded-2xl shadow-2xl px-6 py-5 text-center animate-fade-in flex flex-col items-center gap-2 min-w-[280px] max-w-[90vw]"
+        >
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center animate-scale-pop"
+            style={{
+              background: lastScanned.status.includes("✓")
+                ? "linear-gradient(135deg, #16a34a, #15803d)"
+                : lastScanned.status.includes("Sudah")
+                ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                : "linear-gradient(135deg, #dc2626, #991b1b)",
+            }}
+          >
+            {lastScanned.status.includes("✓") ? (
+              <CheckCircle2 size={40} strokeWidth={2.5} className="text-white" />
+            ) : lastScanned.status.includes("Sudah") ? (
+              <Clock size={36} strokeWidth={2.5} className="text-white" />
+            ) : (
+              <X size={36} strokeWidth={2.5} className="text-white" />
+            )}
+          </div>
+          <div className="text-[1.1rem] font-extrabold text-[#1f2937] leading-tight">
+            {lastScanned.nama}
+          </div>
+          <div
+            className="text-[1rem] font-bold"
+            style={{
+              color: lastScanned.status.includes("✓")
+                ? "#16a34a"
+                : lastScanned.status.includes("Sudah")
+                ? "#d97706"
+                : "#dc2626",
+            }}
+          >
+            {lastScanned.status}
+          </div>
         </div>
       )}
     </div>
