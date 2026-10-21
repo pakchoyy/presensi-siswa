@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2 } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { triggerAutoSync } from "@/hooks/useAutoSync";
@@ -18,6 +18,7 @@ import type { ImportResult } from "@/services/import.service";
 import { Tier } from "@/types/enums";
 import { MAX_STUDENTS_FREE, MAX_KELAS_FREE } from "@/lib/constants";
 import { getCache, setCache, clearCache } from "@/lib/cache";
+import { generateQrCardsPdf } from "@/lib/qr-card";
 
 function formatKelasLabel(namaKelas: string): string {
   if (namaKelas.toLowerCase().startsWith("kelas")) {
@@ -93,6 +94,7 @@ export function SiswaPage() {
   const [absenLinks, setAbsenLinks] = useState<{ nama: string; token: string; url: string }[] | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [togglingAbsen, setTogglingAbsen] = useState(false);
+  const [generatingQr, setGeneratingQr] = useState(false);
 
   const loadCounts = useCallback(async () => {
     const counts: Record<number, number> = {};
@@ -521,6 +523,23 @@ export function SiswaPage() {
     }
   };
 
+  const handleCetakQr = async () => {
+    const targetKelas = selectedKelas || activeClassroom;
+    if (!targetKelas || students.length === 0) { toast("Belum ada siswa"); return; }
+    setGeneratingQr(true);
+    try {
+      const doc = await generateQrCardsPdf(students, {
+        namaKelas: formatKelasLabel(targetKelas.nama),
+      });
+      doc.save(`Kartu_QR_${targetKelas.nama}.pdf`);
+      toast(`✅ ${students.length} kartu QR berhasil dibuat`);
+    } catch {
+      toast("❌ Gagal membuat kartu QR");
+    } finally {
+      setGeneratingQr(false);
+    }
+  };
+
   const handleCopy = async (url: string, token: string) => {
     try { await navigator.clipboard.writeText(url); setCopiedToken(token); setTimeout(() => setCopiedToken(null), 1500); toast("Link disalin"); } catch { toast(url); }
   };
@@ -802,6 +821,26 @@ export function SiswaPage() {
           </div>
         )}
       </div>
+
+      {/* Cetak Kartu QR */}
+      {students.length > 0 && (
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
+          <div className="flex items-center gap-2 text-[0.78rem] font-bold mb-2">
+            <QrCode size={14} className="text-[#0ea5a0]" /> Kartu QR Presensi
+          </div>
+          <div className="text-[0.68rem] text-[var(--text-light)] mb-2">
+            Cetak kartu QR untuk di-scan saat presensi. 1 kartu per siswa, format A4.
+          </div>
+          <button
+            onClick={handleCetakQr}
+            disabled={generatingQr}
+            className="w-full flex items-center justify-center gap-2 py-[9px] rounded-[10px] text-white font-bold text-[0.78rem] disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+          >
+            <Download size={14} /> {generatingQr ? "Membuat PDF..." : `Cetak Kartu QR (${students.length} siswa)`}
+          </button>
+        </div>
+      )}
 
       <div className="relative mb-3">
         <Search

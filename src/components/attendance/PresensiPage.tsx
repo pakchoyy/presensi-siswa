@@ -12,7 +12,8 @@ import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
-import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp } from "lucide-react";
+import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
+import { QrScanner } from "./QrScanner";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -51,6 +52,9 @@ export function PresensiPage() {
   const [showRekapAjaran, setShowRekapAjaran] = useState(false);
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [semesterOnly, setSemesterOnly] = useState(true);
+
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [lastScanned, setLastScanned] = useState<{ nama: string; status: string } | null>(null);
 
   const isLibur = isWeekend(tanggalAktif) || !!liburKalender;
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
@@ -240,6 +244,32 @@ export function PresensiPage() {
 
   const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
 
+  const handleQrScan = async (studentId: number) => {
+    if (!sessionId) return;
+    const student = students.find((s) => s.id === studentId);
+    if (!student) {
+      setLastScanned({ nama: "Siswa tidak ditemukan", status: "ID tidak cocok dengan kelas ini" });
+      return;
+    }
+    const existing = records.get(studentId)?.status;
+    if (existing) {
+      const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
+      setLastScanned({ nama: student.nama, status: `Sudah tercatat: ${labelMap[existing]}` });
+      return;
+    }
+    await attendanceService.ubahStatus(sessionId, studentId, AttendanceStatus.HADIR);
+    const updatedRecords = new Map(records);
+    updatedRecords.set(studentId, {
+      id: recordIdFrom(sessionId, studentId),
+      sesiId: sessionId,
+      siswaId: studentId,
+      status: AttendanceStatus.HADIR,
+      diubahPada: Date.now(),
+    });
+    setRecords(updatedRecords);
+    setLastScanned({ nama: student.nama, status: "Hadir ✓" });
+  };
+
   // Filter siswa untuk pencarian
   const q = searchSiswa.trim().toLowerCase();
   const tampilSiswa = q
@@ -323,6 +353,17 @@ export function PresensiPage() {
         <div className="hidden lg:block mb-3">
           <RingkasanBar counts={counts} />
         </div>
+
+        {/* Scan QR */}
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && (
+          <button
+            onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
+            className="w-full flex items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
+            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
+          >
+            <QrCode size={16} /> Scan QR Presensi
+          </button>
+        )}
 
         {/* Tren kehadiran bulanan */}
         {activeClassroom && !isLibur && tren && (
@@ -585,6 +626,14 @@ export function PresensiPage() {
           initialCatatan={selectedStudent ? getCatatan(selectedStudent.id) : undefined}
         />
       </div>
+
+      {showQrScanner && (
+        <QrScanner
+          onScan={handleQrScan}
+          onClose={() => setShowQrScanner(false)}
+          lastScanned={lastScanned}
+        />
+      )}
     </>
   );
 }
