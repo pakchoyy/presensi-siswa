@@ -17,7 +17,7 @@ export function useSyncDebounce(email: string | null) {
 
   const lastSyncRef = useRef(0);
   const retryCount = useRef(0);
-  const timerRef = useRef<number>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const pendingRef = useRef(false);
 
   const doSync = useCallback(async (force = false) => {

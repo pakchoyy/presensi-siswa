@@ -9,7 +9,7 @@ const POLL_INTERVAL = 5 * 60 * 1000; // 5 menit (hemat kuota, cukup untuk kerja 
 export function useAutoSync() {
   const { cloudEmail, cloudUser, isCloudConnected } = useCloudAuth();
   const { sync, isSyncing, lastSync } = useSyncDebounce(cloudEmail);
-  const syncTimerRef = useRef<number>();
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const useRealtime = !!(cloudUser?.id && isCloudConnected);
   const { connected: realtimeConnected } = useCloudRealtime(
