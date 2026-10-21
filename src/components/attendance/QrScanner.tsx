@@ -197,46 +197,38 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
         </div>
       )}
 
-      {!pendingScan && lastScanned && (
-        <div
-          key={`${lastScanned.nama}-${lastScanned.status}`}
-          className="mt-5 bg-white rounded-2xl shadow-2xl px-6 py-5 text-center animate-fade-in flex flex-col items-center gap-2 min-w-[280px] max-w-[90vw]"
-        >
+      {!pendingScan && lastScanned && (() => {
+        const s = lastScanned.status;
+        const isSudah = s.toLowerCase().startsWith("sudah");
+        const isError = !s.includes("✓") && !isSudah;
+        let color = "#16a34a"; // hijau default (Hadir)
+        if (s.startsWith("Terlambat")) color = "#f59e0b";
+        else if (s.startsWith("Sakit")) color = "#ea580c";
+        else if (s.startsWith("Izin")) color = "#2563eb";
+        else if (s.startsWith("Alpha")) color = "#dc2626";
+        else if (isSudah) color = "#d97706";
+        else if (isError) color = "#dc2626";
+        const Icon = isSudah ? Clock : isError ? X : CheckCircle2;
+        return (
           <div
-            className="w-16 h-16 rounded-full flex items-center justify-center animate-scale-pop"
-            style={{
-              background: lastScanned.status.includes("✓")
-                ? "linear-gradient(135deg, #16a34a, #15803d)"
-                : lastScanned.status.includes("Sudah")
-                ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                : "linear-gradient(135deg, #dc2626, #991b1b)",
-            }}
+            key={`${lastScanned.nama}-${s}`}
+            className="mt-5 bg-white rounded-2xl shadow-2xl px-6 py-5 text-center animate-fade-in flex flex-col items-center gap-2 min-w-[280px] max-w-[90vw]"
           >
-            {lastScanned.status.includes("✓") ? (
-              <CheckCircle2 size={40} strokeWidth={2.5} className="text-white" />
-            ) : lastScanned.status.includes("Sudah") ? (
-              <Clock size={36} strokeWidth={2.5} className="text-white" />
-            ) : (
-              <X size={36} strokeWidth={2.5} className="text-white" />
-            )}
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center animate-scale-pop"
+              style={{ background: color }}
+            >
+              <Icon size={38} strokeWidth={2.5} className="text-white" />
+            </div>
+            <div className="text-[1.1rem] font-extrabold text-[#1f2937] leading-tight">
+              {lastScanned.nama}
+            </div>
+            <div className="text-[1rem] font-bold" style={{ color }}>
+              {s}
+            </div>
           </div>
-          <div className="text-[1.1rem] font-extrabold text-[#1f2937] leading-tight">
-            {lastScanned.nama}
-          </div>
-          <div
-            className="text-[1rem] font-bold"
-            style={{
-              color: lastScanned.status.includes("✓")
-                ? "#16a34a"
-                : lastScanned.status.includes("Sudah")
-                ? "#d97706"
-                : "#dc2626",
-            }}
-          >
-            {lastScanned.status}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
