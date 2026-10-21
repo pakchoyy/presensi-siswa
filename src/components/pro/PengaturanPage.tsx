@@ -766,9 +766,13 @@ export function PengaturanPage() {
                   setPjjMode(false);
                   localStorage.setItem("bgy_pjj_mode", "0");
                 }
+                if (autoHadir) {
+                  setAutoHadir(false);
+                  localStorage.setItem("bgy_auto_hadir", "0");
+                }
               }
               window.dispatchEvent(new Event("storage"));
-              toast(newVal ? "✅ Mode QR: ON — Cetak kartu di menu Siswa" : "Mode QR: OFF");
+              toast(newVal ? "✅ Mode QR: ON — Auto Hadir dimatikan, bisa dinyalakan lagi" : "Mode QR: OFF");
             }}
             className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
               qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"

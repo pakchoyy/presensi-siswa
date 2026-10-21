@@ -83,8 +83,9 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
             if (newVal) {
               localStorage.setItem("bgy_pjj_mode", "0");
+              localStorage.setItem("bgy_auto_hadir", "0");
               localStorage.removeItem("bgy_qr_hint_seen");
-              toast("✅ Mode QR: ON — Cetak kartu di menu Siswa, lalu scan dari navbar");
+              toast("✅ Mode QR: ON — Auto Hadir dimatikan, cetak kartu di menu Siswa");
             } else {
               toast("Mode QR: OFF");
             }

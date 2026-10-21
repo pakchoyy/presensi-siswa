@@ -39,14 +39,23 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
       const ctx = audioCtxRef.current;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 1200;
-      gain.gain.value = 0.15;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.12);
+      const now = ctx.currentTime;
+      // Two-tone "ding" seperti scanner kasir: 880Hz → 1320Hz
+      const makeTone = (freq: number, start: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.2, start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + dur);
+      };
+      makeTone(880, now, 0.08);
+      makeTone(1320, now + 0.07, 0.14);
     } catch { /* silent */ }
   }, []);
 
