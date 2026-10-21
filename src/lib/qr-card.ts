@@ -14,13 +14,17 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
     img.crossOrigin = "anonymous";
     return await new Promise((resolve) => {
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { resolve(null); return; }
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth || 200;
+          canvas.height = img.naturalHeight || 200;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { resolve(null); return; }
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
+        } catch {
+          resolve(null);
+        }
       };
       img.onerror = () => resolve(null);
       img.src = url;
@@ -38,11 +42,11 @@ export async function generateQrCardsPdf(
 
   const cols = 3;
   const rows = 4;
-  const cardW = 55;
-  const cardH = 65;
+  const cardW = 60;
+  const cardH = 72;
   const marginX = (210 - cols * cardW) / (cols + 1);
   const marginY = (297 - rows * cardH) / (rows + 1);
-  const qrSize = 30;
+  const qrSize = 36;
 
   let logoDataUrl: string | null = null;
   if (options.logoUrl) {
@@ -62,42 +66,62 @@ export async function generateQrCardsPdf(
     const x = marginX + col * (cardW + marginX);
     const y = marginY + row * (cardH + marginY);
 
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, cardW, cardH, 3, 3);
+    // Card border with teal top strip
+    doc.setFillColor(14, 165, 160);
+    doc.roundedRect(x, y, cardW, 5, 2, 2, "F");
+    doc.setDrawColor(14, 165, 160);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(x, y, cardW, cardH, 2, 2);
 
+    // School name on top strip
+    if (options.namaSekolah) {
+      doc.setFontSize(6);
+      doc.setTextColor(255, 255, 255);
+      doc.text(options.namaSekolah.toUpperCase(), x + cardW / 2, y + 3.5, { align: "center", maxWidth: cardW - 4 });
+    }
+
+    // QR
     const qrData = `PRESENSI:${students[i].id}`;
     const qrDataUrl = await QRCode.toDataURL(qrData, {
-      width: 200,
+      width: 300,
       margin: 1,
       errorCorrectionLevel: logoDataUrl ? "H" : "M",
     });
     const qrX = x + (cardW - qrSize) / 2;
-    doc.addImage(qrDataUrl, "PNG", qrX, y + 5, qrSize, qrSize);
+    const qrY = y + 8;
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
+    // Logo in center of QR (with white padded background)
     if (logoDataUrl) {
-      const logoSize = 8;
+      const logoSize = 10;
       const logoX = qrX + (qrSize - logoSize) / 2;
-      const logoY = y + 5 + (qrSize - logoSize) / 2;
+      const logoY = qrY + (qrSize - logoSize) / 2;
       doc.setFillColor(255, 255, 255);
-      doc.roundedRect(logoX - 0.5, logoY - 0.5, logoSize + 1, logoSize + 1, 1, 1, "F");
+      doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 1.5, 1.5, "F");
       doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
     }
 
-    doc.setFontSize(8);
-    doc.setTextColor(100);
-    const namaY = y + 5 + qrSize + 5;
-    doc.text(students[i].nama, x + cardW / 2, namaY, { align: "center", maxWidth: cardW - 6 });
+    // Student name
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 30, 30);
+    const namaY = qrY + qrSize + 5;
+    doc.text(students[i].nama, x + cardW / 2, namaY, { align: "center", maxWidth: cardW - 4 });
 
+    // NISN
+    doc.setFont("helvetica", "normal");
     if (students[i].nisn) {
       doc.setFontSize(6.5);
-      doc.setTextColor(140);
-      doc.text(`NISN: ${students[i].nisn}`, x + cardW / 2, namaY + 5, { align: "center" });
+      doc.setTextColor(130, 130, 130);
+      doc.text(`NISN: ${students[i].nisn}`, x + cardW / 2, namaY + 4, { align: "center" });
     }
 
-    doc.setFontSize(6);
-    doc.setTextColor(160);
-    doc.text(options.namaKelas, x + cardW / 2, y + cardH - 4, { align: "center" });
+    // Class name at bottom
+    doc.setFontSize(6.5);
+    doc.setTextColor(14, 165, 160);
+    doc.setFont("helvetica", "bold");
+    doc.text(options.namaKelas, x + cardW / 2, y + cardH - 3, { align: "center" });
+    doc.setFont("helvetica", "normal");
   }
 
   return doc;

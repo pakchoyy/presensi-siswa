@@ -55,6 +55,7 @@ export function PresensiPage() {
 
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [lastScanned, setLastScanned] = useState<{ nama: string; status: string } | null>(null);
+  const [, setForceUpdate] = useState(0);
 
   const isLibur = isWeekend(tanggalAktif) || !!liburKalender;
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
@@ -354,15 +355,36 @@ export function PresensiPage() {
           <RingkasanBar counts={counts} />
         </div>
 
-        {/* Scan QR (only visible when QR mode is on) */}
+        {/* Scan QR — desktop (navbar handles mobile) */}
         {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_qr_mode") === "1" && (
           <button
             onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
-            className="w-full flex items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
+            className="hidden lg:flex w-full items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
             style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
           >
             <QrCode size={16} /> Scan QR Presensi
           </button>
+        )}
+
+        {/* QR mode help banner — one-time hint */}
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_qr_mode") === "1" && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
+          <div className="bg-[rgba(14,165,160,0.08)] border border-[#0ea5a0]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
+            <QrCode size={16} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
+            <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
+              <b>Mode QR aktif.</b> Cetak kartu QR siswa dulu di menu <b>Siswa</b>, lalu klik tombol <b>Scan</b> di tengah navbar untuk absen.
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                localStorage.setItem("bgy_qr_hint_seen", "1");
+                setForceUpdate(f => f + 1);
+              }}
+              className="text-[var(--text-light)] text-[1rem] px-1 bg-transparent border-none cursor-pointer leading-none"
+              aria-label="Tutup petunjuk"
+            >
+              ×
+            </button>
+          </div>
         )}
 
         {/* Tren kehadiran bulanan */}

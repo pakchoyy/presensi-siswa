@@ -530,7 +530,8 @@ export function SiswaPage() {
     try {
       const doc = await generateQrCardsPdf(students, {
         namaKelas: formatKelasLabel(targetKelas.nama),
-        logoUrl: school?.logoUrl,
+        namaSekolah: school?.nama,
+        logoUrl: school?.logoUrl || "/guru-cibisd2.png",
       });
       doc.save(`Kartu_QR_${targetKelas.nama}.pdf`);
       toast(`✅ ${students.length} kartu QR berhasil dibuat`);
