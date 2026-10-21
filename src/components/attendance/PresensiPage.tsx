@@ -245,7 +245,7 @@ export function PresensiPage() {
 
   const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
 
-  const handleQrScan = async (payload: { studentId?: number; token?: string }) => {
+  const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!sessionId) return;
     const student = payload.token
       ? students.find((s) => s.absenToken === payload.token)
@@ -254,23 +254,24 @@ export function PresensiPage() {
       setLastScanned({ nama: "Siswa tidak ditemukan", status: "QR tidak cocok dengan kelas ini" });
       return;
     }
+    const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
+    const status = (pickedStatus as AttendanceStatus) || AttendanceStatus.HADIR;
     const existing = records.get(student.id)?.status;
-    if (existing) {
-      const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
+    if (existing && !pickedStatus) {
       setLastScanned({ nama: student.nama, status: `Sudah tercatat: ${labelMap[existing]}` });
       return;
     }
-    await attendanceService.ubahStatus(sessionId, student.id, AttendanceStatus.HADIR);
+    await attendanceService.ubahStatus(sessionId, student.id, status);
     const updatedRecords = new Map(records);
     updatedRecords.set(student.id, {
       id: recordIdFrom(sessionId, student.id),
       sesiId: sessionId,
       siswaId: student.id,
-      status: AttendanceStatus.HADIR,
+      status,
       diubahPada: Date.now(),
     });
     setRecords(updatedRecords);
-    setLastScanned({ nama: student.nama, status: "Hadir ✓" });
+    setLastScanned({ nama: student.nama, status: `${labelMap[status]} ✓` });
   };
 
   // Filter siswa untuk pencarian
@@ -677,6 +678,7 @@ export function PresensiPage() {
           onScan={handleQrScan}
           onClose={() => setShowQrScanner(false)}
           lastScanned={lastScanned}
+          pickerMode={localStorage.getItem("bgy_qr_picker") === "1"}
         />
       )}
     </>

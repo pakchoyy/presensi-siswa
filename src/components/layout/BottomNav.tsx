@@ -37,9 +37,13 @@ export function BottomNav() {
   const [showQr, setShowQr] = useState(false);
   const [lastScanned, setLastScanned] = useState<{ nama: string; status: string } | null>(null);
   const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
+  const [pickerMode, setPickerMode] = useState(localStorage.getItem("bgy_qr_picker") === "1");
 
   useEffect(() => {
-    const handler = () => setQrMode(localStorage.getItem("bgy_qr_mode") === "1");
+    const handler = () => {
+      setQrMode(localStorage.getItem("bgy_qr_mode") === "1");
+      setPickerMode(localStorage.getItem("bgy_qr_picker") === "1");
+    };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
@@ -48,7 +52,7 @@ export function BottomNav() {
 
   const isPRO = teacher?.tier === "PRO";
 
-  const handleQrScan = async (payload: { studentId?: number; token?: string }) => {
+  const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!activeClassroom || !tanggalAktif) return;
     const students = await studentRepo.getByClass(activeClassroom.id);
     const student = payload.token
@@ -59,15 +63,16 @@ export function BottomNav() {
       return;
     }
     const result = await attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif);
+    const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
+    const status = (pickedStatus as AttendanceStatus) || AttendanceStatus.HADIR;
     const existing = result.records.find((r) => r.siswaId === student.id);
-    if (existing) {
-      const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
+    if (existing && !pickedStatus) {
       setLastScanned({ nama: student.nama, status: `Sudah: ${labelMap[existing.status]}` });
       return;
     }
-    await attendanceService.ubahStatus(result.session.id, student.id, AttendanceStatus.HADIR);
-    setLastScanned({ nama: student.nama, status: "Hadir ✓" });
-    toast(`${student.nama} — Hadir`);
+    await attendanceService.ubahStatus(result.session.id, student.id, status);
+    setLastScanned({ nama: student.nama, status: `${labelMap[status]} ✓` });
+    toast(`${student.nama} — ${labelMap[status]}`);
   };
 
   const filteredItems = NAV_ITEMS.filter(item => {
@@ -127,6 +132,7 @@ export function BottomNav() {
           onScan={handleQrScan}
           onClose={() => setShowQr(false)}
           lastScanned={lastScanned}
+          pickerMode={pickerMode}
         />
       )}
     </>

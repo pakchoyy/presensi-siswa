@@ -86,6 +86,7 @@ export function PengaturanPage() {
   const [autoHadir, setAutoHadir] = useState(getAutoHadir());
   const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
   const [pjjMode, setPjjMode] = useState(localStorage.getItem("bgy_pjj_mode") === "1");
+  const [qrPicker, setQrPicker] = useState(localStorage.getItem("bgy_qr_picker") === "1");
 
   const [editSekolah, setEditSekolah] = useState(false);
   const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
@@ -785,6 +786,34 @@ export function PengaturanPage() {
             />
           </button>
         </div>
+
+        {/* Sub-opsi QR: Pilih Status Saat Scan */}
+        {qrMode && (
+          <div className="flex items-center justify-between py-[6px] pl-6 border-l-[2px] border-[#0ea5a0]/30 ml-[6px]">
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="text-[0.74rem] font-semibold text-[var(--text)]">Pilih Status Saat Scan</div>
+              <div className="text-[0.65rem] text-[var(--text-light)]">OFF: auto Hadir • ON: muncul Hadir/Sakit/Izin/Alpha/Terlambat</div>
+            </div>
+            <button
+              onClick={() => {
+                const newVal = !qrPicker;
+                setQrPicker(newVal);
+                localStorage.setItem("bgy_qr_picker", newVal ? "1" : "0");
+                window.dispatchEvent(new Event("storage"));
+                toast(newVal ? "✅ Pilih Status: ON" : "Pilih Status: OFF (auto Hadir)");
+              }}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
+                qrPicker ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
+              }`}
+            >
+              <span
+                className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                  qrPicker ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         <div className="h-px bg-[var(--border)] my-1" />
 
