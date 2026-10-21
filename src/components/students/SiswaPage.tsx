@@ -49,7 +49,7 @@ function formatKelasLabel(namaKelas: string): string {
 }
 
 export function SiswaPage() {
-  const { activeClassroom, classrooms, teacher, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
+  const { activeClassroom, classrooms, teacher, school, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
   const isPRO = teacher?.tier === Tier.PRO;
   const { toast } = useToast();
 
@@ -530,6 +530,7 @@ export function SiswaPage() {
     try {
       const doc = await generateQrCardsPdf(students, {
         namaKelas: formatKelasLabel(targetKelas.nama),
+        logoUrl: school?.logoUrl,
       });
       doc.save(`Kartu_QR_${targetKelas.nama}.pdf`);
       toast(`✅ ${students.length} kartu QR berhasil dibuat`);

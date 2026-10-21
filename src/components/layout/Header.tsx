@@ -46,18 +46,18 @@ export function Header() {
         boxShadow: "0 2px 10px rgba(0,0,0,.18)",
       }}
     >
-      <div className="flex items-center justify-between h-[40px]">
-        <div className="flex items-center gap-[6px] flex-1 min-w-0">
+      <div className="flex items-center justify-between h-[44px]">
+        <div className="flex items-center gap-[7px] flex-1 min-w-0">
           <LogoUpload />
           <div className="min-w-0">
-            <div className="text-[0.82rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
+            <div className="text-[0.88rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
               {setupSelesai ? `Bantu Guru Yuk ${subtitle}` : "Setup"}
             </div>
           </div>
         </div>
 
         {setupSelesai && (
-          <span className={`text-[0.58rem] px-[6px] py-[1px] rounded-full font-bold flex-shrink-0 mr-1 ${
+          <span className={`text-[0.6rem] px-[7px] py-[2px] rounded-full font-bold flex-shrink-0 mr-1 ${
             teacher?.tier === Tier.PRO
               ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
               : "bg-white/10 text-white/60 border border-white/20"
@@ -66,24 +66,24 @@ export function Header() {
           </span>
         )}
 
-        <div className="flex items-center gap-[3px] flex-shrink-0 relative">
+        <div className="flex items-center gap-[4px] flex-shrink-0 relative">
           <SyncIndicator />
           <LicenseExpiryBadge />
           <button
             onClick={toggleDarkMode}
-            className="h-[26px] w-[26px] rounded-[5px] border border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
+            className="h-[28px] w-[28px] rounded-[6px] border border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
             title="Mode gelap/terang"
           >
-            {darkMode ? <Sun size={13} /> : <Moon size={13} />}
+            {darkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           {setupSelesai && (
             <>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="h-[26px] w-[26px] rounded-[5px] border border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
+                className="h-[28px] w-[28px] rounded-[6px] border border-white/30 bg-white/10 text-white flex items-center justify-center flex-shrink-0 active:bg-white/25 cursor-pointer"
                 title="Menu"
               >
-                <Menu size={13} />
+                <Menu size={14} />
               </button>
               <DropdownMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
             </>

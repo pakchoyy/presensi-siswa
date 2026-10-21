@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
-import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud } from "lucide-react";
+import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud, QrCode } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
   const { setActivePage, setupSelesai, teacher } = useApp();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
 
   if (!isOpen || !setupSelesai) return null;
 
@@ -72,6 +74,20 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Settings size={16} /> Pengaturan
+        </button>
+
+        <button
+          onClick={() => {
+            const newVal = !qrMode;
+            setQrMode(newVal);
+            localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
+            toast(newVal ? "✅ Mode QR Presensi: ON" : "Mode QR Presensi: OFF");
+            window.dispatchEvent(new Event("storage"));
+            onClose();
+          }}
+          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+        >
+          <QrCode size={16} /> Mode QR {qrMode ? <span className="ml-auto text-[0.65rem] font-bold text-[#0ea5a0]">ON</span> : <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">OFF</span>}
         </button>
 
         {isPRO && isAuthenticated && (

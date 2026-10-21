@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PageName } from "@/types/enums";
 import {
@@ -36,11 +36,17 @@ export function BottomNav() {
   const { toast } = useToast();
   const [showQr, setShowQr] = useState(false);
   const [lastScanned, setLastScanned] = useState<{ nama: string; status: string } | null>(null);
+  const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
+
+  useEffect(() => {
+    const handler = () => setQrMode(localStorage.getItem("bgy_qr_mode") === "1");
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   if (!setupSelesai) return null;
 
   const isPRO = teacher?.tier === "PRO";
-  const qrMode = localStorage.getItem("bgy_qr_mode") === "1";
 
   const handleQrScan = async (studentId: number) => {
     if (!activeClassroom || !tanggalAktif) return;

@@ -5,6 +5,29 @@ import type { Student } from "@/types/entities";
 interface CardOptions {
   namaKelas: string;
   namaSekolah?: string;
+  logoUrl?: string;
+}
+
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    return await new Promise((resolve) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function generateQrCardsPdf(
@@ -20,6 +43,13 @@ export async function generateQrCardsPdf(
   const marginX = (210 - cols * cardW) / (cols + 1);
   const marginY = (297 - rows * cardH) / (rows + 1);
   const qrSize = 30;
+
+  let logoDataUrl: string | null = null;
+  if (options.logoUrl) {
+    logoDataUrl = options.logoUrl.startsWith("data:")
+      ? options.logoUrl
+      : await loadImageAsDataUrl(options.logoUrl);
+  }
 
   for (let i = 0; i < students.length; i++) {
     const page = Math.floor(i / (cols * rows));
@@ -40,10 +70,19 @@ export async function generateQrCardsPdf(
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 200,
       margin: 1,
-      errorCorrectionLevel: "M",
+      errorCorrectionLevel: logoDataUrl ? "H" : "M",
     });
     const qrX = x + (cardW - qrSize) / 2;
     doc.addImage(qrDataUrl, "PNG", qrX, y + 5, qrSize, qrSize);
+
+    if (logoDataUrl) {
+      const logoSize = 8;
+      const logoX = qrX + (qrSize - logoSize) / 2;
+      const logoY = y + 5 + (qrSize - logoSize) / 2;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(logoX - 0.5, logoY - 0.5, logoSize + 1, logoSize + 1, 1, 1, "F");
+      doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+    }
 
     doc.setFontSize(8);
     doc.setTextColor(100);

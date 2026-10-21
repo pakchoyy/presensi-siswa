@@ -16,9 +16,14 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
   const [soundOn, setSoundOn] = useState(true);
   const cooldownRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundOnRef = useRef(soundOn);
+  const onScanRef = useRef(onScan);
+
+  soundOnRef.current = soundOn;
+  onScanRef.current = onScan;
 
   const playBeep = useCallback(() => {
-    if (!soundOn) return;
+    if (!soundOnRef.current) return;
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
       const ctx = audioCtxRef.current;
@@ -31,42 +36,53 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
       osc.start();
       osc.stop(ctx.currentTime + 0.12);
     } catch { /* silent */ }
-  }, [soundOn]);
+  }, []);
 
   useEffect(() => {
     const elementId = "qr-reader";
-    const scanner = new Html5Qrcode(elementId);
-    scannerRef.current = scanner;
+    let stopped = false;
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (text) => {
-          if (cooldownRef.current) return;
-          if (!text.startsWith(PREFIX)) return;
-          const id = parseInt(text.slice(PREFIX.length), 10);
-          if (isNaN(id)) return;
-          cooldownRef.current = true;
-          playBeep();
-          onScan(id);
-          setTimeout(() => { cooldownRef.current = false; }, 1500);
-        },
-        () => {}
-      )
-      .catch((err) => {
-        setError(
-          err?.toString().includes("NotAllowed")
-            ? "Izinkan akses kamera untuk scan QR"
-            : "Gagal membuka kamera"
+    const startScanner = async () => {
+      try {
+        const scanner = new Html5Qrcode(elementId);
+        scannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (text) => {
+            if (cooldownRef.current) return;
+            if (!text.startsWith(PREFIX)) return;
+            const id = parseInt(text.slice(PREFIX.length), 10);
+            if (isNaN(id)) return;
+            cooldownRef.current = true;
+            playBeep();
+            onScanRef.current(id);
+            setTimeout(() => { cooldownRef.current = false; }, 1500);
+          },
+          () => {}
         );
-      });
+      } catch (err: any) {
+        if (stopped) return;
+        const msg = err?.toString() || "";
+        if (msg.includes("NotAllowed") || msg.includes("Permission")) {
+          setError("Izinkan akses kamera untuk scan QR");
+        } else if (msg.includes("NotFound") || msg.includes("Requested device not found")) {
+          setError("Kamera tidak ditemukan di perangkat ini");
+        } else {
+          setError("Gagal membuka kamera. Pastikan tidak ada aplikasi lain yang menggunakan kamera.");
+        }
+      }
+    };
+
+    startScanner();
 
     return () => {
-      scanner.stop().catch(() => {});
+      stopped = true;
+      scannerRef.current?.stop().catch(() => {});
       audioCtxRef.current?.close().catch(() => {});
     };
-  }, [onScan, playBeep]);
+  }, [playBeep]);
 
   return (
     <div className="fixed inset-0 bg-black/90 z-[1000] flex flex-col items-center justify-center">
