@@ -354,8 +354,8 @@ export function PresensiPage() {
           <RingkasanBar counts={counts} />
         </div>
 
-        {/* Scan QR */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && (
+        {/* Scan QR (only visible when QR mode is on) */}
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_qr_mode") === "1" && (
           <button
             onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
             className="w-full flex items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
