@@ -47,9 +47,11 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
         const scanner = new Html5Qrcode(elementId);
         scannerRef.current = scanner;
 
+        const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
+        const boxSize = Math.min(viewport, 400);
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { fps: 10, qrbox: { width: boxSize, height: boxSize } },
           (text) => {
             if (cooldownRef.current) return;
             if (!text.startsWith(PREFIX)) return;
@@ -110,7 +112,7 @@ export function QrScanner({ onScan, onClose, lastScanned }: QrScannerProps) {
           {error}
         </div>
       ) : (
-        <div id="qr-reader" className="w-[300px] h-[300px] rounded-xl overflow-hidden" />
+        <div id="qr-reader" className="w-[min(90vw,440px)] h-[min(90vw,440px)] rounded-xl overflow-hidden" />
       )}
 
       {lastScanned && (

@@ -172,7 +172,7 @@ export function UpgradePage() {
         </p>
         <div className="text-[2.5rem] font-extrabold mb-4">{PRO_PRICE}</div>
         <a
-          href="https://lynk.id/kreacy/o9g1wgrxg7gl"
+          href="https://kreacy.my.id/produk/8nonq6ro"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block w-full max-w-[280px] py-3 rounded-xl bg-white text-[#0ea5a0] font-extrabold text-[0.95rem] no-underline hover:bg-white/90 transition-all"

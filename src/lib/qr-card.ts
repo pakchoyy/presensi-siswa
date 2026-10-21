@@ -9,25 +9,19 @@ interface CardOptions {
 }
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  // Fetch the image as blob and convert to base64 — avoids canvas CORS issues
   try {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
     return await new Promise((resolve) => {
-      img.onload = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.naturalWidth || 200;
-          canvas.height = img.naturalHeight || 200;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) { resolve(null); return; }
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL("image/png"));
-        } catch {
-          resolve(null);
-        }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result;
+        resolve(typeof result === "string" ? result : null);
       };
-      img.onerror = () => resolve(null);
-      img.src = url;
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
     });
   } catch {
     return null;

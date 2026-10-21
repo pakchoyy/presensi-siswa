@@ -37,6 +37,7 @@ import {
   Smartphone,
   X,
   QrCode,
+  Video,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
@@ -84,6 +85,7 @@ export function PengaturanPage() {
   const [customDays, setCustomDays] = useState<string>(localStorage.getItem("bgy_hari_aktif_custom") || "1,2,3,4,5,6");
   const [autoHadir, setAutoHadir] = useState(getAutoHadir());
   const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
+  const [pjjMode, setPjjMode] = useState(localStorage.getItem("bgy_pjj_mode") === "1");
 
   const [editSekolah, setEditSekolah] = useState(false);
   const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
@@ -738,24 +740,34 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Mode QR Presensi */}
+      {/* Mode Presensi (QR + PJJ + Auto Hadir) */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-          <QrCode size={15} /> Mode QR Presensi
+        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[12px]">
+          <UserCheck size={15} /> Mode Presensi
         </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[0.78rem] font-semibold text-[var(--text)]">Scan Kartu QR</div>
-            <div className="text-[0.68rem] text-[var(--text-light)]">Tampilkan tombol scan QR di navbar dan halaman presensi</div>
+
+        {/* Mode QR */}
+        <div className="flex items-center justify-between py-[6px]">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <QrCode size={14} className="text-[#0ea5a0] mt-[2px] flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[0.78rem] font-semibold text-[var(--text)]">Mode QR</div>
+              <div className="text-[0.68rem] text-[var(--text-light)]">Scan kartu QR siswa dari navbar</div>
+            </div>
           </div>
           <button
             onClick={() => {
               const newVal = !qrMode;
               setQrMode(newVal);
               localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
-              toast(newVal ? "✅ Mode QR Presensi: ON" : "Mode QR Presensi: OFF");
+              if (newVal && pjjMode) {
+                setPjjMode(false);
+                localStorage.setItem("bgy_pjj_mode", "0");
+              }
+              window.dispatchEvent(new Event("storage"));
+              toast(newVal ? "✅ Mode QR: ON" : "Mode QR: OFF");
             }}
-            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
               qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
             }`}
           >
@@ -766,9 +778,82 @@ export function PengaturanPage() {
             />
           </button>
         </div>
-        <div className="text-[0.65rem] text-[var(--text-light)] mt-2">
-          Cetak kartu QR per siswa di menu Siswa, lalu scan untuk input presensi
+
+        <div className="h-px bg-[var(--border)] my-1" />
+
+        {/* Mode PJJ */}
+        <div className="flex items-center justify-between py-[6px]">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <Video size={14} className="text-[#8b5cf6] mt-[2px] flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[0.78rem] font-semibold text-[var(--text)]">Mode PJJ</div>
+              <div className="text-[0.68rem] text-[var(--text-light)]">Siswa absen sendiri lewat link (kelas online)</div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const newVal = !pjjMode;
+              setPjjMode(newVal);
+              localStorage.setItem("bgy_pjj_mode", newVal ? "1" : "0");
+              if (newVal && qrMode) {
+                setQrMode(false);
+                localStorage.setItem("bgy_qr_mode", "0");
+              }
+              window.dispatchEvent(new Event("storage"));
+              toast(newVal ? "✅ Mode PJJ: ON — kirim link ke siswa" : "Mode PJJ: OFF");
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
+              pjjMode ? "bg-[#8b5cf6]" : "bg-[var(--border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                pjjMode ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
+
+        <div className="h-px bg-[var(--border)] my-1" />
+
+        {/* Isi Hadir Otomatis */}
+        <div className="flex items-center justify-between py-[6px]">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <Check size={14} className="text-[#16a34a] mt-[2px] flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[0.78rem] font-semibold text-[var(--text)]">Isi Hadir Otomatis</div>
+              <div className="text-[0.68rem] text-[var(--text-light)]">Semua siswa auto "Hadir", edit yang tidak hadir</div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const newVal = !autoHadir;
+              setAutoHadir(newVal);
+              localStorage.setItem("bgy_auto_hadir", newVal ? "1" : "0");
+              toast(newVal ? "✅ Isi Hadir Otomatis: ON" : "Isi Hadir Otomatis: OFF");
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
+              autoHadir ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                autoHadir ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {qrMode && (
+          <div className="text-[0.65rem] text-[var(--text-light)] mt-2 pt-2 border-t border-[var(--border)]">
+            💡 Cetak kartu QR di menu Siswa, lalu scan dari navbar bawah
+          </div>
+        )}
+        {pjjMode && (
+          <div className="text-[0.65rem] text-[var(--text-light)] mt-2 pt-2 border-t border-[var(--border)]">
+            💡 Aktifkan "Absen Mandiri" per kelas di menu Siswa, lalu bagikan link ke siswa
+          </div>
+        )}
       </div>
 
       {/* Cloud Sync — Simplified (PRO only) */}
@@ -1073,36 +1158,6 @@ export function PengaturanPage() {
         </div>
       </div>
 
-      {/* Isi Hadir Otomatis */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
-        <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-          <UserCheck size={15} /> Presensi Otomatis
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[0.78rem] font-semibold text-[var(--text)]">Isi Hadir Otomatis</div>
-            <div className="text-[0.68rem] text-[var(--text-light)]">Semua siswa otomatis "Hadir", guru tinggal edit yang tidak hadir</div>
-          </div>
-          <button
-            onClick={() => {
-              const newVal = !autoHadir;
-              setAutoHadir(newVal);
-              localStorage.setItem("bgy_auto_hadir", newVal ? "1" : "0");
-              toast(newVal ? "✅ Isi Hadir Otomatis: ON" : "Isi Hadir Otomatis: OFF");
-            }}
-            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
-              autoHadir ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
-            }`}
-          >
-            <span
-              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
-                autoHadir ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
       {/* PRO Section */}
       {isPRO ? (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
@@ -1243,7 +1298,7 @@ export function PengaturanPage() {
 
           <div className="mb-3">
             <a
-              href="https://lynk.id/kreacy/o9g1wgrxg7gl"
+              href="https://kreacy.my.id/produk/8nonq6ro"
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full text-center py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer no-underline"
