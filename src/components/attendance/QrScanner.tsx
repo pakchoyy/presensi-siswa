@@ -80,10 +80,15 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
         scannerRef.current = scanner;
 
         const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
-        const boxSize = Math.min(viewport, 400);
+        const boxSize = Math.min(viewport * 0.75, 320);
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: boxSize, height: boxSize } },
+          {
+            fps: 25,
+            qrbox: { width: boxSize, height: boxSize },
+            aspectRatio: 1,
+            disableFlip: true,
+          },
           (text) => {
             if (cooldownRef.current) return;
             const parsed = parseQr(text);
@@ -91,11 +96,10 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
             cooldownRef.current = true;
             playBeep();
             if (pickerModeRef.current) {
-              // Tahan — tunggu guru pilih status
               setPendingScan(parsed);
             } else {
               onScanRef.current(parsed);
-              setTimeout(() => { cooldownRef.current = false; }, 1500);
+              setTimeout(() => { cooldownRef.current = false; }, 700);
             }
           },
           () => {}

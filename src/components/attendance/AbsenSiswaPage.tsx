@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, X } from "lucide-react";
 import { formatTanggalPanjang } from "@/lib/utils";
 
 type Info = {
@@ -112,6 +112,16 @@ export function AbsenSiswaPage({ token }: { token: string }) {
             </button>
           ))}
         </div>
+
+        {isDone && (
+          <button
+            onClick={() => { try { window.close(); } catch { /* ignore */ } }}
+            className="w-full mt-3 py-[11px] rounded-xl bg-[#0ea5a0] text-white font-bold text-[0.85rem] flex items-center justify-center gap-2 active:scale-95"
+          >
+            <X size={16} /> Selesai, Tutup Halaman
+          </button>
+        )}
+
         <div className="text-center text-xs text-[#94a3b8] mt-4">Link ini pribadi, jangan dishare ke teman</div>
       </div>
     </div>
