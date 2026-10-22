@@ -245,7 +245,7 @@ export function PresensiPage() {
 
   const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
 
-  const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
+  const handleQrScan = (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!sessionId) return;
     const student = payload.token
       ? students.find((s) => s.absenToken === payload.token)
@@ -261,7 +261,7 @@ export function PresensiPage() {
       setLastScanned({ nama: student.nama, status: `Sudah tercatat: ${labelMap[existing]}` });
       return;
     }
-    await attendanceService.ubahStatus(sessionId, student.id, status);
+    // Optimistic UI — update state dulu, simpan ke DB di background
     const updatedRecords = new Map(records);
     updatedRecords.set(student.id, {
       id: recordIdFrom(sessionId, student.id),
@@ -272,6 +272,7 @@ export function PresensiPage() {
     });
     setRecords(updatedRecords);
     setLastScanned({ nama: student.nama, status: `${labelMap[status]} ✓` });
+    attendanceService.ubahStatus(sessionId, student.id, status).catch(() => { /* ignore */ });
   };
 
   // Filter siswa untuk pencarian

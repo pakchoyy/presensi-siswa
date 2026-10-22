@@ -31,24 +31,28 @@ export function AbsenSiswaPage({ token }: { token: string }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const submit = async (status: string) => {
+  const submit = (status: string) => {
+    // Optimistic UI — langsung tampilkan "tercatat", submit di background
+    const prev = done;
+    setDone(status);
     setSubmitting(status);
-    try {
-      const r = await fetch("/api/absen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, status }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Gagal");
-      setDone(status);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Gagal";
-      setErr(msg);
-      setTimeout(() => setErr(""), 3000);
-    } finally {
-      setSubmitting(null);
-    }
+    fetch("/api/absen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, status }),
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        if (!ok) throw new Error(j.error || "Gagal");
+      })
+      .catch((e: unknown) => {
+        // Rollback kalau gagal
+        setDone(prev);
+        const msg = e instanceof Error ? e.message : "Gagal menyimpan";
+        setErr(msg);
+        setTimeout(() => setErr(""), 3000);
+      })
+      .finally(() => setSubmitting(null));
   };
 
   if (loading) {

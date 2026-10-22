@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PageName } from "@/types/enums";
 import {
@@ -16,6 +16,7 @@ import { studentRepo } from "@/repositories/dexie/student.repo";
 import { AttendanceStatus } from "@/types/enums";
 import { recordIdFrom } from "@/lib/utils";
 import { useToast } from "@/components/shared/Toast";
+import type { Student, AttendanceRecord } from "@/types/entities";
 
 interface NavItemData {
   page: PageName;
@@ -39,6 +40,11 @@ export function BottomNav() {
   const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
   const [pickerMode, setPickerMode] = useState(localStorage.getItem("bgy_qr_picker") === "1");
 
+  // Cache students + session in refs so each scan is instant (no DB roundtrip)
+  const studentsCache = useRef<Student[] | null>(null);
+  const sessionIdCache = useRef<number | null>(null);
+  const recordsCache = useRef<Map<number, AttendanceRecord>>(new Map());
+
   useEffect(() => {
     const handler = () => {
       setQrMode(localStorage.getItem("bgy_qr_mode") === "1");
@@ -48,13 +54,45 @@ export function BottomNav() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
+  // Prewarm cache when scanner opens
+  useEffect(() => {
+    if (!showQr || !activeClassroom || !tanggalAktif) return;
+    studentsCache.current = null;
+    sessionIdCache.current = null;
+    recordsCache.current = new Map();
+    (async () => {
+      try {
+        const [students, result] = await Promise.all([
+          studentRepo.getByClass(activeClassroom.id),
+          attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif),
+        ]);
+        studentsCache.current = students;
+        sessionIdCache.current = result.session.id;
+        recordsCache.current = new Map(result.records.map((r) => [r.siswaId, r]));
+      } catch { /* silent */ }
+    })();
+  }, [showQr, activeClassroom, tanggalAktif]);
+
   if (!setupSelesai) return null;
 
   const isPRO = teacher?.tier === "PRO";
 
   const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!activeClassroom || !tanggalAktif) return;
-    const students = await studentRepo.getByClass(activeClassroom.id);
+    // Fallback: kalau cache belum siap, load on-the-fly
+    let students = studentsCache.current;
+    let sessionId = sessionIdCache.current;
+    if (!students || !sessionId) {
+      const [s, result] = await Promise.all([
+        studentRepo.getByClass(activeClassroom.id),
+        attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif),
+      ]);
+      students = s;
+      sessionId = result.session.id;
+      studentsCache.current = students;
+      sessionIdCache.current = sessionId;
+      recordsCache.current = new Map(result.records.map((r) => [r.siswaId, r]));
+    }
     const student = payload.token
       ? students.find((s) => s.absenToken === payload.token)
       : students.find((s) => s.id === payload.studentId);
@@ -62,17 +100,19 @@ export function BottomNav() {
       setLastScanned({ nama: "Tidak ditemukan", status: "Siswa bukan dari kelas ini" });
       return;
     }
-    const result = await attendanceService.bukaSesiPresensi(activeClassroom.id, tanggalAktif);
     const labelMap: Record<string, string> = { H: "Hadir", S: "Sakit", I: "Izin", A: "Alpha", T: "Terlambat" };
     const status = (pickedStatus as AttendanceStatus) || AttendanceStatus.HADIR;
-    const existing = result.records.find((r) => r.siswaId === student.id);
+    const existing = recordsCache.current.get(student.id);
     if (existing && !pickedStatus) {
       setLastScanned({ nama: student.nama, status: `Sudah: ${labelMap[existing.status]}` });
       return;
     }
-    await attendanceService.ubahStatus(result.session.id, student.id, status);
+    // Optimistic UI — tampilkan feedback dulu, simpan di background
     setLastScanned({ nama: student.nama, status: `${labelMap[status]} ✓` });
     toast(`${student.nama} — ${labelMap[status]}`);
+    attendanceService.ubahStatus(sessionId, student.id, status).then((rec) => {
+      recordsCache.current.set(student.id, rec);
+    }).catch(() => { /* ignore */ });
   };
 
   const filteredItems = NAV_ITEMS.filter(item => {
