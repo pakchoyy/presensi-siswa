@@ -4,6 +4,7 @@ import { useToast } from "@/components/shared/Toast";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { Upload, X } from "lucide-react";
 import { Tier } from "@/types/enums";
+import { canUse } from "@/lib/features";
 
 interface LogoUploadProps {
   editable?: boolean;
@@ -14,7 +15,9 @@ export function LogoUpload({ editable = false }: LogoUploadProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const isPRO = teacher?.tier === Tier.PRO;
+  const tier = teacher?.tier || Tier.FREE;
+  const canCustomize = canUse("logo_report", tier);
+  const isPRO = canCustomize; // backward compat for existing branches below
 
   const logoUrl = school?.logoUrl || "/guru-cibisd2.png";
   const isCustomLogo = school?.logoUrl && school.logoUrl !== "/guru-cibisd2.png";

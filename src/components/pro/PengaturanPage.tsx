@@ -8,7 +8,9 @@ import { syncService } from "@/services/sync.service";
 import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { MAX_STUDENTS_FREE, PRO_PRICE } from "@/lib/constants";
+import { PRO_PRICE, PLUS_PRICE } from "@/lib/constants";
+import { canUse, LIMITS } from "@/lib/features";
+import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { trackDevice } from "@/contexts/AuthContext";
@@ -66,7 +68,11 @@ export function PengaturanPage() {
   const { toast } = useToast();
   const { isCloudConnected, cloudUser, setCloudEmail, clearCloudEmail } = useCloudAuth();
 
-  const isPRO = teacher?.tier === Tier.PRO;
+  const tier = teacher?.tier || Tier.FREE;
+  const isPRO = tier === Tier.PRO;
+  const canQrMode = canUse("qr_mode", tier);
+  const canPjjMode = canUse("pjj_mode", tier);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [kode, setKode] = useState("");
@@ -756,35 +762,44 @@ export function PengaturanPage() {
               <div className="text-[0.68rem] text-[var(--text-light)]">Scan kartu QR siswa dari navbar</div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              const newVal = !qrMode;
-              setQrMode(newVal);
-              localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
-              if (newVal) {
-                localStorage.removeItem("bgy_qr_hint_seen");
-                if (pjjMode) {
-                  setPjjMode(false);
-                  localStorage.setItem("bgy_pjj_mode", "0");
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!canQrMode && (
+              <span className="text-[0.56rem] px-[6px] py-[1px] rounded-full font-bold bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/30">PRO</span>
+            )}
+            <button
+              onClick={() => {
+                if (!canQrMode) {
+                  setUpgradeReason("Mode QR cuma tersedia untuk tier PRO.");
+                  return;
                 }
-                if (autoHadir) {
-                  setAutoHadir(false);
-                  localStorage.setItem("bgy_auto_hadir", "0");
+                const newVal = !qrMode;
+                setQrMode(newVal);
+                localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
+                if (newVal) {
+                  localStorage.removeItem("bgy_qr_hint_seen");
+                  if (pjjMode) {
+                    setPjjMode(false);
+                    localStorage.setItem("bgy_pjj_mode", "0");
+                  }
+                  if (autoHadir) {
+                    setAutoHadir(false);
+                    localStorage.setItem("bgy_auto_hadir", "0");
+                  }
                 }
-              }
-              window.dispatchEvent(new Event("storage"));
-              toast(newVal ? "✅ Mode QR: ON — Auto Hadir dimatikan, bisa dinyalakan lagi" : "Mode QR: OFF");
-            }}
-            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
-              qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"
-            }`}
-          >
-            <span
-              className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
-                qrMode ? "translate-x-5" : "translate-x-0"
+                window.dispatchEvent(new Event("storage"));
+                toast(newVal ? "✅ Mode QR: ON — Auto Hadir dimatikan, bisa dinyalakan lagi" : "Mode QR: OFF");
+              }}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+                !canQrMode ? "opacity-40 bg-[var(--border)]" : (qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]")
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`absolute top-[2px] left-[2px] w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                  qrMode ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Sub-opsi QR: Pilih Status Saat Scan */}
@@ -826,8 +841,16 @@ export function PengaturanPage() {
               <div className="text-[0.68rem] text-[var(--text-light)]">Siswa absen sendiri lewat link (kelas online)</div>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!canPjjMode && (
+              <span className="text-[0.56rem] px-[6px] py-[1px] rounded-full font-bold bg-[#0ea5a0]/15 text-[#0ea5a0] border border-[#0ea5a0]/30">PLUS+</span>
+            )}
           <button
             onClick={() => {
+              if (!canPjjMode) {
+                setUpgradeReason("Mode PJJ tersedia untuk tier PLUS atau PRO.");
+                return;
+              }
               const newVal = !pjjMode;
               setPjjMode(newVal);
               localStorage.setItem("bgy_pjj_mode", newVal ? "1" : "0");
@@ -841,8 +864,8 @@ export function PengaturanPage() {
               window.dispatchEvent(new Event("storage"));
               toast(newVal ? "✅ Mode PJJ: ON — kirim link ke siswa" : "Mode PJJ: OFF");
             }}
-            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${
-              pjjMode ? "bg-[#8b5cf6]" : "bg-[var(--border)]"
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+              !canPjjMode ? "opacity-40 bg-[var(--border)]" : (pjjMode ? "bg-[#8b5cf6]" : "bg-[var(--border)]")
             }`}
           >
             <span
@@ -851,6 +874,7 @@ export function PengaturanPage() {
               }`}
             />
           </button>
+          </div>
         </div>
 
         <div className="h-px bg-[var(--border)] my-1" />
@@ -1446,7 +1470,7 @@ export function PengaturanPage() {
               <tbody>
                 {[
                   { fitur: "Bisa kelola kelas", free: "1 Kelas", pro: "Semua Kelas" },
-                  { fitur: "Jumlah siswa per kelas", free: `${MAX_STUDENTS_FREE} siswa`, pro: "Unlimited" },
+                  { fitur: "Jumlah siswa per kelas", free: `${LIMITS[Tier.FREE].siswaPerKelas} siswa`, pro: "Unlimited" },
                   { fitur: "Buka di HP & laptop", free: "Tidak", pro: "Bisa" },
                   { fitur: "Data aman di internet", free: "Tidak", pro: "Bisa" },
                   { fitur: "Atur kalender sendiri", free: "Lihat saja", pro: "Bisa atur" },
@@ -1549,6 +1573,10 @@ export function PengaturanPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {upgradeReason && (
+        <UpgradePrompt reason={upgradeReason} currentTier={tier} onClose={() => setUpgradeReason(null)} onGoToUpgrade={() => { setUpgradeReason(null); setActivePage(PageName.UPGRADE); }} />
       )}
     </div>
   );

@@ -11,6 +11,15 @@ export interface ActivationResult {
   shouldAutoRegister?: boolean;
   cloudEmail?: string;
   tanggalBerakhir?: number;
+  tier?: Tier;
+}
+
+function tierFromKode(kode: string): Tier {
+  const upper = (kode || "").toUpperCase();
+  if (upper.includes("-PLUS-")) return Tier.PLUS;
+  if (upper.includes("-PRO-")) return Tier.PRO;
+  // Legacy BGY-PS-XXXX fallback — treat as PRO (back-compat)
+  return Tier.PRO;
 }
 
 async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; data: any }> {
@@ -25,10 +34,10 @@ async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: bool
 
 export const licenseService = {
   /** Cek lisensi aktif milik email lewat server (tabel licenses tidak dibaca langsung dari browser). */
-  async lookupByEmail(email: string): Promise<{ found: boolean; tanggalBerakhir: number | null }> {
+  async lookupByEmail(email: string): Promise<{ found: boolean; tier: Tier | null; tanggalBerakhir: number | null }> {
     const { ok, data } = await callLicenseApi({ action: "status", email });
     if (!ok) throw new Error(data.error || "Gagal cek lisensi");
-    return { found: !!data.found, tanggalBerakhir: data.tanggalBerakhir ?? null };
+    return { found: !!data.found, tier: (data.tier as Tier) ?? null, tanggalBerakhir: data.tanggalBerakhir ?? null };
   },
 
   async validateKode(email: string, kode: string): Promise<ActivationResult> {
@@ -46,12 +55,12 @@ export const licenseService = {
       return { success: false, message: "Email tidak valid" };
     }
     if (!kode || kode.trim().length < 8) {
-      return { success: false, message: "Format kode: BGY-PS-XXXX" };
+      return { success: false, message: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" };
     }
 
     const existing = await licenseRepo.getActive(guruId);
     if (existing) {
-      return { success: false, message: "Kamu sudah memiliki lisensi PRO aktif" };
+      return { success: false, message: "Kamu sudah memiliki lisensi aktif" };
     }
 
     const upperKode = kode.toUpperCase().trim();
@@ -64,19 +73,21 @@ export const licenseService = {
       }
       const now = Date.now();
       const tanggalBerakhir: number = data.tanggalBerakhir;
+      const tier: Tier = (data.tier as Tier) || tierFromKode(upperKode);
 
       const license_: License = {
         id: generateId(),
         guruId,
         emailAktivasi: email,
         kodeLisensi: upperKode,
+        tier,
         tanggalAktivasi: now,
         tanggalBerakhir,
         statusLisensi: "Aktif",
       };
 
       await licenseRepo.save(license_);
-      await teacherRepo.updateTier(guruId, Tier.PRO);
+      await teacherRepo.updateTier(guruId, tier);
 
       const teacher = await teacherRepo.get();
       if (teacher) {
@@ -87,9 +98,10 @@ export const licenseService = {
 
       return {
         success: true,
-        message: "✅ Lisensi PRO berhasil diaktivasi!",
+        message: `✅ Lisensi ${tier} berhasil diaktivasi!`,
         cloudEmail: normalizedEmail,
         tanggalBerakhir,
+        tier,
       };
     } catch (err) {
       return { success: false, message: "Gagal terhubung ke server. Periksa koneksi internet." };
@@ -111,6 +123,7 @@ export const licenseService = {
 
   async getStatus(guruId: number): Promise<{
     aktif: boolean;
+    tier?: Tier;
     berakhir?: string;
     daysRemaining?: number;
     isExpiring?: boolean;
@@ -131,6 +144,7 @@ export const licenseService = {
 
     return {
       aktif: true,
+      tier: license.tier || Tier.PRO,
       berakhir: formatDate(license.tanggalBerakhir),
       daysRemaining,
       isExpiring: daysRemaining <= 7,
@@ -141,7 +155,7 @@ export const licenseService = {
 
   async renew(guruId: number, email: string, kode: string): Promise<ActivationResult> {
     if (!kode || kode.trim().length < 8) {
-      return { success: false, message: "Format kode: BGY-PS-XXXX" };
+      return { success: false, message: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" };
     }
 
     const upperKode = kode.toUpperCase().trim();
@@ -153,6 +167,7 @@ export const licenseService = {
         return { success: false, message: data.error || "Kode perpanjangan tidak valid atau sudah digunakan" };
       }
       const newExpiry: number = data.tanggalBerakhir;
+      const tier: Tier = (data.tier as Tier) || tierFromKode(upperKode);
 
       const license = await licenseRepo.getActive(guruId);
       if (license) {
@@ -160,10 +175,12 @@ export const licenseService = {
           ...license,
           tanggalBerakhir: newExpiry,
           kodeLisensi: upperKode,
+          tier,
         });
       }
+      await teacherRepo.updateTier(guruId, tier);
 
-      return { success: true, message: "✅ Lisensi berhasil diperpanjang 1 tahun!", tanggalBerakhir: newExpiry };
+      return { success: true, message: `✅ Lisensi ${tier} berhasil diperpanjang 1 semester!`, tanggalBerakhir: newExpiry, tier };
     } catch {
       return { success: false, message: "Gagal terhubung. Periksa internet." };
     }

@@ -15,8 +15,9 @@ import type { Student, Classroom } from "@/types/entities";
 import { inisial, generateId, timestamp } from "@/lib/utils";
 import { siswaToImportResult } from "@/services/import.service";
 import type { ImportResult } from "@/services/import.service";
-import { Tier } from "@/types/enums";
-import { MAX_STUDENTS_FREE, MAX_KELAS_FREE } from "@/lib/constants";
+import { Tier, PageName } from "@/types/enums";
+import { LIMITS, canUse } from "@/lib/features";
+import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { getCache, setCache, clearCache } from "@/lib/cache";
 import { generateQrCardsPdf } from "@/lib/qr-card";
 
@@ -50,7 +51,11 @@ function formatKelasLabel(namaKelas: string): string {
 
 export function SiswaPage() {
   const { activeClassroom, classrooms, teacher, school, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
-  const isPRO = teacher?.tier === Tier.PRO;
+  const tier = teacher?.tier || Tier.FREE;
+  const isPRO = tier === Tier.PRO;
+  const canBulkUpdate = canUse("bulk_update", tier);
+  const limits = LIMITS[tier];
+  const [upgradePrompt, setUpgradePrompt] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [view, setView] = useState<"kelas" | "detail">(classrooms.length <= 1 ? "detail" : "kelas");
@@ -193,8 +198,8 @@ export function SiswaPage() {
       return;
     }
     
-    if (!isPRO && students.length >= MAX_STUDENTS_FREE) {
-      toast(`⚠️ Limit FREE: maksimal ${MAX_STUDENTS_FREE} siswa. Upgrade ke PRO untuk unlimited siswa.`);
+    if (students.length >= limits.siswaPerKelas) {
+      setUpgradePrompt(`Batas tier ${tier}: maksimal ${limits.siswaPerKelas} siswa per kelas.`);
       return;
     }
     
@@ -231,15 +236,17 @@ export function SiswaPage() {
     const targetKelas = selectedKelas || activeClassroom;
     if (!targetKelas) return;
 
-    if (!isPRO) {
+    if (!isFinite(limits.siswaPerKelas)) {
+      // PRO: no cap
+    } else {
       const totalAfterImport = students.length + result.students.length;
-      if (totalAfterImport > MAX_STUDENTS_FREE) {
-        const canImport = MAX_STUDENTS_FREE - students.length;
+      if (totalAfterImport > limits.siswaPerKelas) {
+        const canImport = limits.siswaPerKelas - students.length;
         if (canImport <= 0) {
-          toast(`⚠️ Kelas sudah penuh (${MAX_STUDENTS_FREE} siswa). Upgrade ke PRO untuk unlimited siswa.`);
+          setUpgradePrompt(`Kelas sudah penuh (${limits.siswaPerKelas} siswa untuk tier ${tier}).`);
           return;
         }
-        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit FREE: ${MAX_STUDENTS_FREE} siswa). Upgrade ke PRO untuk unlimited.`);
+        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit ${tier}: ${limits.siswaPerKelas}).`);
         result.students = result.students.slice(0, canImport);
       }
     }
@@ -247,8 +254,8 @@ export function SiswaPage() {
     // Get updated classrooms list first
     let updatedClassrooms = await classroomRepo.getAll();
     
-    // Auto-create classes from Excel if they exist (PRO only)
-    if (result.classes.length > 0 && isPRO) {
+    // Auto-create classes from Excel if they exist (PLUS/PRO)
+    if (result.classes.length > 0 && canBulkUpdate) {
       const ay = await academicYearRepo.getActive();
       if (ay && teacher) {
         for (const namaKelas of result.classes) {
@@ -272,7 +279,7 @@ export function SiswaPage() {
     }
     
     // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
-    const newStudents = siswaToImportResult(result, targetKelas.id, isPRO ? updatedClassrooms : undefined);
+    const newStudents = siswaToImportResult(result, targetKelas.id, canBulkUpdate ? updatedClassrooms : undefined);
     
     // addOrRestore per siswa: siswa yang timbul dari import lama (setelah soft-delete)
     // dihidupkan lagi, bukan dibuat baris baru yang memutus riwayat absensi.
@@ -298,8 +305,8 @@ export function SiswaPage() {
     
     toast(`✅ Import berhasil! ${summary}`);
     
-    if (!isPRO && result.classes.length > 0) {
-      setTimeout(() => toast('💡 Upgrade ke PRO untuk auto-assign siswa ke kelas yang sesuai'), 1000);
+    if (!canBulkUpdate && result.classes.length > 0) {
+      setTimeout(() => toast('💡 Upgrade ke PLUS/PRO untuk auto-assign siswa ke kelas yang sesuai'), 1000);
     }
   };
 
@@ -376,11 +383,11 @@ export function SiswaPage() {
         return;
       }
 
-      // Limit FREE: hanya 1 kelas
-      if (!isPRO) {
+      // Limit kelas sesuai tier
+      if (isFinite(limits.kelas)) {
         const activeClassCount = classrooms.filter(c => c.statusAktif !== false).length;
-        if (activeClassCount >= MAX_KELAS_FREE) {
-          toast(`⚠️ Limit FREE: maksimal ${MAX_KELAS_FREE} kelas. Upgrade ke PRO untuk unlimited kelas.`);
+        if (activeClassCount >= limits.kelas) {
+          setUpgradePrompt(`Batas tier ${tier}: maksimal ${limits.kelas} kelas.`);
           setAddingClass(false);
           return;
         }
@@ -805,8 +812,8 @@ export function SiswaPage() {
       <div className="text-[0.85rem] font-bold mb-1">{formatKelasLabel(selectedKelas?.nama || "")}</div>
       <div className="text-[0.7rem] text-[var(--text-light)] mb-3">
         {students.length} siswa terdaftar
-        {!isPRO && <span className="text-[var(--text-light)]"> • Limit: {students.length}/{MAX_STUDENTS_FREE}</span>}
-        {!isPRO && students.length >= MAX_STUDENTS_FREE && <span className="text-[#b45309] font-semibold"> • Penuh</span>}
+        {isFinite(limits.siswaPerKelas) && <span className="text-[var(--text-light)]"> • Limit: {students.length}/{limits.siswaPerKelas}</span>}
+        {isFinite(limits.siswaPerKelas) && students.length >= limits.siswaPerKelas && <span className="text-[#b45309] font-semibold"> • Penuh</span>}
       </div>
 
       {/* Absen Mandiri (trial 1-2 guru) */}
@@ -925,7 +932,7 @@ export function SiswaPage() {
         </div>
       )}
 
-      {isPRO && showImportUpdate && (selectedKelas || activeClassroom) && (
+      {canBulkUpdate && showImportUpdate && (selectedKelas || activeClassroom) && (
         <div className="mb-3">
           <ImportUpdateExcel
             kelasId={(selectedKelas || activeClassroom)!.id}
@@ -935,7 +942,7 @@ export function SiswaPage() {
         </div>
       )}
 
-      {isPRO && !showImportUpdate && (
+      {canBulkUpdate && !showImportUpdate && (
         <div className="mb-3">
           <button
             onClick={() => setShowImportUpdate(true)}
@@ -1211,6 +1218,10 @@ export function SiswaPage() {
             </div>
           </div>
         </>
+      )}
+
+      {upgradePrompt && (
+        <UpgradePrompt reason={upgradePrompt} currentTier={tier} onClose={() => setUpgradePrompt(null)} onGoToUpgrade={() => { setUpgradePrompt(null); setActivePage(PageName.UPGRADE); }} />
       )}
     </div>
   );

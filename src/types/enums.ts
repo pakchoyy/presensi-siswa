@@ -8,6 +8,7 @@ export enum AttendanceStatus {
 
 export enum Tier {
   FREE = "FREE",
+  PLUS = "PLUS",
   PRO = "PRO",
 }
 

@@ -86,6 +86,7 @@ export interface License {
   guruId: number;
   emailAktivasi: string;
   kodeLisensi: string;
+  tier?: Tier;
   tanggalAktivasi: number;
   tanggalBerakhir: number;
   statusLisensi: "Aktif" | "Kedaluwarsa" | "Dibatalkan";

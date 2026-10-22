@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Tier } from "@/types/enums";
+import { trialDaysRemaining } from "@/lib/features";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { DropdownMenu } from "@/components/layout/DropdownMenu";
 import { SyncIndicator } from "@/components/layout/SyncIndicator";
@@ -56,15 +57,25 @@ export function Header() {
           </div>
         </div>
 
-        {setupSelesai && (
-          <span className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 ${
-            teacher?.tier === Tier.PRO
-              ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
-              : "bg-white/10 text-white/60 border border-white/20"
-          }`}>
-            {teacher?.tier === Tier.PRO ? "PRO" : "FREE"}
-          </span>
-        )}
+        {setupSelesai && (() => {
+          const tier = teacher?.tier || Tier.FREE;
+          const trialDays = tier === Tier.FREE ? trialDaysRemaining() : 0;
+          const label = tier === Tier.PRO ? "PRO" : tier === Tier.PLUS ? "PLUS" : trialDays > 0 ? `FREE ${trialDays}d` : "FREE";
+          const warn = tier === Tier.FREE && trialDays <= 7;
+          return (
+            <span className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 ${
+              tier === Tier.PRO
+                ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
+                : tier === Tier.PLUS
+                  ? "bg-[#0ea5a0]/20 text-[#5eead4] border border-[#0ea5a0]/30"
+                  : warn
+                    ? "bg-[#dc2626]/25 text-[#fecaca] border border-[#dc2626]/40"
+                    : "bg-white/10 text-white/60 border border-white/20"
+            }`}>
+              {label}
+            </span>
+          );
+        })()}
 
         <div className="flex items-center gap-[5px] flex-shrink-0 relative">
           <SyncIndicator />

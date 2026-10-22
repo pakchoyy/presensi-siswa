@@ -26,8 +26,10 @@ import { PengaturanPage } from "@/components/pro/PengaturanPage";
 import { UpgradePage } from "@/components/pro/UpgradePage";
 import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
-import { PageName } from "@/types/enums";
+import { PageName, Tier } from "@/types/enums";
 import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
+import { ForceUpgradeOverlay } from "@/components/pro/ForceUpgradeOverlay";
+import { isTrialExpired, trialDaysRemaining } from "@/lib/features";
 
 function getAbsenToken(): string | null {
   const m = window.location.pathname.match(/^\/s\/([^/]+)/);
@@ -92,8 +94,12 @@ function PageContent() {
 }
 
 function AppContent() {
-  const { setupSelesai } = useApp();
+  const { setupSelesai, teacher, activePage, setActivePage } = useApp();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const tier = teacher?.tier || Tier.FREE;
+  const trialOver = setupSelesai && isTrialExpired(tier);
+  // Trigger install_date save on first render
+  useEffect(() => { trialDaysRemaining(); }, []);
   
   // Enable auto-sync for cloud-connected users
   useAutoSync();
@@ -144,6 +150,9 @@ function AppContent() {
       )}
       <BottomNav />
       {setupSelesai && <InstallPrompt />}
+      {trialOver && activePage !== PageName.UPGRADE && activePage !== PageName.PENGATURAN && (
+        <ForceUpgradeOverlay onGoToUpgrade={() => setActivePage(PageName.UPGRADE)} />
+      )}
     </>
   );
 }

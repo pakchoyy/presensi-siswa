@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { PRO_PRICE } from "@/lib/constants";
+import { PRO_PRICE, PLUS_PRICE, KREACY_PLUS_URL, KREACY_PRO_URL, LICENSE_DURATION_DAYS } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import { syncService } from "@/services/sync.service";
@@ -15,9 +15,8 @@ import Confetti from "react-confetti";
 import { PageName } from "@/types/enums";
 
 export function UpgradePage() {
-  const { teacher, refreshTeacher, setActivePage } = useApp();
+  const { teacher, refreshTeacher } = useApp();
   const { toast } = useToast();
-  const isPRO = teacher?.tier === "PRO";
   const manfaat = licenseService.getManfaat();
 
   const [email, setEmail] = useState("");
@@ -69,12 +68,14 @@ export function UpgradePage() {
 
       if (licenseData) {
         const now = Date.now();
-        const expiry = licenseData.tanggal_berakhir || (now + 365 * 24 * 60 * 60 * 1000);
+        const expiry = licenseData.tanggal_berakhir || (now + LICENSE_DURATION_DAYS * 24 * 60 * 60 * 1000);
+        const resolvedTier: Tier = (lookup.tier as Tier) || Tier.PRO;
         const license: License = {
           id: generateId(),
           guruId: teacher.id,
           emailAktivasi: normalizedEmail,
           kodeLisensi: "EMAIL-VERIFIED",
+          tier: resolvedTier,
           tanggalAktivasi: now,
           tanggalBerakhir: expiry,
           statusLisensi: "Aktif",
@@ -83,7 +84,7 @@ export function UpgradePage() {
 
         await teacherRepo.update(teacher.id, {
           ...teacher,
-          tier: Tier.PRO,
+          tier: resolvedTier,
           email: normalizedEmail,
         });
 
@@ -110,19 +111,21 @@ export function UpgradePage() {
           .eq("email", normalizedEmail)
           .maybeSingle();
 
-        if (profile && profile.tier === "PRO") {
+        if (profile && (profile.tier === "PRO" || profile.tier === "PLUS")) {
           const now = Date.now();
+          const resolvedTier: Tier = profile.tier === "PLUS" ? Tier.PLUS : Tier.PRO;
           const license: License = {
             id: generateId(),
             guruId: teacher.id,
             emailAktivasi: normalizedEmail,
             kodeLisensi: "EMAIL-VERIFIED",
+            tier: resolvedTier,
             tanggalAktivasi: now,
-            tanggalBerakhir: now + 365 * 24 * 60 * 60 * 1000,
+            tanggalBerakhir: now + LICENSE_DURATION_DAYS * 24 * 60 * 60 * 1000,
             statusLisensi: "Aktif",
           };
           await licenseRepo.save(license);
-          await teacherRepo.update(teacher.id, { ...teacher, tier: Tier.PRO, email: normalizedEmail });
+          await teacherRepo.update(teacher.id, { ...teacher, tier: resolvedTier, email: normalizedEmail });
           await refreshTeacher();
 
           localStorage.setItem("presensi_cloud_email", normalizedEmail);
@@ -137,7 +140,7 @@ export function UpgradePage() {
             window.location.reload();
           }, 3000);
         } else {
-          setErrorMessage("Email belum terdaftar sebagai PRO. Silakan hubungi admin via WhatsApp.");
+          setErrorMessage("Email belum terdaftar sebagai PLUS/PRO. Silakan hubungi admin via WhatsApp.");
         }
       }
     } catch (error) {
@@ -148,7 +151,8 @@ export function UpgradePage() {
     }
   };
 
-  if (isPRO) {
+  const currentTier = teacher?.tier as Tier | undefined;
+  if (currentTier === Tier.PRO) {
     return (
       <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] text-center">
@@ -164,26 +168,45 @@ export function UpgradePage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
-      <div className="bg-gradient-to-br from-[#0ea5a0] to-[#2d6a7f] rounded-2xl p-6 mb-3 text-white text-center">
-        <ArrowUpCircle size={48} className="mx-auto mb-3 opacity-90" />
-        <h2 className="text-[1.3rem] font-extrabold mb-2">Upgrade ke PRO</h2>
-        <p className="text-[0.85rem] opacity-90 mb-3">
-          Semua fitur premium, selamanya
+      <div className="bg-gradient-to-br from-[#0ea5a0] to-[#2d6a7f] rounded-2xl p-5 mb-3 text-white text-center">
+        <ArrowUpCircle size={40} className="mx-auto mb-2 opacity-90" />
+        <h2 className="text-[1.2rem] font-extrabold mb-1">Pilih Paket</h2>
+        <p className="text-[0.78rem] opacity-85 mb-3">
+          Bayar per semester (6 bulan)
         </p>
-        <div className="text-[2.5rem] font-extrabold mb-4">{PRO_PRICE}</div>
-        <a
-          href="https://kreacy.my.id/produk/8nonq6ro"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block w-full max-w-[280px] py-3 rounded-xl bg-white text-[#0ea5a0] font-extrabold text-[0.95rem] no-underline hover:bg-white/90 transition-all"
-        >
-          🛒 Beli Sekarang
-        </a>
+        <div className="grid grid-cols-2 gap-2">
+          {currentTier !== Tier.PLUS && (
+            <a
+              href={KREACY_PLUS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-white/15 rounded-xl p-3 no-underline border-2 border-white/30 hover:bg-white/25 transition-all"
+            >
+              <div className="text-[0.75rem] font-bold mb-1 opacity-90">PLUS</div>
+              <div className="text-[1.3rem] font-extrabold mb-1">{PLUS_PRICE.split("/")[0]}</div>
+              <div className="text-[0.6rem] opacity-80 mb-2">/semester</div>
+              <div className="text-[0.65rem] opacity-90 leading-tight mb-2">4 kelas × 25 siswa + Cloud sync + PJJ</div>
+              <div className="bg-white text-[#0ea5a0] py-1.5 rounded-lg text-[0.78rem] font-bold">Beli PLUS</div>
+            </a>
+          )}
+          <a
+            href={KREACY_PRO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block bg-[#f59e0b]/25 rounded-xl p-3 no-underline border-2 border-[#f59e0b]/50 hover:bg-[#f59e0b]/35 transition-all"
+          >
+            <div className="text-[0.75rem] font-bold mb-1 opacity-90 flex items-center justify-center gap-1"><Crown size={13}/> PRO</div>
+            <div className="text-[1.3rem] font-extrabold mb-1">{PRO_PRICE.split("/")[0]}</div>
+            <div className="text-[0.6rem] opacity-80 mb-2">/semester</div>
+            <div className="text-[0.65rem] opacity-90 leading-tight mb-2">Unlimited + Mode QR + Backup manual + Priority</div>
+            <div className="bg-[#f59e0b] text-white py-1.5 rounded-lg text-[0.78rem] font-bold">Beli PRO</div>
+          </a>
+        </div>
         <button
           onClick={handleWA}
-          className="w-full max-w-[280px] mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-white/30 text-white font-bold text-[0.85rem] hover:bg-white/10 transition-all bg-transparent cursor-pointer mx-auto"
+          className="w-full max-w-[280px] mt-3 flex items-center justify-center gap-2 py-[8px] rounded-xl border-[1.5px] border-white/30 text-white font-bold text-[0.78rem] hover:bg-white/10 transition-all bg-transparent cursor-pointer mx-auto"
         >
-          <MessageCircle size={16} />
+          <MessageCircle size={14} />
           <span>Atau Chat WhatsApp</span>
         </button>
       </div>
@@ -269,17 +292,23 @@ export function UpgradePage() {
         <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-2">
           <ShieldCheck size={14} className="text-[#0ea5a0]" /> Perbandingan
         </div>
-        <div className="grid grid-cols-2 gap-2 text-[0.7rem]">
+        <div className="grid grid-cols-3 gap-2 text-[0.65rem]">
           <div className="bg-[var(--input-bg)] rounded-lg p-2">
             <div className="font-bold mb-1">FREE</div>
             <div className="text-[var(--text-light)] leading-[1.6]">
-              • 1 kelas<br />• 12 siswa<br />• Offline<br />• Rekap & export
+              • Trial 30 hari<br />• 1 kelas<br />• 10 siswa<br />• Offline
             </div>
           </div>
           <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-2 border border-[#0ea5a0]/20">
-            <div className="font-bold text-[#0ea5a0] mb-1">PRO</div>
+            <div className="font-bold text-[#0ea5a0] mb-1">PLUS</div>
             <div className="text-[var(--text-light)] leading-[1.6]">
-              • Unlimited kelas<br />• Unlimited siswa<br />• Cloud sync<br />• Multi device
+              • 4 kelas × 25 siswa<br />• Cloud sync<br />• Logo laporan<br />• PJJ
+            </div>
+          </div>
+          <div className="bg-[rgba(245,158,11,0.08)] rounded-lg p-2 border border-[#f59e0b]/30">
+            <div className="font-bold text-[#f59e0b] mb-1">PRO</div>
+            <div className="text-[var(--text-light)] leading-[1.6]">
+              • Unlimited<br />• Mode QR<br />• Backup manual<br />• Priority support
             </div>
           </div>
         </div>

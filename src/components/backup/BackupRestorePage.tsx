@@ -8,13 +8,17 @@ import {
   type CloudBackup,
 } from "@/services/backup.service";
 import { Tier } from "@/types/enums";
+import { canUse } from "@/lib/features";
 import { Database, Download, Upload, RotateCcw, AlertTriangle, Cloud, Lock } from "lucide-react";
 
 export function BackupRestorePage() {
   const { refreshClassrooms, teacher } = useApp();
   const { cloudEmail } = useCloudAuth();
   const { toast } = useToast();
-  const isPRO = teacher?.tier === Tier.PRO;
+  const tier = teacher?.tier || Tier.FREE;
+  const canCloud = canUse("cloud_sync", tier);
+  const canManualBackup = canUse("backup_manual", tier);
+  const isPRO = canManualBackup; // backward compat
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoreData, setRestoreData] = useState<any>(null);
@@ -26,12 +30,12 @@ export function BackupRestorePage() {
   const [loadingCloud, setLoadingCloud] = useState(false);
 
   const loadCloudBackups = useCallback(async () => {
-    if (!isPRO || !cloudEmail) return;
+    if (!canCloud || !cloudEmail) return;
     setLoadingCloud(true);
     const list = await listCloudBackups(cloudEmail);
     setCloudBackups(list);
     setLoadingCloud(false);
-  }, [isPRO, cloudEmail]);
+  }, [canCloud, cloudEmail]);
 
   useEffect(() => { loadCloudBackups(); }, [loadCloudBackups]);
 
@@ -126,8 +130,8 @@ export function BackupRestorePage() {
         </button>
       </div>
 
-      {/* Backup Cloud (PRO) */}
-      {isPRO ? (
+      {/* Backup Cloud (PLUS/PRO) */}
+      {canCloud ? (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3" style={{ borderColor: "rgba(14,165,160,.3)" }}>
           <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
             <Cloud size={15} className="text-[#0ea5a0]" /> Backup Cloud (PRO)
@@ -169,7 +173,7 @@ export function BackupRestorePage() {
             <Lock size={11} className="text-[#b45309]" />
           </div>
           <p className="text-[var(--text-light)] text-[0.72rem] mb-2">
-            Backup cloud tersedia untuk pengguna PRO. Upgrade untuk menyimpan data aman di cloud.
+            Backup cloud tersedia untuk tier PLUS atau PRO. Upgrade untuk menyimpan data aman di cloud.
           </p>
         </div>
       )}
