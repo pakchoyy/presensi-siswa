@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { PageName } from "@/types/enums";
+import { PageName, Tier } from "@/types/enums";
 import {
   ClipboardCheck,
   BarChart3,
   Users,
   Calendar,
-  ArrowUpCircle,
+  Settings,
   QrCode,
   type LucideIcon,
 } from "lucide-react";
@@ -14,8 +14,8 @@ import { QrScanner } from "@/components/attendance/QrScanner";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { AttendanceStatus } from "@/types/enums";
-import { recordIdFrom } from "@/lib/utils";
 import { useToast } from "@/components/shared/Toast";
+import { canUse } from "@/lib/features";
 import type { Student, AttendanceRecord } from "@/types/entities";
 
 interface NavItemData {
@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItemData[] = [
   { page: PageName.REKAP, label: "Rekap", icon: BarChart3 },
   { page: PageName.SISWA, label: "Siswa", icon: Users },
   { page: PageName.KALENDER, label: "Kalender", icon: Calendar },
-  { page: PageName.UPGRADE, label: "Upgrade", icon: ArrowUpCircle },
+  { page: PageName.PENGATURAN, label: "Pengaturan", icon: Settings },
 ];
 
 export function BottomNav() {
@@ -75,7 +75,8 @@ export function BottomNav() {
 
   if (!setupSelesai) return null;
 
-  const isPRO = teacher?.tier === "PRO";
+  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const canScan = canUse("qr_mode", tier);
 
   const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!activeClassroom || !tanggalAktif) return;
@@ -115,11 +116,7 @@ export function BottomNav() {
     }).catch(() => { /* ignore */ });
   };
 
-  const filteredItems = NAV_ITEMS.filter(item => {
-    if (item.page === PageName.UPGRADE && isPRO) return false;
-    return true;
-  });
-
+  const filteredItems = NAV_ITEMS;
   const midIndex = Math.floor(filteredItems.length / 2);
 
   return (
@@ -130,14 +127,13 @@ export function BottomNav() {
       >
         {filteredItems.map((item, i) => {
           const isActive = activePage === item.page;
-          const isUpgrade = item.page === PageName.UPGRADE;
 
           const buttons = [(
             <button
               key={item.page}
               onClick={() => setActivePage(item.page)}
               className={`flex-1 flex flex-col items-center gap-[2px] py-[6px] px-[2px] rounded-[10px] cursor-pointer bg-transparent border-none font-[inherit] ${
-                isActive ? (isUpgrade ? "text-[#f59e0b]" : "text-[#0ea5a0]") : "text-[var(--text-light)]"
+                isActive ? "text-[#0ea5a0]" : "text-[var(--text-light)]"
               }`}
             >
               <item.icon size={19} />
@@ -145,7 +141,7 @@ export function BottomNav() {
             </button>
           )];
 
-          if (qrMode && i === midIndex) {
+          if (qrMode && canScan && i === midIndex) {
             buttons.unshift(
               <button
                 key="qr-scan"

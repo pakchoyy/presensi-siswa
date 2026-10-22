@@ -288,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await supabase.auth.signOut();
+    try { localStorage.setItem("bgy_force_wizard", "1"); } catch { /* ignore */ }
   };
 
   const value = {

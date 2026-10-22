@@ -93,6 +93,7 @@ export function WizardSetup() {
     };
 
     await setupService.executeSetup(data);
+    try { localStorage.removeItem("bgy_force_wizard"); } catch { /* ignore */ }
     await refreshClassrooms();
     toast("Setup selesai! Buka Pengaturan untuk aktivasi PRO");
   };

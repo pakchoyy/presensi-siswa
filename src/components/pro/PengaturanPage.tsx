@@ -419,7 +419,8 @@ export function PengaturanPage() {
     }
     await teacherRepo.updateTier(teacher.id, Tier.FREE);
     clearCloudEmail();
-    toast("Akun PRO berhasil dikeluarkan dari perangkat ini.");
+    try { localStorage.setItem("bgy_force_wizard", "1"); } catch { /* ignore */ }
+    toast("Akun PRO berhasil dikeluarkan. Kembali ke setup awal.");
     setShowLogoutConfirm(false);
     setTimeout(() => window.location.reload(), 700);
   };

@@ -3,7 +3,7 @@ import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
-import { PRO_PRICE } from "@/lib/constants";
+import { PLUS_PRICE } from "@/lib/constants";
 import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud, QrCode } from "lucide-react";
 
 interface Props {
@@ -51,9 +51,22 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
       {/* Dropdown */}
       <div
-        className="absolute top-[calc(100%+8px)] right-0 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl z-[400] min-w-[200px] overflow-hidden"
+        className="absolute top-[calc(100%+8px)] right-0 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl z-[400] min-w-[220px] overflow-hidden"
         style={{ boxShadow: "var(--shadow-lg)" }}
       >
+        {!isPRO && (
+          <button
+            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-[12px] text-[0.85rem] font-bold text-white border-none cursor-pointer text-left"
+            style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
+          >
+            <ArrowUpCircle size={17} /> Upgrade ke PRO
+            <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
+              dari {PLUS_PRICE}
+            </span>
+          </button>
+        )}
+
         <button
           onClick={() => { setActivePage(PageName.PRESENSI); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
@@ -133,17 +146,6 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           <Globe size={16} /> bantuguruyuk.web.id
         </button>
 
-        <div className="h-px bg-[var(--border)] mx-0" />
-
-        {!isPRO && (
-          <button
-            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[#0ea5a0] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-          >
-            <ArrowUpCircle size={16} /> Upgrade PRO
-            <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">{PRO_PRICE}</span>
-          </button>
-        )}
       </div>
     </>
   );
