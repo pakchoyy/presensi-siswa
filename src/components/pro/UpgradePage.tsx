@@ -321,7 +321,7 @@ export function UpgradePage() {
               style={{ background: checking ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
             >
               {checking && <Loader2 size={15} className="animate-spin" />}
-              {checking ? "Mengecek..." : "Verifikasi Email"}
+              {checking ? "Mengecek..." : "Aktivasi Lisensi"}
             </button>
             {errorMessage && (
               <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">

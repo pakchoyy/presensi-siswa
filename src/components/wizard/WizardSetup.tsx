@@ -61,6 +61,11 @@ export function WizardSetup() {
   };
 
   const skip = () => {
+    // Langkah wajib (sekolah, guru, kelas) tidak boleh dilewati
+    if (step === 1 || step === 2 || step === 4) {
+      next();
+      return;
+    }
     if (step < WIZARD_TOTAL) {
       setStep((s) => s + 1);
     } else {
@@ -93,7 +98,6 @@ export function WizardSetup() {
     };
 
     await setupService.executeSetup(data);
-    try { localStorage.removeItem("bgy_force_wizard"); } catch { /* ignore */ }
     await refreshClassrooms();
     toast("Setup selesai! Buka Pengaturan untuk aktivasi PRO");
   };

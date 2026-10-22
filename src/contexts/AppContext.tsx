@@ -58,9 +58,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      const forceWizard = localStorage.getItem("bgy_force_wizard") === "1";
       const sudah = await setupService.sudahSetup();
-      if (sudah && !forceWizard) {
+      if (sudah) {
         const [school, teacher, classrooms] = await Promise.all([
           schoolRepo.get(),
           teacherRepo.get(),

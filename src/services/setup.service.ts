@@ -40,10 +40,11 @@ export const setupService = {
       defaultTier = Tier.PRO;
     } else {
       try {
-        const license = (await licenseService.lookupByEmail(normalizedEmail)).found;
+        const lic = await licenseService.lookupByEmail(normalizedEmail);
+        const masihAktif = lic.found && (!lic.tanggalBerakhir || lic.tanggalBerakhir > Date.now());
 
-        if (license) {
-          defaultTier = Tier.PRO;
+        if (masihAktif) {
+          defaultTier = lic.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
         } else {
           const { data: profile } = await supabase
             .from("profiles")
@@ -51,8 +52,8 @@ export const setupService = {
             .eq("email", normalizedEmail)
             .maybeSingle();
 
-          if (profile && profile.tier === "PRO") {
-            defaultTier = Tier.PRO;
+          if (profile && (profile.tier === "PRO" || profile.tier === "PLUS")) {
+            defaultTier = profile.tier as Tier;
           }
         }
       } catch {

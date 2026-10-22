@@ -3,6 +3,7 @@ import { useOnlineStatus } from "./useOnlineStatus";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useApp } from "@/contexts/AppContext";
 import { Tier } from "@/types/enums";
+import { canUse } from "@/lib/features";
 
 export type SyncStatus = "synced" | "syncing" | "waiting" | "offline" | "not-connected" | "realtime";
 
@@ -44,7 +45,7 @@ export function useSyncStatus() {
     };
   }, []);
 
-  const isPRO = setupSelesai && teacher?.tier === Tier.PRO;
+  const isPRO = setupSelesai && canUse("cloud_sync", (teacher?.tier as Tier) || Tier.FREE);
 
   if (!isPRO) return { status: "not-connected" as SyncStatus, lastSync: 0 };
 

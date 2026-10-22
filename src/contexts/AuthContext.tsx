@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
+import { db } from "@/repositories/dexie/db";
 
 interface User {
   id: string;
@@ -284,11 +285,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const deviceId = getDeviceId();
 
     if (userId) {
-      await supabase.from("devices").delete().eq("user_id", userId).eq("device_id", deviceId);
+      try {
+        await supabase.from("devices").delete().eq("user_id", userId).eq("device_id", deviceId);
+      } catch { /* ignore */ }
     }
 
-    await supabase.auth.signOut();
-    try { localStorage.setItem("bgy_force_wizard", "1"); } catch { /* ignore */ }
+    try { await supabase.auth.signOut(); } catch { /* offline: still clear locally */ }
+
+    try {
+      await Promise.all(db.tables.map((t) => t.clear()));
+    } catch (err) {
+      console.error("[logout] gagal hapus data lokal:", err);
+    }
+
+    try {
+      const keep = new Set(["bgy_presensi_dark", "bgy_install_date"]);
+      Object.keys(localStorage)
+        .filter((k) => (k.startsWith("bgy_") || k.startsWith("presensi_")) && !keep.has(k))
+        .forEach((k) => localStorage.removeItem(k));
+      sessionStorage.clear();
+    } catch { /* ignore */ }
+
+    window.location.replace("/");
   };
 
   const value = {

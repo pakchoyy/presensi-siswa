@@ -860,7 +860,7 @@ export function SiswaPage() {
       </div>
 
       {/* Cetak Kartu QR */}
-      {students.length > 0 && (
+      {students.length > 0 && canUse("qr_mode", tier) && (
         <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
           <div className="flex items-center gap-2 text-[0.78rem] font-bold mb-2">
             <QrCode size={14} className="text-[#0ea5a0]" /> Kartu QR Presensi

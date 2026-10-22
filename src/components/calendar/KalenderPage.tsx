@@ -6,6 +6,8 @@ import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import type { AcademicCalendarEntry } from "@/types/entities";
 import { CalendarEntryType, CalendarSource, Tier } from "@/types/enums";
 import { isDayActive } from "@/lib/utils";
+import { canUse } from "@/lib/features";
+import { PageName } from "@/types/enums";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Lock, Star, Eye, PenLine } from "lucide-react";
 
 const MONTHS = [
@@ -14,9 +16,9 @@ const MONTHS = [
 ];
 
 export function KalenderPage() {
-  const { activeClassroom, teacher } = useApp();
+  const { activeClassroom, teacher, setActivePage } = useApp();
   const { toast } = useToast();
-  const isPRO = teacher?.tier === Tier.PRO;
+  const isPRO = canUse("calendar_edit", (teacher?.tier as Tier) || Tier.FREE);
 
   const [entries, setEntries] = useState<AcademicCalendarEntry[]>([]);
   const [ay, setAy] = useState<{ id: number; label: string } | null>(null);
@@ -156,7 +158,7 @@ export function KalenderPage() {
       {!isPRO && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[10px] mb-3 flex items-center gap-2 text-[0.7rem] text-[var(--text-light)]">
           <Lock size={12} className="text-[#b45309]" />
-          Kalender hanya bisa dilihat. <span className="font-semibold text-[#0ea5a0]">Upgrade ke PRO</span> untuk menambah/mengedit hari libur & hari penting.
+          Kalender hanya bisa dilihat. <button onClick={() => setActivePage(PageName.UPGRADE)} className="font-semibold text-[#0ea5a0] bg-transparent border-none p-0 cursor-pointer underline">Upgrade ke PRO</button> untuk menambah/mengedit hari libur & hari penting.
         </div>
       )}
 

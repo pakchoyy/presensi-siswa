@@ -14,6 +14,8 @@ import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
 import { QrScanner } from "./QrScanner";
+import { isQrActive, isPjjActive } from "@/lib/features";
+import { Tier } from "@/types/enums";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -25,7 +27,7 @@ function isWeekend(dateStr: string): boolean {
 }
 
 export function PresensiPage() {
-  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom } = useApp();
+  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom, teacher } = useApp();
   const { toast } = useToast();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -360,7 +362,7 @@ export function PresensiPage() {
         </div>
 
         {/* Scan QR — desktop (navbar handles mobile) */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_qr_mode") === "1" && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive((teacher?.tier as Tier) || Tier.FREE) && (
           <button
             onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
             className="hidden lg:flex w-full items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
@@ -371,7 +373,7 @@ export function PresensiPage() {
         )}
 
         {/* QR mode help banner — one-time hint */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_qr_mode") === "1" && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive((teacher?.tier as Tier) || Tier.FREE) && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
           <div className="bg-[rgba(14,165,160,0.08)] border border-[#0ea5a0]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <QrCode size={16} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
@@ -392,7 +394,7 @@ export function PresensiPage() {
         )}
 
         {/* PJJ mode help banner — one-time hint */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && localStorage.getItem("bgy_pjj_mode") === "1" && localStorage.getItem("bgy_pjj_hint_seen") !== "1" && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isPjjActive((teacher?.tier as Tier) || Tier.FREE) && localStorage.getItem("bgy_pjj_hint_seen") !== "1" && (
           <div className="bg-[rgba(139,92,246,0.08)] border border-[#8b5cf6]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <div className="flex-shrink-0 mt-[2px] text-[#8b5cf6]">💻</div>
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">

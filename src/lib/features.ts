@@ -36,6 +36,7 @@ const FEATURES: Record<Tier, string[]> = {
     "bulk_update",
     "support_wa",
     "support_priority",
+    "calendar_edit",
   ],
 };
 
@@ -70,4 +71,20 @@ export function tierLabel(tier: Tier | undefined | null): string {
   if (t === Tier.FREE) return "FREE";
   if (t === Tier.PLUS) return "PLUS";
   return "PRO";
+}
+
+export function isQrActive(tier: Tier | undefined | null): boolean {
+  try {
+    return localStorage.getItem("bgy_qr_mode") === "1" && canUse("qr_mode", tier);
+  } catch {
+    return false;
+  }
+}
+
+export function isPjjActive(tier: Tier | undefined | null): boolean {
+  try {
+    return localStorage.getItem("bgy_pjj_mode") === "1" && canUse("pjj_mode", tier);
+  } catch {
+    return false;
+  }
 }

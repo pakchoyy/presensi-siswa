@@ -83,6 +83,7 @@ async function renew(supabase, body) {
     .select("id, tanggal_berakhir")
     .eq("email", email)
     .eq("status", "digunakan")
+    .eq("product", "siswa")
     .order("tanggal_berakhir", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -108,6 +109,7 @@ async function status(supabase, body) {
     .select("tanggal_berakhir, tier")
     .eq("email", email)
     .eq("status", "digunakan")
+    .eq("product", "siswa")
     .order("tanggal_berakhir", { ascending: false })
     .limit(1)
     .maybeSingle();

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { PageName, Tier } from "@/types/enums";
 import { PRO_PRICE } from "@/lib/constants";
+import { limitsFor, tierLabel } from "@/lib/features";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { useToast } from "@/components/shared/Toast";
@@ -61,7 +62,9 @@ export function Sidebar() {
 
   if (!setupSelesai) return null;
 
-  const isPRO = teacher?.tier === "PRO";
+  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const isPRO = tier === Tier.PRO;
+  const canAddKelas = classrooms.length < limitsFor(tier).kelas;
 
   const handleAddKelas = async () => {
     const nama = newKelasName.trim();
@@ -179,24 +182,24 @@ export function Sidebar() {
         ) : (
           <button
             onClick={() => {
-              if (isPRO) {
+              if (canAddKelas) {
                 setShowAddKelas(true);
               } else {
-                setActivePage(PageName.PENGATURAN);
+                setActivePage(PageName.UPGRADE);
               }
             }}
             className={`w-full flex items-center gap-2 px-3 py-[7px] rounded-lg text-left text-[0.75rem] font-semibold transition-colors mt-1 ${
-              isPRO
+              canAddKelas
                 ? "text-[var(--text-light)] hover:bg-[var(--input-bg)]"
                 : "text-[#b45309] hover:bg-[#fef3c7]/50"
             }`}
           >
-            {isPRO ? (
+            {canAddKelas ? (
               <Plus size={14} className="text-[#0ea5a0]" />
             ) : (
               <Lock size={13} className="text-[#b45309]" />
             )}
-            <span>{isPRO ? "Tambah Kelas" : "Tambah Kelas (PRO)"}</span>
+            <span>{canAddKelas ? "Tambah Kelas" : "Tambah Kelas (Upgrade)"}</span>
           </button>
         )}
       </div>
@@ -239,16 +242,16 @@ export function Sidebar() {
               style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}>
               PRO
             </div>
-            <span className="text-[0.72rem] font-semibold text-[#0ea5a0]">Akun PRO</span>
+            <span className="text-[0.72rem] font-semibold text-[#0ea5a0]">{tierLabel(tier)}</span>
           </div>
         ) : (
           <button
-            onClick={() => setActivePage(PageName.PENGATURAN)}
+            onClick={() => setActivePage(PageName.UPGRADE)}
             className="w-full flex items-center gap-2 px-3 py-[8px] rounded-lg text-[0.78rem] font-bold text-white"
             style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
           >
             <ArrowUpCircle size={16} />
-            <span>Upgrade PRO</span>
+            <span>{tier === Tier.PLUS ? "Upgrade PRO" : "Lihat Paket"}</span>
             <span className="ml-auto text-[0.65rem] opacity-90">{PRO_PRICE}</span>
           </button>
         )}

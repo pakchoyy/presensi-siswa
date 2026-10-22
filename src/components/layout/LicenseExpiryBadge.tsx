@@ -9,7 +9,7 @@ export function LicenseExpiryBadge() {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!teacher || teacher.tier !== Tier.PRO) {
+    if (!teacher || (teacher.tier !== Tier.PRO && teacher.tier !== Tier.PLUS)) {
       setDaysRemaining(null);
       return;
     }

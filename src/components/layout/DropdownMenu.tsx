@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { PLUS_PRICE } from "@/lib/constants";
-import { Home, BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud, QrCode } from "lucide-react";
+import { canUse, isQrActive } from "@/lib/features";
+import { BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud, QrCode } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -20,11 +21,13 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
   const { setActivePage, setupSelesai, teacher } = useApp();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
+  const [qrMode, setQrMode] = useState(isQrActive((teacher?.tier as Tier) || Tier.FREE));
 
   if (!isOpen || !setupSelesai) return null;
 
-  const isPRO = teacher?.tier === Tier.PRO;
+  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const isPRO = tier === Tier.PRO;
+  const isPaid = isPRO || tier === Tier.PLUS;
 
   const canInstall = !!(window as any).__bgy_deferredPrompt;
 
@@ -60,19 +63,15 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             className="w-full flex items-center gap-3 px-4 py-[12px] text-[0.85rem] font-bold text-white border-none cursor-pointer text-left"
             style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
           >
-            <ArrowUpCircle size={17} /> Upgrade ke PRO
-            <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
-              dari {PLUS_PRICE}
-            </span>
+            <ArrowUpCircle size={17} /> {tier === Tier.PLUS ? "Upgrade ke PRO" : "Lihat paket"}
+            {tier !== Tier.PLUS && (
+              <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
+                dari {PLUS_PRICE}
+              </span>
+            )}
           </button>
         )}
 
-        <button
-          onClick={() => { setActivePage(PageName.PRESENSI); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-        >
-          <Home size={16} /> Home
-        </button>
         <button
           onClick={() => { setActivePage(PageName.PETUNJUK); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
@@ -89,6 +88,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           <Settings size={16} /> Pengaturan
         </button>
 
+        {canUse("qr_mode", tier) && (
         <button
           onClick={() => {
             const newVal = !qrMode;
@@ -109,8 +109,9 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         >
           <QrCode size={16} /> Mode QR {qrMode ? <span className="ml-auto text-[0.65rem] font-bold text-[#0ea5a0]">ON</span> : <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">OFF</span>}
         </button>
+        )}
 
-        {isPRO && isAuthenticated && (
+        {isPaid && isAuthenticated && (
           <button
             onClick={() => { setActivePage(PageName.CLOUD_SETTINGS); onClose(); }}
             className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"

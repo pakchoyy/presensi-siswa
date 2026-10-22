@@ -17,7 +17,7 @@ const GUIDES = [
     num: "3",
     icon: Upload,
     title: "Import Siswa dari Excel",
-    desc: "Download template Excel dari menu Siswa. Isi kolom <b>Nama, NISN, Jenis Kelamin, Kelas</b> — lalu upload. Sistem membaca dan menampilkan pratinjau. Kolom <b>Kelas</b> otomatis membuat kelas baru (PRO).",
+    desc: "Download template Excel dari menu Siswa. Isi kolom <b>Nama, NISN, Jenis Kelamin, Kelas</b> — lalu upload. Sistem membaca dan menampilkan pratinjau. Kolom <b>Kelas</b> otomatis membuat kelas baru (sesuai batas kelas paket Anda).",
   },
   {
     num: "4",
@@ -35,7 +35,7 @@ const GUIDES = [
     num: "6",
     icon: Database,
     title: "Backup & Restore Data",
-    desc: "Buka menu Backup — klik <b>Buat Backup Lokal</b> untuk menyimpan data ke file. Simpan di HP atau Google Drive. Kalau ganti HP, <b>Restore</b> dari file yang sama. Versi PRO bisa backup ke cloud.",
+    desc: "Buka menu Backup — klik <b>Buat Backup Lokal</b> untuk menyimpan data ke file. Simpan di HP atau Google Drive. Kalau ganti HP, <b>Restore</b> dari file yang sama. Paket PLUS &amp; PRO bisa sinkron ke cloud.",
   },
 ];
 
