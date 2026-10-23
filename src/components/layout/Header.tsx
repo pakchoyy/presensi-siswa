@@ -10,12 +10,12 @@ import { PageName } from "@/types/enums";
 import { Moon, Sun, Menu } from "lucide-react";
 import { Marquee } from "@/components/layout/Marquee";
 
-// Pintu admin tersembunyi: ketuk judul 5x dalam 3 detik. Gerbang sebenarnya ada di server (OTP + email admin).
+// Pintu admin tersembunyi: ketuk judul 5x dalam 4 detik. Gerbang sebenarnya ada di server (OTP + email admin).
 const adminTaps: number[] = [];
 function tapTitle() {
   const now = Date.now();
   adminTaps.push(now);
-  while (adminTaps.length && now - adminTaps[0] > 3000) adminTaps.shift();
+  while (adminTaps.length && now - adminTaps[0] > 4000) adminTaps.shift();
   if (adminTaps.length >= 5) {
     adminTaps.length = 0;
     window.location.assign("/admin");
@@ -48,7 +48,7 @@ export function Header() {
       <div className="flex items-center justify-between h-[54px]">
         <div className="flex items-center gap-[8px] flex-1 min-w-0">
           <LogoUpload />
-          <div className="min-w-0" onClick={tapTitle}>
+          <div className="flex-1 min-w-0 h-[54px] flex items-center cursor-default" style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} onClick={tapTitle}>
             <div className="text-[1rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight select-none">
               <i>Presensi Yuk</i> <span className="font-semibold opacity-80">| Siswa</span>
             </div>
