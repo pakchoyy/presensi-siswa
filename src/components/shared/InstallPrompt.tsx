@@ -1,125 +1,96 @@
 import { useState, useEffect } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Share, X } from "lucide-react";
+import { DEFAULT_LOGO } from "@/lib/constants";
 
+const DISMISS_KEY = "bgy_install_later"; // sessionStorage: muncul lagi di kunjungan berikutnya
+
+function isStandalone(): boolean {
+  return window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+}
+
+function isIOS(): boolean {
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && "ontouchend" in document);
+}
+
+/** Banner ringkas ajakan install, tidak menghalangi aplikasi. Tiap kunjungan di browser. */
 export function InstallPrompt() {
-  const [show, setShow] = useState(false);
+  const [mode, setMode] = useState<"android" | "ios" | null>(null);
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
-    if (isStandalone) {
-      setShow(false);
+    if (isStandalone()) return;
+    try { if (sessionStorage.getItem(DISMISS_KEY)) return; } catch { /* ignore */ }
+
+    if (isIOS()) {
+      setMode("ios");
       return;
     }
-
-    // Check if beforeinstallprompt is available
-    const checkPrompt = () => {
-      const canInstall = !!(window as any).__bgy_deferredPrompt;
-      if (canInstall) {
-        setShow(true);
-      }
-    };
-
-    // Check immediately and after a short delay (in case prompt fires late)
-    checkPrompt();
-    const timer = setTimeout(checkPrompt, 1000);
-
-    // Listen for beforeinstallprompt event
-    const handleBeforeInstall = () => {
-      setTimeout(checkPrompt, 100);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-
-    // Listen for appinstalled event
-    const handleAppInstalled = () => {
-      setShow(false);
-      localStorage.removeItem("bgy_install_dismissed");
-    };
-
-    window.addEventListener("appinstalled", handleAppInstalled);
-
+    const check = () => { if ((window as any).__bgy_deferredPrompt) setMode("android"); };
+    check();
+    window.addEventListener("bgy_install_ready", check);
+    const installed = () => setMode(null);
+    window.addEventListener("appinstalled", installed);
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      window.removeEventListener("bgy_install_ready", check);
+      window.removeEventListener("appinstalled", installed);
     };
   }, []);
 
-  const handleInstall = async () => {
-    const promptEv = (window as any).__bgy_deferredPrompt;
-    if (!promptEv) return;
+  const later = () => {
+    setMode(null);
+    try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ }
+  };
 
-    promptEv.prompt();
-    const { outcome } = await promptEv.userChoice;
-
-    if (outcome === "accepted") {
-      setShow(false);
-      localStorage.removeItem("bgy_install_dismissed");
-    }
-
+  const install = async () => {
+    const ev = (window as any).__bgy_deferredPrompt;
+    if (!ev) return;
+    ev.prompt();
+    const { outcome } = await ev.userChoice;
     (window as any).__bgy_deferredPrompt = null;
+    if (outcome === "accepted") setMode(null);
+    else later();
   };
 
-  const handleDismiss = () => {
-    setShow(false);
-    localStorage.setItem("bgy_install_dismissed", Date.now().toString());
-  };
-
-  if (!show) return null;
+  if (!mode) return null;
 
   return (
-    <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/40 z-[500]" onClick={handleDismiss} />
-
-      {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[501] w-[calc(100%-32px)] max-w-[360px]">
-        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] p-5 relative" style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
-          {/* Close button */}
-          <button
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1 text-[var(--text-light)] hover:text-[var(--text)] cursor-pointer bg-transparent border-none"
-          >
-            <X size={18} />
-          </button>
-
-          {/* Icon */}
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}>
-              <Download size={32} className="text-white" />
+    <div
+      role="dialog"
+      aria-label="Install aplikasi"
+      className="fixed left-1/2 -translate-x-1/2 top-[62px] z-[400] w-[calc(100%-24px)] max-w-[420px] animate-fade-in"
+    >
+      <div
+        className="flex items-center gap-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl pl-3 pr-2 py-[10px]"
+        style={{ boxShadow: "0 8px 24px rgba(0,0,0,.14)" }}
+      >
+        <img src={DEFAULT_LOGO} alt="" className="w-10 h-10 rounded-xl flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[0.82rem] font-extrabold text-[var(--text)] leading-tight">Install Presensi Yuk</div>
+          {mode === "ios" ? (
+            <div className="text-[0.7rem] text-[var(--text-light)] leading-snug">
+              Ketuk <Share size={12} className="inline -mt-[2px]" /> <b>Bagikan</b>, lalu <b>Tambahkan ke Layar Utama</b>
             </div>
-          </div>
-
-          {/* Content */}
-          <div className="text-center mb-5">
-            <h3 className="text-[1.1rem] font-extrabold text-[var(--text)] mb-2">
-              Install Presensi Yuk
-            </h3>
-            <p className="text-[0.8rem] text-[var(--text-light)] leading-relaxed">
-              Install aplikasi di HP untuk akses lebih cepat dan bisa dipakai offline
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleInstall}
-              className="w-full py-3 rounded-xl text-white font-bold text-[0.9rem] cursor-pointer border-none flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
-            >
-              <Download size={18} />
-              Install Sekarang
-            </button>
-            <button
-              onClick={handleDismiss}
-              className="w-full py-2 rounded-xl text-[var(--text-light)] font-semibold text-[0.8rem] cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)]"
-            >
-              Nanti Saja
-            </button>
-          </div>
+          ) : (
+            <div className="text-[0.7rem] text-[var(--text-light)] leading-snug">Lebih cepat dibuka & bisa dipakai offline</div>
+          )}
         </div>
+        {mode === "android" && (
+          <button
+            onClick={install}
+            className="flex items-center gap-1 min-h-[40px] px-3 rounded-xl text-white font-bold text-[0.78rem] border-none cursor-pointer flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
+          >
+            <Download size={15} /> Install
+          </button>
+        )}
+        <button
+          onClick={later}
+          aria-label="Nanti"
+          className="w-10 h-10 flex items-center justify-center rounded-xl text-[var(--text-light)] bg-transparent border-none cursor-pointer flex-shrink-0"
+        >
+          <X size={18} />
+        </button>
       </div>
-    </>
+    </div>
   );
 }

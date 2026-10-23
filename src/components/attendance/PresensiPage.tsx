@@ -15,7 +15,8 @@ import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
 const QrScanner = lazy(() => import("./QrScanner").then((m) => ({ default: m.QrScanner })));
 import { isQrActive, isPjjActive, isKelasLocked, QR_MODE_EVENT } from "@/lib/features";
-import { Lock } from "lucide-react";
+import { Lock, AlertTriangle } from "lucide-react";
+import { getAttention } from "@/lib/attention";
 import { Tier } from "@/types/enums";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
@@ -42,6 +43,7 @@ export function PresensiPage() {
   const classRef = useRef<HTMLDivElement>(null);
 
   // Tren kehadiran bulan ini vs bulan lalu
+  const [perhatian, setPerhatian] = useState(0);
   const [tren, setTren] = useState<{ label: string; p: number; labelPrev: string; pPrev: number; diff: number } | null>(null);
 
   // Academic year
@@ -366,6 +368,11 @@ export function PresensiPage() {
 
   useEffect(() => {
     loadTren();
+    if (activeClassroom && students.length) {
+      getAttention(activeClassroom.id, students).then((x) => setPerhatian(x.length)).catch(() => setPerhatian(0));
+    } else {
+      setPerhatian(0);
+    }
   }, [loadTren]);
 
 
@@ -490,6 +497,18 @@ export function PresensiPage() {
               ×
             </button>
           </div>
+        )}
+
+        {/* Siswa dengan Alpha ≥ batas bulan ini → lihat di Rekap */}
+        {perhatian > 0 && !isLibur && (
+          <button
+            onClick={() => setActivePage(PageName.REKAP)}
+            className="w-full mb-2 flex items-center gap-2 px-[10px] min-h-[38px] rounded-xl border border-[#fca5a5] bg-[#fef2f2] dark:bg-[#450a0a]/40 text-[0.74rem] font-semibold text-[#b91c1c] dark:text-[#fca5a5] cursor-pointer"
+          >
+            <AlertTriangle size={14} className="flex-shrink-0" />
+            {perhatian} siswa perlu perhatian (sering Alpha bulan ini)
+            <span className="ml-auto underline">Lihat</span>
+          </button>
         )}
 
         {/* Tren bulanan + rekap semester dalam satu baris */}

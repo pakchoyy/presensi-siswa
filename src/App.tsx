@@ -27,7 +27,7 @@ import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
 import { PageName, Tier } from "@/types/enums";
 import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
-import { TrialEndedModal } from "@/components/pro/TrialEndedModal";
+import { TrialEndedModal, trialEndSeenKey } from "@/components/pro/TrialEndedModal";
 import { DemoRibbon } from "@/components/shared/DemoRibbon";
 import { trialDaysRemaining } from "@/lib/features";
 import { captureAktivasiLink, readAktivasiLink } from "@/lib/aktivasi-link";
@@ -104,7 +104,7 @@ function AppContent() {
     setupSelesai &&
     realTier === Tier.FREE &&
     trialDaysRemaining() <= 0 &&
-    localStorage.getItem("bgy_trial_end_seen") !== "1";
+    localStorage.getItem(trialEndSeenKey()) !== "1";
   // Trigger install_date save on first render
   useEffect(() => { trialDaysRemaining(); }, []);
 
@@ -158,7 +158,7 @@ function AppContent() {
       </div>
       {setupSelesai && <Footer />}
       <BottomNav />
-      {setupSelesai && <InstallPrompt />}
+      <InstallPrompt />
       {trialJustEnded && (
         <TrialEndedModal onLihatPaket={() => setActivePage(PageName.UPGRADE)} />
       )}

@@ -1,16 +1,29 @@
 import { useState } from "react";
+import { bonusTrialUsed, startBonusTrial, BONUS_TRIAL_DAYS } from "@/lib/features";
 
 interface Props {
   onLihatPaket: () => void;
 }
 
+/** Kunci "sudah dilihat": terpisah untuk akhir masa coba 30 hari dan akhir bonus 7 hari. */
+export function trialEndSeenKey(): string {
+  return bonusTrialUsed() ? "bgy_bonus_end_seen" : "bgy_trial_end_seen";
+}
+
 export function TrialEndedModal({ onLihatPaket }: Props) {
   const [open, setOpen] = useState(true);
   if (!open) return null;
+  const bisaBonus = !bonusTrialUsed();
 
   const tutup = () => {
-    localStorage.setItem("bgy_trial_end_seen", "1");
+    localStorage.setItem(trialEndSeenKey(), "1");
     setOpen(false);
+  };
+
+  const ambilBonus = () => {
+    localStorage.setItem("bgy_trial_end_seen", "1");
+    startBonusTrial();
+    window.location.reload();
   };
 
   return (
@@ -21,6 +34,15 @@ export function TrialEndedModal({ onLihatPaket }: Props) {
         <p className="text-[0.85rem] text-[var(--text-light)] mb-4">
           Sekarang akun Anda FREE (1 kelas, 10 siswa). Data Anda tetap aman dan bisa dilihat.
         </p>
+        {bisaBonus && (
+          <button
+            onClick={ambilBonus}
+            className="w-full py-[11px] rounded-xl text-white font-bold border-none cursor-pointer mb-2"
+            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
+          >
+            🎁 Coba PRO lagi {BONUS_TRIAL_DAYS} hari (gratis, sekali saja)
+          </button>
+        )}
         <button
           onClick={() => { tutup(); onLihatPaket(); }}
           className="w-full py-[11px] rounded-xl text-white font-bold border-none cursor-pointer mb-2"

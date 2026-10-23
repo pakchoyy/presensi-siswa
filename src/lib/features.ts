@@ -49,7 +49,7 @@ export function canUse(feature: string, tier: Tier | undefined | null = Tier.FRE
 
 const INSTALL_DATE_KEY = "bgy_install_date";
 
-export function trialDaysRemaining(): number {
+function baseTrialDaysRemaining(): number {
   const stored = parseInt(localStorage.getItem(INSTALL_DATE_KEY) || "0", 10);
   if (!stored) {
     localStorage.setItem(INSTALL_DATE_KEY, Date.now().toString());
@@ -57,6 +57,29 @@ export function trialDaysRemaining(): number {
   }
   const elapsed = (Date.now() - stored) / 86400000;
   return Math.max(0, 30 - Math.floor(elapsed));
+}
+
+// Tawaran sekali: "Coba PRO lagi 7 hari" setelah masa coba 30 hari habis.
+const BONUS_KEY = "bgy_bonus_trial_start";
+export const BONUS_TRIAL_DAYS = 7;
+
+function bonusDaysRemaining(): number {
+  const start = parseInt(localStorage.getItem(BONUS_KEY) || "0", 10);
+  if (!start) return 0;
+  return Math.max(0, BONUS_TRIAL_DAYS - Math.floor((Date.now() - start) / 86400000));
+}
+
+export function bonusTrialUsed(): boolean {
+  return !!localStorage.getItem(BONUS_KEY);
+}
+
+export function startBonusTrial(): void {
+  if (!bonusTrialUsed()) localStorage.setItem(BONUS_KEY, Date.now().toString());
+}
+
+/** Sisa hari coba PRO (30 hari awal, atau bonus 7 hari bila sudah diklaim). */
+export function trialDaysRemaining(): number {
+  return Math.max(baseTrialDaysRemaining(), bonusDaysRemaining());
 }
 
 export function isTrialExpired(tier: Tier | undefined | null): boolean {

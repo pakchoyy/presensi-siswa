@@ -8,8 +8,9 @@ import type { Student, Classroom } from "@/types/entities";
 import { PageName } from "@/types/enums";
 import { STATUS_COLOR } from "@/lib/constants";
 import { todayStr, formatTanggalPendek } from "@/lib/utils";
-import { Filter, Table, FileText, FileSpreadsheet, ChevronDown, Lock, Users } from "lucide-react";
+import { Filter, Table, FileText, FileSpreadsheet, ChevronDown, Lock, Users, AlertTriangle, Send } from "lucide-react";
 import { isKelasLocked } from "@/lib/features";
+import { getAttention, ALPHA_ALERT_THRESHOLD, type AttentionItem } from "@/lib/attention";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -45,6 +46,8 @@ export function RekapPage() {
   const [rentangStart, setRentangStart] = useState(todayStr());
   const [rentangEnd, setRentangEnd] = useState(todayStr());
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
+  const [attention, setAttention] = useState<AttentionItem[]>([]);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
   const [taStart, setTaStart] = useState(`${new Date().getFullYear()}-07-01`);
   const [taEnd, setTaEnd] = useState(`${new Date().getFullYear() + 1}-06-30`);
 
@@ -105,6 +108,7 @@ export function RekapPage() {
     ]);
     setStudents(siswa);
     setRekap(data || {});
+    getAttention(activeClassroom.id, siswa).then(setAttention).catch(() => setAttention([]));
     setTotalHari(hari);
 
     let h = 0, s = 0, i = 0, a = 0, t = 0;
@@ -161,6 +165,33 @@ export function RekapPage() {
   const rataKelas = totalHari > 0 && students.length > 0
     ? Math.round((totalH / (totalHari * students.length)) * 100)
     : 0;
+
+  const handleShareWA = () => {
+    if (!activeClassroom) return;
+    const alphaList = exportableData.filter((d) => d.A > 0).sort((a, b) => b.A - a.A);
+    const lines = [
+      `*Rekap Kehadiran ${activeClassroom.nama}*`,
+      school?.nama ? school.nama : "",
+      `Periode: ${dateRange.label} (${totalHari} hari sekolah)`,
+      "",
+      `Hadir ${totalH} · Sakit ${totalS} · Izin ${totalI} · Alpha ${totalA} · Terlambat ${totalT}`,
+      `Rata-rata kehadiran: *${rataKelas}%*`,
+    ];
+    if (alphaList.length) {
+      lines.push("", "*Siswa dengan Alpha:*");
+      alphaList.slice(0, 20).forEach((d) => lines.push(`- ${d.student.nama}: ${d.A}x`));
+      if (alphaList.length > 20) lines.push(`…dan ${alphaList.length - 20} siswa lain`);
+    }
+    lines.push("", "_Dibuat dengan Presensi Yuk — presiswa.bantuguruyuk.web.id_");
+    const text = lines.filter((l, i) => !(l === "" && lines[i - 1] === "")).join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  };
+
+  const focusStudent = (id: number) => {
+    setHighlightId(id);
+    document.getElementById(`rekap-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 2500);
+  };
 
   const handleExportPDF = async () => {
     try {
@@ -417,6 +448,27 @@ export function RekapPage() {
         <span className="text-[var(--text-light)]">Rata-rata Kehadiran: <b className="text-[#16a34a]">{rataKelas}%</b></span>
       </div>
 
+      {/* Perlu perhatian: Alpha bulan ini ≥ batas */}
+      {attention.length > 0 && (
+        <div className="rounded-xl border-[1.5px] border-[#fca5a5] bg-[#fef2f2] dark:bg-[#450a0a]/40 p-[12px] mb-3">
+          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[6px] text-[#b91c1c] dark:text-[#fca5a5]">
+            <AlertTriangle size={15} /> Perlu perhatian ({attention.length})
+          </div>
+          <p className="text-[0.7rem] text-[var(--text-light)] mb-[8px]">Alpha {ALPHA_ALERT_THRESHOLD} kali atau lebih bulan ini. Ketuk untuk melihat di tabel.</p>
+          <div className="flex flex-wrap gap-[6px]">
+            {attention.map((a) => (
+              <button
+                key={a.student.id}
+                onClick={() => focusStudent(a.student.id)}
+                className="min-h-[36px] px-[10px] rounded-full border border-[#fca5a5] bg-[var(--card-bg)] text-[0.74rem] font-semibold text-[var(--text)] cursor-pointer"
+              >
+                {a.student.nama} <b className="text-[#dc2626]">· {a.alpha}A</b>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Detail Table */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
@@ -446,7 +498,7 @@ export function RekapPage() {
                 </tr>
               ) : (
                 exportableData.map((d) => (
-                  <tr key={d.student.id}>
+                  <tr key={d.student.id} id={`rekap-row-${d.student.id}`} className="transition-colors" style={highlightId === d.student.id ? { background: "rgba(239,68,68,.15)" } : undefined}>
                     <td className="py-[7px] px-[5px] text-left font-semibold border-b border-[var(--border)]">{d.student.nama}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.H}</td>
                     <td className="py-[7px] px-[5px] text-center border-b border-[var(--border)]">{d.S}</td>
@@ -500,6 +552,15 @@ export function RekapPage() {
           {exporting === "excel" ? "Menyiapkan..." : "Export Excel"}
         </button>
       </div>
+      {students.length > 0 && (
+        <button
+          onClick={handleShareWA}
+          className="w-full mt-2 flex items-center justify-center gap-[6px] py-[11px] px-[14px] rounded-[10px] border-none text-white font-bold text-[0.82rem] cursor-pointer active:scale-[0.98]"
+          style={{ background: "#16a34a" }}
+        >
+          <Send size={15} /> Kirim Rekap ke WhatsApp
+        </button>
+      )}
     </div>
   );
 }
