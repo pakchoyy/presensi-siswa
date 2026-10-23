@@ -43,7 +43,13 @@ async function getKelas(supabase, student) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // Hanya situs sendiri yang boleh memanggil dari browser.
+  const origin = req.headers.origin;
+  if (origin && origin !== "https://presiswa.bantuguruyuk.web.id" && !/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) && !/^http:\/\/localhost(:\d+)?$/.test(origin)) {
+    return res.status(403).json({ error: "Origin tidak diizinkan" });
+  }
+  if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
