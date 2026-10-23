@@ -110,7 +110,7 @@ export function LogoUpload({ editable = false }: LogoUploadProps) {
   return (
     <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
       <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-        <Upload size={15} /> Logo Sekolah (PRO)
+        <Upload size={15} /> Logo Sekolah (PLUS)
       </div>
       
       <div className="flex items-center gap-3 mb-3">
