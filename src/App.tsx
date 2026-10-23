@@ -100,7 +100,7 @@ function PageContent() {
 
 function AppContent() {
   const { setupSelesai, realTier, setActivePage } = useApp();
-  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const trialJustEnded =
     setupSelesai &&
     realTier === Tier.FREE &&
