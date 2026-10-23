@@ -374,7 +374,6 @@ export function PengaturanPage() {
     try {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudUser.email);
-      localStorage.setItem("presensi_last_sync", Date.now().toString());
       await refreshTeacher();
       window.dispatchEvent(new Event("data-changed"));
       toast(
@@ -405,7 +404,6 @@ export function PengaturanPage() {
     try {
       syncService.resetSyncState();
       const uploaded = await syncService.initialUpload(cloudUser.email);
-      localStorage.setItem("presensi_last_sync", Date.now().toString());
       await refreshTeacher();
       window.dispatchEvent(new Event("data-changed"));
       toast(
@@ -433,12 +431,11 @@ export function PengaturanPage() {
     setLoggingOut(true);
     try {
       // Kirim perubahan terakhir dulu kalau terhubung cloud.
-      let synced = false;
       if (isCloudConnected && cloudUser?.email) {
-        synced = (await syncService.incrementalSync(cloudUser.email)).ok;
+        await syncService.incrementalSync(cloudUser.email);
       }
-      // Belum aman di cloud: selalu simpan backup (file Download + salinan di HP) sebelum data dihapus.
-      if (!synced && localStorage.getItem("bgy_demo_mode") !== "1") {
+      // Selalu simpan backup (file Download + salinan di HP) sebelum data dihapus — jangan bergantung pada status cloud.
+      if (localStorage.getItem("bgy_demo_mode") !== "1") {
         await saveLogoutBackup();
         toast("✅ File backup disimpan di folder Download");
         await new Promise((r) => setTimeout(r, 1200));
@@ -545,11 +542,11 @@ export function PengaturanPage() {
         } else {
           // Cloud masih kosong: data yang sudah ada di HP ini jadi data awal akun.
           const uploaded = await syncService.initialUpload(emailAddress);
-          toast(uploaded > 0 ? `✅ ${uploaded} data di HP ini disimpan ke cloud` : "✅ Device berhasil terhubung!");
+          toast(uploaded > 0 ? `✅ ${uploaded} data di HP ini disimpan ke cloud` : "⚠️ Terhubung, tapi belum ada data terkirim ke cloud");
         }
       } catch (error) {
         console.error("Download error:", error);
-        toast("⚠️ Download gagal, tapi cloud sync tetap aktif");
+        toast("⚠️ Gagal mengambil data cloud, coba lagi");
       }
       
       const now = Date.now();
@@ -584,7 +581,6 @@ export function PengaturanPage() {
       await refreshTeacher();
       
       setConnecting(false);
-      toast("✅ Device berhasil terhubung!");
       window.location.reload();
     } catch (error) {
       console.error("Device login error:", error);
@@ -1247,10 +1243,16 @@ export function PengaturanPage() {
             </div>
           )}
 
-          <div className="text-[0.68rem] text-blue-800 dark:text-blue-200 mb-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            ✨ <b>Sync Otomatis Aktif</b><br />
-            Data otomatis tersinkronisasi antar device saat kamu edit atau buka app (maksimal 5 menit delay).
-          </div>
+          {syncLog?.ok ? (
+            <div className="text-[0.68rem] text-blue-800 dark:text-blue-200 mb-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              ✨ <b>Sync Otomatis Aktif</b><br />
+              Data otomatis tersinkronisasi antar device saat kamu edit atau buka app (maksimal 5 menit delay).
+            </div>
+          ) : (
+            <div className="text-[0.68rem] text-[#991b1b] mb-3 p-2 bg-[#fef2f2] border border-[#fecaca] rounded-lg">
+              ⚠️ <b>Belum ada sinkron yang berhasil.</b> Data masih di HP ini — jangan keluar dulu.
+            </div>
+          )}
 
           {/* Tombol darurat tersembunyi */}
           <button
@@ -1313,18 +1315,9 @@ export function PengaturanPage() {
             <div className="text-[0.9rem] font-bold mb-2 text-center text-[var(--text)]">
               Keluar dari akun?
             </div>
-            {isPaid && isCloudConnected ? (
-              <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
-                Data kelas dan presensi sudah aman di cloud. Semua data di HP ini akan dihapus, dan akan muncul lagi saat kamu masuk dengan email yang sama.
-              </p>
-            ) : (
-              <div className="bg-[#fef2f2] border border-[#fecaca] rounded-lg p-3 mb-[14px] text-[0.74rem] text-[#991b1b] flex gap-2">
-                <AlertTriangle size={16} className="flex-shrink-0 mt-[1px]" />
-                <span>
-                  Data di HP ini <b>belum tersimpan di cloud</b>. Sebelum keluar, file backup otomatis disimpan ke folder <b>Download</b> dan bisa dipulihkan dari layar awal.
-                </span>
-              </div>
-            )}
+            <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
+              Semua data di HP ini akan dihapus. Sebelum keluar, data disinkronkan (kalau terhubung cloud) dan file backup disimpan ke folder <b>Download</b>, bisa dipulihkan dari layar awal.
+            </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => doLogout()}

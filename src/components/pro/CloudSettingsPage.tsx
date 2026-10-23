@@ -85,7 +85,6 @@ export function CloudSettingsPage() {
     try {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudEmail);
-      localStorage.setItem("presensi_last_sync", Date.now().toString());
       toast(`✅ ${downloaded} data ditarik dari cloud`, "success");
       window.location.reload();
     } catch (error) {
@@ -110,7 +109,6 @@ export function CloudSettingsPage() {
     try {
       syncService.resetSyncState();
       const uploaded = await syncService.initialUpload(cloudEmail);
-      localStorage.setItem("presensi_last_sync", Date.now().toString());
       toast(`✅ ${uploaded} data diupload ke cloud`, "success");
       window.location.reload();
     } catch (error) {
@@ -238,8 +236,8 @@ export function CloudSettingsPage() {
               if (!cloudEmail) return;
               setSyncing(true);
               try {
-                await syncService.initialUpload(cloudEmail);
-                toast("✅ Upload ke cloud berhasil");
+                const n = await syncService.initialUpload(cloudEmail);
+                toast(n > 0 ? `✅ ${n} data terkirim ke cloud` : "⚠️ Tidak ada data terkirim. Cek verifikasi email.");
               } catch (error) {
                 toast("❌ Upload gagal. Coba lagi.");
               } finally {
@@ -257,7 +255,7 @@ export function CloudSettingsPage() {
               setSyncing(true);
               try {
                 const count = await syncService.downloadAll(cloudEmail);
-                toast(`✅ Tarik dari cloud berhasil (${count} data)`);
+                toast(count > 0 ? `✅ ${count} data ditarik dari cloud` : "⚠️ Tidak ada data diambil dari cloud.");
               } catch (error) {
                 toast("❌ Tarik gagal. Coba lagi.");
               } finally {
