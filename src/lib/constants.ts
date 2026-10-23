@@ -45,6 +45,8 @@ export const APP_URL = "https://presiswa.bantuguruyuk.web.id";
 // Logo bawaan aplikasi. LEGACY_DEFAULT_LOGO tersimpan di data sekolah lama, anggap sama dengan bawaan.
 export const DEFAULT_LOGO = "/icons/py-192-v3.png";
 export const LEGACY_DEFAULT_LOGO = "/guru-cibisd2.png";
-export const resolveLogo = (url?: string | null) => (!url || url === LEGACY_DEFAULT_LOGO ? DEFAULT_LOGO : url);
+// Termasuk ikon bawaan versi lama (/icons/py-192-v2.png, dst.) yang filenya sudah dihapus.
+export const resolveLogo = (url?: string | null) =>
+  !url || url === LEGACY_DEFAULT_LOGO || /^\/icons\/py-\d+-v\d+\.png$/.test(url) ? DEFAULT_LOGO : url;
 
 export const MAIN_SITE_URL = "https://bantuguruyuk.web.id";
