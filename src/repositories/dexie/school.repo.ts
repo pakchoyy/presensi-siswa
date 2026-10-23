@@ -4,7 +4,10 @@ import { triggerAutoSync } from "@/hooks/useAutoSync";
 
 export const schoolRepo = {
   async get(): Promise<School | undefined> {
-    return db.schools.orderBy("id").first();
+    // Utamakan sekolah milik guru aktif; setelah tarik cloud bisa ada beberapa sekolah lama.
+    const teacher = await db.teachers.orderBy("id").first();
+    const own = teacher?.sekolahId ? await db.schools.get(teacher.sekolahId) : undefined;
+    return own ?? db.schools.orderBy("id").first();
   },
 
   async save(school: School): Promise<number> {

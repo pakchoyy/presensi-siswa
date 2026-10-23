@@ -621,8 +621,9 @@ export function PengaturanPage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
+      <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-1 mb-2 px-1">Akun & Paket</div>
       {/* Status Tier */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#0ea5a0] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <Settings size={15} /> Pengaturan Akun
         </div>
@@ -666,7 +667,7 @@ export function PengaturanPage() {
       </div>
 
       {editSekolah && (
-        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#0ea5a0] p-[14px] mb-3">
           <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-[10px]">
             <School size={15} /> Edit Sekolah
           </div>
@@ -703,7 +704,7 @@ export function PengaturanPage() {
       )}
 
       {/* Paket & Lisensi */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#0ea5a0] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <Crown size={15} className={tier === Tier.PRO ? "text-[#f59e0b]" : "text-[#0ea5a0]"} /> Paket & Lisensi
         </div>
@@ -822,22 +823,9 @@ export function PengaturanPage() {
         )}
       </div>
 
-      {realTier === Tier.PRO && (
-        <button
-          onClick={() => setActivePage(PageName.AFFILIATE)}
-          className="w-full flex items-center gap-3 bg-[var(--card-bg)] rounded-xl border border-[#f59e0b]/40 p-[14px] mb-3 text-left cursor-pointer"
-        >
-          <Gift size={18} className="text-[#f59e0b] flex-shrink-0" />
-          <span className="flex-1 min-w-0">
-            <span className="block text-[0.85rem] font-bold text-[var(--text)]">Program Affiliate</span>
-            <span className="block text-[0.7rem] text-[var(--text-light)]">Bagikan kodemu, dapat komisi + bonus masa aktif</span>
-          </span>
-          <ChevronRight size={16} className="text-[var(--text-light)]" />
-        </button>
-      )}
-
+      <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-5 mb-2 px-1">Sekolah & Tahun Ajaran</div>
       {/* Periode Ajaran */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#f59e0b] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <Calendar size={15} /> Periode Ajaran
         </div>
@@ -931,7 +919,7 @@ export function PengaturanPage() {
       </div>
 
       {/* Hari Aktif */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#f59e0b] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <Calendar size={15} /> Hari Aktif
         </div>
@@ -1008,8 +996,14 @@ export function PengaturanPage() {
         </div>
       </div>
 
+      {/* Logo Sekolah (PLUS & PRO) */}
+      {canUse("logo_report", tier) && (
+        <LogoUpload editable={true} />
+      )}
+
+      <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-5 mb-2 px-1">Cara Presensi</div>
       {/* Mode Presensi (QR + PJJ + Auto Hadir) */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#3b82f6] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[12px]">
           <UserCheck size={15} /> Mode Presensi
         </div>
@@ -1194,9 +1188,12 @@ export function PengaturanPage() {
         )}
       </div>
 
+      {canUse("cloud_sync", realTier) && isCloudConnected && (
+        <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-5 mb-2 px-1">Data & Cloud</div>
+      )}
       {/* Cloud Sync (PLUS & PRO) */}
       {canUse("cloud_sync", realTier) && isCloudConnected && (
-        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#22c55e] p-[14px] mb-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Smartphone size={15} className="text-[#0ea5a0]" />
@@ -1293,9 +1290,21 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* Logo Sekolah (PLUS & PRO) */}
-      {canUse("logo_report", tier) && (
-        <LogoUpload editable={true} />
+      {realTier === Tier.PRO && (
+        <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-5 mb-2 px-1">Lainnya</div>
+      )}
+      {realTier === Tier.PRO && (
+        <button
+          onClick={() => setActivePage(PageName.AFFILIATE)}
+          className="w-full flex items-center gap-3 bg-[var(--card-bg)] rounded-xl border border-[#f59e0b]/40 p-[14px] mb-3 text-left cursor-pointer"
+        >
+          <Gift size={18} className="text-[#f59e0b] flex-shrink-0" />
+          <span className="flex-1 min-w-0">
+            <span className="block text-[0.85rem] font-bold text-[var(--text)]">Program Affiliate</span>
+            <span className="block text-[0.7rem] text-[var(--text-light)]">Bagikan kodemu, dapat komisi + bonus masa aktif</span>
+          </span>
+          <ChevronRight size={16} className="text-[var(--text-light)]" />
+        </button>
       )}
 
       {/* Keluar */}
