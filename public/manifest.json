@@ -1,6 +1,6 @@
 {
-  "name": "Presensi Yuk",
-  "short_name": "Presensi Yuk",
+  "name": "Presensi Yuk | Siswa",
+  "short_name": "Presensi Yuk | Siswa",
   "description": "Aplikasi presensi sekolah paling sederhana",
   "start_url": "/",
   "display": "standalone",
