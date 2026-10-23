@@ -437,6 +437,20 @@ export function PengaturanPage() {
         downloadBackup(blob);
         await new Promise((r) => setTimeout(r, 800));
       }
+      // Kirim perubahan terakhir dulu; data lokal akan dihapus setelah keluar.
+      if (isCloudConnected && cloudUser?.email) {
+        const { ok } = await syncService.incrementalSync(cloudUser.email);
+        if (!ok && !(await showConfirmDialog({
+          title: "Data belum tersinkron",
+          message: "Ada data belum tersinkron. Tetap keluar? Data yang belum terkirim akan hilang dari HP ini.",
+          confirmText: "Tetap keluar",
+          cancelText: "Batal",
+          danger: true,
+        }))) {
+          setLoggingOut(false);
+          return;
+        }
+      }
       await logout();
     } catch (err) {
       console.error("Logout gagal:", err);

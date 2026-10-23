@@ -69,6 +69,18 @@ function saveLastSyncTimestamp(ts: number) {
   localStorage.setItem(LAST_SYNC_KEY, ts.toString());
 }
 
+// PostgREST memotong hasil di 1000 baris; ambil per halaman sampai habis.
+const PAGE = 1000;
+async function selectAll(build: () => any): Promise<{ data: any[]; error: { message: string } | null }> {
+  const all: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build().order("id").range(from, from + PAGE - 1);
+    if (error) return { data: all, error };
+    all.push(...(data || []));
+    if (!data || data.length < PAGE) return { data: all, error: null };
+  }
+}
+
 async function getUserIdByEmail(email: string): Promise<string | null> {
   if (_userIdCache && _userIdCache.email === email.toLowerCase().trim()) {
     return _userIdCache.id;
@@ -238,10 +250,8 @@ export const syncService = {
         // Skip tabel protected (schools, teachers) biar tier PRO & sekolah gak berubah
         if (PROTECTED_TABLES.has(table)) continue;
 
-        const { data: cloudRows } = await supabase
-          .from(CLOUD_TABLE_MAP[table])
-          .select("*")
-          .eq("user_id", userId);
+        const { data: cloudRows } = await selectAll(() =>
+          supabase.from(CLOUD_TABLE_MAP[table]).select("*").eq("user_id", userId));
 
         if (!cloudRows || cloudRows.length === 0) continue;
 
@@ -271,10 +281,8 @@ export const syncService = {
       }
 
       // Tombstones (hapus data yang di-delete)
-      const { data: tombstones } = await supabase
-        .from("cloud_tombstones")
-        .select("id, entity_type, local_id, deleted_at")
-        .eq("user_id", userId);
+      const { data: tombstones } = await selectAll(() =>
+        supabase.from("cloud_tombstones").select("id, entity_type, local_id, deleted_at").eq("user_id", userId));
 
       if (tombstones) {
         for (const tomb of tombstones) {
@@ -337,10 +345,10 @@ export const syncService = {
     }
   },
 
-  async incrementalSync(email: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean }> {
+  async incrementalSync(email: string): Promise<{ uploaded: number; downloaded: number; hasChanges: boolean; ok: boolean }> {
     try {
       const userId = await getUserIdByEmail(email);
-      if (!userId) return { uploaded: 0, downloaded: 0, hasChanges: false };
+      if (!userId) return { uploaded: 0, downloaded: 0, hasChanges: false, ok: false };
 
       const lastSync = getLastSyncTimestamp();
       const now = Date.now();
@@ -407,9 +415,10 @@ export const syncService = {
           // tercatat, mis. re-add siswa senama), tombstone basi — jangan hapus cloud.
           const localRow = await db.table(tomb.entityType).get(tomb.localId).catch(() => undefined);
           if (localRow) continue;
-          await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
+          const { error: delErr } = await supabase.from(cloudTable).delete().eq("user_id", userId).eq("local_id", tomb.localId);
+          if (delErr) lastError = `delete ${cloudTable}: ${delErr.message}`;
           // UPSERT tombstone agar tidak duplikat
-          await supabase
+          const { error: tombUpErr } = await supabase
             .from("cloud_tombstones")
             .upsert({
               user_id: userId,
@@ -417,6 +426,7 @@ export const syncService = {
               local_id: tomb.localId,
               deleted_at: now,
             }, { onConflict: "user_id,entity_type,local_id" });
+          if (tombUpErr) lastError = `tombstone: ${tombUpErr.message}`;
         }
       }
 
@@ -431,11 +441,9 @@ export const syncService = {
       if (hasCloud) {
         for (const table of SYNC_TABLES) {
           const cloudTable = CLOUD_TABLE_MAP[table];
-          const { data: cloudRows } = await supabase
-            .from(cloudTable)
-            .select("*")
-            .eq("user_id", userId)
-            .gt("last_synced_at", lastSync);
+          const { data: cloudRows, error: pullErr } = await selectAll(() =>
+            supabase.from(cloudTable).select("*").eq("user_id", userId).gt("last_synced_at", lastSync));
+          if (pullErr) lastError = `pull ${cloudTable}: ${pullErr.message}`;
 
           if (cloudRows && cloudRows.length > 0) {
             for (const cloudRow of cloudRows) {
@@ -458,11 +466,9 @@ export const syncService = {
           }
         }
 
-        const { data: cloudTombstones } = await supabase
-          .from("cloud_tombstones")
-          .select("id, entity_type, local_id, deleted_at")
-          .eq("user_id", userId)
-          .gt("deleted_at", lastSync);
+        const { data: cloudTombstones, error: tombErr } = await selectAll(() =>
+          supabase.from("cloud_tombstones").select("id, entity_type, local_id, deleted_at").eq("user_id", userId).gt("deleted_at", lastSync));
+        if (tombErr) lastError = `pull tombstones: ${tombErr.message}`;
 
         if (cloudTombstones && cloudTombstones.length > 0) {
           for (const tomb of cloudTombstones) {
@@ -478,19 +484,23 @@ export const syncService = {
         }
       }
 
-      await db.tombstones.clear();
-      saveLastSyncTimestamp(now);
+      // Gagal sebagian: biarkan tombstone & cap waktu lama supaya semuanya dicoba lagi.
+      // `now` = waktu MULAI sync, jadi perubahan selama sync tetap ikut sync berikutnya.
+      if (!lastError) {
+        await db.tombstones.clear();
+        saveLastSyncTimestamp(now);
+      }
       saveSyncLog({ at: now, action: "sync", ok: !lastError, uploaded, downloaded, error: lastError || undefined });
 
       if (downloaded > 0) {
         window.dispatchEvent(new Event("data-changed"));
       }
 
-      return { uploaded, downloaded, hasChanges };
+      return { uploaded, downloaded, hasChanges, ok: !lastError };
     } catch (error) {
       console.error("Incremental sync failed:", error);
       saveSyncLog({ at: Date.now(), action: "sync", ok: false, uploaded: 0, downloaded: 0, error: (error as Error)?.message || "Sinkronisasi gagal" });
-      return { uploaded: 0, downloaded: 0, hasChanges: false };
+      return { uploaded: 0, downloaded: 0, hasChanges: false, ok: false };
     }
   },
 

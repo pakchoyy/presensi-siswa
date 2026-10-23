@@ -261,6 +261,8 @@ async function withdraw(supabase, body, req) {
     .insert({ owner_email: email, type: "withdraw", amount: bal.saldo, status: "pending", payout_info: `${nama} — ${tujuan}` })
     .select("id")
     .single();
+  // Index unik "satu penarikan pending per orang" menolak klik ganda/request paralel.
+  if (error?.code === "23505") return [409, { error: "Masih ada penarikan yang menunggu" }];
   if (error) throw error;
   return [200, { ok: true, id: ins.id, amount: bal.saldo }];
 }
