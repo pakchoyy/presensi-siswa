@@ -8,10 +8,10 @@ const site = (path: string) => MAIN_SITE_URL.replace(/\/$/, "") + path;
 // Alat lain di bantuguruyuk.web.id (alamat dicek langsung dari situsnya).
 const BGY_TOOLS: Msg[] = [
   { text: "20 soal + kunci, 5 menit", cta: "Coba gratis →", url: site("/soal") },
-  { text: "LKPD siap cetak, sekali klik", cta: "Buat LKPD →", url: site("/lkpd") },
-  { text: "Modul ajar beres semalam? Bisa!", cta: "Mulai →", url: site("/modul-ajar") },
+  { text: "LKPD siap cetak, 1 klik", cta: "Buat LKPD →", url: site("/lkpd") },
+  { text: "Modul ajar beres semalam", cta: "Mulai →", url: site("/modul-ajar") },
   { text: "Kokurikuler tanpa begadang", cta: "Susun →", url: site("/kokurikuler") },
-  { text: "Nilai rapor aman, tanpa ribet", cta: "Katrol nilai →", url: site("/katrol-nilai") },
+  { text: "Nilai rapor tanpa ribet", cta: "Katrol nilai →", url: site("/katrol-nilai") },
   { text: "Bikin media ajar interaktif", cta: "Coba →", url: "https://bmedia.bantuguruyuk.web.id/buat" },
   { text: "Jadwal pelajaran otomatis", cta: "Atur →", url: "https://bjadwal.bantuguruyuk.web.id" },
 ];
