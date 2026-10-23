@@ -7,11 +7,11 @@ const site = (path: string) => MAIN_SITE_URL.replace(/\/$/, "") + path;
 
 // Alat lain di bantuguruyuk.web.id (alamat dicek langsung dari situsnya).
 const BGY_TOOLS: Msg[] = [
-  { text: "Buat soal dalam lima menit?", cta: "Buat Soal →", url: site("/soal") },
-  { text: "Butuh prompt LKPD menarik?", cta: "Prompt LKPD →", url: site("/lkpd") },
-  { text: "Susun modul ajar lebih cepat", cta: "Modul Ajar →", url: site("/modul-ajar") },
-  { text: "Modul kokurikuler hitungan menit?", cta: "Kokurikuler →", url: site("/kokurikuler") },
-  { text: "Olah nilai rapor lebih mudah", cta: "Katrol Nilai →", url: site("/katrol-nilai") },
+  { text: "Soal jadi 5 menit", cta: "Buat Soal →", url: site("/soal") },
+  { text: "LKPD lebih seru", cta: "Prompt LKPD →", url: site("/lkpd") },
+  { text: "Modul ajar kilat", cta: "Modul Ajar →", url: site("/modul-ajar") },
+  { text: "Kokurikuler cepat", cta: "Kokurikuler →", url: site("/kokurikuler") },
+  { text: "Olah nilai rapor", cta: "Katrol Nilai →", url: site("/katrol-nilai") },
 ];
 
 const INTERVAL_MS = 4500;
