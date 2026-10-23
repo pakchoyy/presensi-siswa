@@ -40,12 +40,23 @@ export const cloudLoginService = {
   },
 
   async sendCode(email: string): Promise<{ ok: boolean; error?: string }> {
-    const { error } = await supabase.auth.signInWithOtp({ email: email.toLowerCase().trim(), options: { shouldCreateUser: true, emailRedirectTo: window.location.origin } });
-    return error ? { ok: false, error: otpError(error.message) } : { ok: true };
+    try {
+      const res = await fetch("/api/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send", email: email.toLowerCase().trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return res.ok ? { ok: true } : { ok: false, error: data.error || "Gagal mengirim kode." };
+    } catch {
+      return { ok: false, error: "Gagal mengirim kode. Periksa koneksi internet." };
+    }
   },
 
   async verifyCode(email: string, code: string): Promise<{ ok: boolean; error?: string }> {
-    const { error } = await supabase.auth.verifyOtp({ email: email.toLowerCase().trim(), token: code.trim(), type: "email" });
+    const e = email.toLowerCase().trim();
+    let { error } = await supabase.auth.verifyOtp({ email: e, token: code.trim(), type: "email" });
+    if (error) ({ error } = await supabase.auth.verifyOtp({ email: e, token: code.trim(), type: "magiclink" }));
     return error ? { ok: false, error: otpError(error.message) } : { ok: true };
   },
 

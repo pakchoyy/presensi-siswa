@@ -62,7 +62,7 @@ export function OtpVerify({ email: initialEmail, title = "Masuk dengan email", o
     }
     sentFor.current = email;
     setCooldown(RESEND_SECONDS);
-    setInfo(`Kode dikirim ke ${email}. Cek juga folder Spam/Promosi. Kalau yang datang berupa link, buka link itu di perangkat ini.`);
+    setInfo(`Kode dikirim ke ${email}. Cek juga folder Spam/Promosi.`);
     setStep("code");
   };
 
