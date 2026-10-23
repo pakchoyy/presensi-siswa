@@ -31,8 +31,10 @@ revoke all on sequence public.affiliate_ledger_id_seq from anon, authenticated;
 alter table public.referral_rewards add column if not exists buyer_tier text;
 
 insert into public.app_settings (key, value) values
-  ('affiliate_commission', '2000'::jsonb),
-  ('affiliate_bonus_days', '30'::jsonb),
+  ('affiliate_commission_plus', '1000'::jsonb),
+  ('affiliate_bonus_days_plus', '12'::jsonb),
+  ('affiliate_commission_pro', '2500'::jsonb),
+  ('affiliate_bonus_days_pro', '30'::jsonb),
   ('affiliate_min_withdraw', '20000'::jsonb),
   ('affiliate_cap_per_semester', '6'::jsonb)
 on conflict (key) do nothing;

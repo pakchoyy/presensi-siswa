@@ -402,8 +402,10 @@ function AffiliateTab({ flash }: Flash) {
 }
 
 const SETTING_FIELDS: { key: string; label: string; hint: string }[] = [
-  { key: "affiliate_commission", label: "Komisi per pembelian (Rp)", hint: "Masuk ke saldo affiliate tiap pembeli baru" },
-  { key: "affiliate_bonus_days", label: "Bonus masa aktif (hari)", hint: "Ditambahkan ke lisensi PRO pemilik kode" },
+  { key: "affiliate_commission_plus", label: "Komisi pembeli PLUS (Rp)", hint: "Masuk ke saldo affiliate tiap pembeli PLUS baru" },
+  { key: "affiliate_bonus_days_plus", label: "Bonus hari pembeli PLUS", hint: "Ditambahkan ke lisensi PRO pemilik kode" },
+  { key: "affiliate_commission_pro", label: "Komisi pembeli PRO (Rp)", hint: "Masuk ke saldo affiliate tiap pembeli PRO baru" },
+  { key: "affiliate_bonus_days_pro", label: "Bonus hari pembeli PRO", hint: "Ditambahkan ke lisensi PRO pemilik kode" },
   { key: "affiliate_min_withdraw", label: "Minimal penarikan (Rp)", hint: "Saldo minimal agar tombol Tarik Dana aktif" },
   { key: "affiliate_cap_per_semester", label: "Batas bonus per semester", hint: "Maksimal pembeli yang memberi bonus per 180 hari" },
 ];

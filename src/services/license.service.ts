@@ -6,9 +6,10 @@ import { generateId, timestamp } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { readRefCode, clearRefCode } from "@/lib/aktivasi-link";
 
+export interface AffiliateReward { commission: number; days: number }
+
 export interface AffiliateInfo {
-  commission: number;
-  bonusDays: number;
+  rewards: { PLUS: AffiliateReward; PRO: AffiliateReward };
   minWithdraw: number;
   capPerSemester: number;
 }
@@ -16,7 +17,7 @@ export interface AffiliateInfo {
 export interface AffiliateDashboard extends AffiliateInfo {
   code: string;
   email: string;
-  referrals: { email: string; tier: string | null; at: string }[];
+  referrals: { email: string; tier: string | null; at: string; amount: number; days: number }[];
   rewardsThisSemester: number;
   earned: number;
   withdrawn: number;

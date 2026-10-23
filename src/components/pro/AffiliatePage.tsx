@@ -9,7 +9,11 @@ import { PageName, Tier } from "@/types/enums";
 import { Gift, Copy, Share2, Lock, Wallet, Users, CalendarPlus, Coins, ShieldCheck, Mail, Loader2, X } from "lucide-react";
 
 const WA_ADMIN = "6289530713597";
-const DEFAULT_INFO: AffiliateInfo = { commission: 2000, bonusDays: 30, minWithdraw: 20000, capPerSemester: 6 };
+const DEFAULT_INFO: AffiliateInfo = {
+  rewards: { PLUS: { commission: 1000, days: 12 }, PRO: { commission: 2500, days: 30 } },
+  minWithdraw: 20000,
+  capPerSemester: 6,
+};
 const rp = (n: number) => "Rp" + n.toLocaleString("id-ID");
 const tgl = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 
@@ -59,7 +63,7 @@ export function AffiliatePage() {
     "Berlangganan PRO, lalu buka halaman ini dan verifikasi email.",
     "Salin kode affiliate kamu atau bagikan lewat WhatsApp.",
     "Guru baru membeli PLUS/PRO dan memasukkan kodemu saat aktivasi (atau membuka link ajakanmu).",
-    `Kamu langsung dapat komisi ${rp(info.commission)} dan masa aktif PRO +${info.bonusDays} hari.`,
+    `Kamu langsung dapat komisi + bonus masa aktif PRO. Pembeli PLUS: ${rp(info.rewards.PLUS.commission)} + ${info.rewards.PLUS.days} hari · Pembeli PRO: ${rp(info.rewards.PRO.commission)} + ${info.rewards.PRO.days} hari.`,
     `Saldo minimal ${rp(info.minWithdraw)} bisa ditarik — tekan Tarik Dana, admin transfer lewat WhatsApp.`,
   ];
 
@@ -76,8 +80,8 @@ export function AffiliatePage() {
 
       {/* Benefit */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <Benefit icon={<Coins size={18} />} title={rp(info.commission)} sub="komisi tiap pembeli baru" />
-        <Benefit icon={<CalendarPlus size={18} />} title={`+${info.bonusDays} hari`} sub="masa aktif PRO kamu" />
+        <Benefit icon={<Coins size={18} />} title={`${rp(info.rewards.PLUS.commission)} + ${info.rewards.PLUS.days} hari`} sub="tiap pembeli PLUS" />
+        <Benefit icon={<CalendarPlus size={18} />} title={`${rp(info.rewards.PRO.commission)} + ${info.rewards.PRO.days} hari`} sub="tiap pembeli PRO" />
         <Benefit icon={<Wallet size={18} />} title={`Min. ${rp(info.minWithdraw)}`} sub="saldo bisa ditarik" />
         <Benefit icon={<Users size={18} />} title={`${info.capPerSemester}× / semester`} sub="maks. bonus per semester" />
       </div>
@@ -152,6 +156,11 @@ export function AffiliatePage() {
 
           {/* Saldo */}
           <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+              <Stat label="Total komisi" value={rp(dash.earned)} />
+              <Stat label="Pengguna" value={`${dash.referrals.length} orang`} />
+              <Stat label="Bonus hari" value={`+${dash.referrals.reduce((n, r) => n + (r.days || 0), 0)} hari`} />
+            </div>
             <div className="flex items-end justify-between">
               <div>
                 <div className="text-[0.72rem] text-[var(--text-light)]">Saldo komisi</div>
@@ -192,11 +201,17 @@ export function AffiliatePage() {
             ) : (
               <ul className="m-0 p-0 list-none divide-y divide-[var(--border)]">
                 {dash.referrals.map((r, i) => (
-                  <li key={i} className="flex items-center justify-between py-[9px] text-[0.78rem]">
-                    <span className="text-[var(--text)] font-medium truncate">{r.email}</span>
-                    <span className="flex items-center gap-2 flex-shrink-0 text-[var(--text-light)] text-[0.7rem]">
-                      {r.tier && <span className="px-[6px] py-[1px] rounded-full bg-[#0ea5a0]/12 text-[#0ea5a0] font-bold">{r.tier}</span>}
-                      {tgl(r.at)}
+                  <li key={i} className="flex items-center justify-between gap-2 py-[9px] text-[0.78rem]">
+                    <span className="min-w-0">
+                      <span className="block text-[var(--text)] font-medium truncate">{r.email}</span>
+                      <span className="flex items-center gap-2 text-[var(--text-light)] text-[0.68rem]">
+                        {r.tier && <span className="px-[6px] py-[1px] rounded-full bg-[#0ea5a0]/12 text-[#0ea5a0] font-bold">{r.tier}</span>}
+                        {tgl(r.at)}
+                      </span>
+                    </span>
+                    <span className="flex-shrink-0 text-right leading-tight">
+                      <span className="block font-extrabold text-[#16a34a]">+{rp(r.amount || 0)}</span>
+                      <span className="text-[0.68rem] text-[var(--text-light)]">+{r.days || 0} hari</span>
                     </span>
                   </li>
                 ))}
@@ -222,6 +237,15 @@ export function AffiliatePage() {
           onDone={() => { setShowWithdraw(false); load(); }}
         />
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-[var(--input-bg)] px-1 py-2">
+      <div className="text-[0.85rem] font-extrabold text-[var(--text)] leading-tight">{value}</div>
+      <div className="text-[0.62rem] text-[var(--text-light)] mt-[2px]">{label}</div>
     </div>
   );
 }

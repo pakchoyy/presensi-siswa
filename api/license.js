@@ -94,8 +94,10 @@ async function activate(supabase, body) {
 // ── Program Affiliate (khusus PRO): pemilik kode dapat bonus hari + komisi saat pembeli BARU aktivasi pakai kodenya ──
 const REF_RE = /^PY-[A-Z0-9]{6}$/;
 const SETTING_DEFAULTS = {
-  affiliate_commission: 2000,
-  affiliate_bonus_days: 30,
+  affiliate_commission_plus: 1000,
+  affiliate_bonus_days_plus: 12,
+  affiliate_commission_pro: 2500,
+  affiliate_bonus_days_pro: 30,
   affiliate_min_withdraw: 20000,
   affiliate_cap_per_semester: 6,
 };
@@ -143,7 +145,10 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   const lic = await activeLicense(supabase, ref.owner_email);
   if (!isPro(lic)) return "owner_not_pro";
   // buyer_email unik: insert gagal bila pembeli ini sudah pernah dipakai referral.
-  const days = cfg.affiliate_bonus_days;
+  // Besar bonus mengikuti paket yang dibeli pembeli.
+  const isProBuy = buyerTier === "PRO";
+  const days = isProBuy ? cfg.affiliate_bonus_days_pro : cfg.affiliate_bonus_days_plus;
+  const commission = isProBuy ? cfg.affiliate_commission_pro : cfg.affiliate_commission_plus;
   const { error: insErr } = await supabase
     .from("referral_rewards")
     .insert({ code, owner_email: ref.owner_email, buyer_email: buyerEmail, days, buyer_tier: buyerTier });
@@ -151,11 +156,11 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   if (days > 0) {
     await supabase.from("licenses").update({ tanggal_berakhir: Math.max(Date.now(), lic.tanggal_berakhir || 0) + days * 86400000 }).eq("id", lic.id);
   }
-  if (cfg.affiliate_commission > 0) {
+  if (commission > 0) {
     await supabase.from("affiliate_ledger").insert({
       owner_email: ref.owner_email,
       type: "earn",
-      amount: cfg.affiliate_commission,
+      amount: commission,
       status: "ok",
       buyer_email: buyerEmail,
       note: `Pembelian ${buyerTier} pakai kode ${code}`,
@@ -191,8 +196,10 @@ const maskEmail = (e) => {
 async function affiliateInfo(supabase) {
   const cfg = await getSettings(supabase);
   return [200, {
-    commission: cfg.affiliate_commission,
-    bonusDays: cfg.affiliate_bonus_days,
+    rewards: {
+      PLUS: { commission: cfg.affiliate_commission_plus, days: cfg.affiliate_bonus_days_plus },
+      PRO: { commission: cfg.affiliate_commission_pro, days: cfg.affiliate_bonus_days_pro },
+    },
     minWithdraw: cfg.affiliate_min_withdraw,
     capPerSemester: cfg.affiliate_cap_per_semester,
   }];
@@ -214,19 +221,24 @@ async function affiliate(supabase, body, req) {
   const cfg = await getSettings(supabase);
   const since = new Date(Date.now() - SEMESTER_MS).toISOString();
   const [{ data: rewards }, { data: ledger }] = await Promise.all([
-    supabase.from("referral_rewards").select("buyer_email, buyer_tier, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(100),
-    supabase.from("affiliate_ledger").select("type, amount, status, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(500),
+    supabase.from("referral_rewards").select("buyer_email, buyer_tier, days, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(100),
+    supabase.from("affiliate_ledger").select("type, amount, status, buyer_email, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(500),
   ]);
   const bal = balanceOf(ledger);
   return [200, {
     code: row.code,
     email,
-    referrals: (rewards || []).map((r) => ({ email: maskEmail(r.buyer_email), tier: r.buyer_tier || null, at: r.created_at })),
+    referrals: (rewards || []).map((r) => {
+      const earn = (ledger || []).find((l) => l.type === "earn" && l.buyer_email === r.buyer_email);
+      return { email: maskEmail(r.buyer_email), tier: r.buyer_tier || null, at: r.created_at, days: r.days || 0, amount: earn?.amount || 0 };
+    }),
     rewardsThisSemester: (rewards || []).filter((r) => r.created_at >= since).length,
     ...bal,
     hasPending: bal.pending > 0,
-    commission: cfg.affiliate_commission,
-    bonusDays: cfg.affiliate_bonus_days,
+    rewards: {
+      PLUS: { commission: cfg.affiliate_commission_plus, days: cfg.affiliate_bonus_days_plus },
+      PRO: { commission: cfg.affiliate_commission_pro, days: cfg.affiliate_bonus_days_pro },
+    },
     minWithdraw: cfg.affiliate_min_withdraw,
     capPerSemester: cfg.affiliate_cap_per_semester,
   }];

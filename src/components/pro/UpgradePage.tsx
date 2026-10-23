@@ -40,7 +40,7 @@ const COMPARE_ROWS: [string, string, string, string][] = [
   ["Mode QR", "—", "—", "✓"],
   ["Kalender edit", "—", "—", "✓"],
   ["Logo di laporan", "—", "✓", "✓"],
-  ["Program Affiliate (komisi + bonus 1 bulan)", "—", "—", "✓"],
+  ["Program Affiliate (komisi + bonus masa aktif)", "—", "—", "✓"],
   ["Bebas iklan", "—", "—", "✓"],
 ];
 
