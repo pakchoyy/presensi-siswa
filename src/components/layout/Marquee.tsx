@@ -10,7 +10,7 @@ const BGY_TOOLS: Msg[] = [
   { text: "Buat soal dengan AI", cta: "Coba gratis →", url: site("/soal") },
   { text: "Prompt LKPD praktis", cta: "Buat LKPD →", url: site("/lkpd") },
   { text: "Modul ajar beres semalam", cta: "Mulai →", url: site("/modul-ajar") },
-  { text: "Buat prompt game interaktif yuk", cta: "Coba →", url: "https://bmedia.bantuguruyuk.web.id/buat" },
+  { text: "Prompt game interaktif yuk", cta: "Coba →", url: "https://bmedia.bantuguruyuk.web.id/buat" },
   { text: "Katrol nilai dengan mudah", cta: "Coba →", url: site("/katrol-nilai") },
 ];
 
