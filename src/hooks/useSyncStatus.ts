@@ -9,7 +9,7 @@ export type SyncStatus = "synced" | "syncing" | "waiting" | "offline" | "not-con
 
 export function useSyncStatus() {
   const online = useOnlineStatus();
-  const { teacher, setupSelesai } = useApp();
+  const { teacher, setupSelesai, realTier } = useApp();
   const { isCloudConnected } = useCloudAuth();
   const [lastSync, setLastSync] = useState(() =>
     parseInt(localStorage.getItem("presensi_last_sync") || "0")
@@ -45,7 +45,7 @@ export function useSyncStatus() {
     };
   }, []);
 
-  const isPRO = setupSelesai && canUse("cloud_sync", (teacher?.tier as Tier) || Tier.FREE);
+  const isPRO = setupSelesai && canUse("cloud_sync", realTier);
 
   if (!isPRO) return { status: "not-connected" as SyncStatus, lastSync: 0 };
 

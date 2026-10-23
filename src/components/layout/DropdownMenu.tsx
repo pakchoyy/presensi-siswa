@@ -18,14 +18,14 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function DropdownMenu({ isOpen, onClose }: Props) {
-  const { setActivePage, setupSelesai, teacher } = useApp();
+  const { setActivePage, setupSelesai, teacher, tier: appTier, realTier } = useApp();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [qrMode, setQrMode] = useState(isQrActive((teacher?.tier as Tier) || Tier.FREE));
+  const [qrMode, setQrMode] = useState(isQrActive(appTier));
 
   if (!isOpen || !setupSelesai) return null;
 
-  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const tier = appTier;
   const isPRO = tier === Tier.PRO;
   const isPaid = isPRO || tier === Tier.PLUS;
 

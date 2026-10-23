@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download, Lock } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
 import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { triggerAutoSync } from "@/hooks/useAutoSync";
@@ -50,9 +50,9 @@ function formatKelasLabel(namaKelas: string): string {
 }
 
 export function SiswaPage() {
-  const { activeClassroom, classrooms, teacher, school, refreshClassrooms, setActiveClassroom, setActivePage } = useApp();
-  const tier = teacher?.tier || Tier.FREE;
-  const isPRO = tier === Tier.PRO;
+  const { activeClassroom, classrooms, teacher, school, refreshClassrooms, setActiveClassroom, setActivePage, tier: appTier } = useApp();
+  const tier = appTier;
+  const canPjj = canUse("pjj_mode", tier);
   const canBulkUpdate = canUse("bulk_update", tier);
   const limits = LIMITS[tier];
   const [upgradePrompt, setUpgradePrompt] = useState<string | null>(null);
@@ -481,6 +481,10 @@ export function SiswaPage() {
   const handleToggleAbsenMandiri = async () => {
     const targetKelas = selectedKelas || activeClassroom;
     if (!targetKelas) return;
+    if (!canPjj && !targetKelas.allowSiswaAbsenMandiri) {
+      setUpgradePrompt("Absen Mandiri (PJJ) tersedia untuk paket PLUS atau PRO.");
+      return;
+    }
     setTogglingAbsen(true);
     try {
       const next = !targetKelas.allowSiswaAbsenMandiri;
@@ -499,6 +503,10 @@ export function SiswaPage() {
   const handleGenerateLinks = async () => {
     const targetKelas = selectedKelas || activeClassroom;
     if (!targetKelas || students.length === 0) { toast("Belum ada siswa"); return; }
+    if (!canPjj) {
+      setUpgradePrompt("Link absen mandiri tersedia untuk paket PLUS atau PRO.");
+      return;
+    }
     setAbsenLinkGenerating(true);
     try {
       const links: { nama: string; token: string; url: string }[] = [];
@@ -816,10 +824,12 @@ export function SiswaPage() {
         {isFinite(limits.siswaPerKelas) && students.length >= limits.siswaPerKelas && <span className="text-[#b45309] font-semibold"> • Penuh</span>}
       </div>
 
-      {/* Absen Mandiri (trial 1-2 guru) */}
+      {/* Absen Mandiri (PJJ) — PLUS+ */}
       <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-[0.78rem] font-bold"><Link2 size={14} className="text-[#0ea5a0]" /> Absen Mandiri (PJJ)</div>
+          <div className="flex items-center gap-2 text-[0.78rem] font-bold"><Link2 size={14} className="text-[#0ea5a0]" /> Absen Mandiri (PJJ)
+            {!canPjj && <span className="inline-flex items-center gap-[3px] text-[0.6rem] font-bold px-[6px] py-[1px] rounded-full bg-[#0ea5a0]/10 text-[#0ea5a0] border border-[#0ea5a0]/30"><Lock size={9} /> PLUS</span>}
+          </div>
           <button
             onClick={handleToggleAbsenMandiri}
             disabled={togglingAbsen}
@@ -948,7 +958,7 @@ export function SiswaPage() {
             onClick={() => setShowImportUpdate(true)}
             className="w-full flex items-center justify-center gap-[6px] py-[8px] rounded-[10px] border-[1.5px] border-dashed border-[#0ea5a0]/40 text-[#0ea5a0] font-bold text-[0.76rem] cursor-pointer bg-transparent"
           >
-            <RefreshCw size={14} /> Import Update Excel (PRO)
+            <RefreshCw size={14} /> Import Update Excel (PLUS+)
           </button>
         </div>
       )}

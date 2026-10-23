@@ -16,9 +16,9 @@ const MONTHS = [
 ];
 
 export function KalenderPage() {
-  const { activeClassroom, teacher, setActivePage } = useApp();
+  const { activeClassroom, teacher, setActivePage, tier } = useApp();
   const { toast } = useToast();
-  const isPRO = canUse("calendar_edit", (teacher?.tier as Tier) || Tier.FREE);
+  const isPRO = canUse("calendar_edit", tier);
 
   const [entries, setEntries] = useState<AcademicCalendarEntry[]>([]);
   const [ay, setAy] = useState<{ id: number; label: string } | null>(null);

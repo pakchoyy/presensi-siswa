@@ -1,3 +1,4 @@
+import { clearLocalData } from "@/lib/local-data";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
@@ -292,19 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try { await supabase.auth.signOut(); } catch { /* offline: still clear locally */ }
 
-    try {
-      await Promise.all(db.tables.map((t) => t.clear()));
-    } catch (err) {
-      console.error("[logout] gagal hapus data lokal:", err);
-    }
-
-    try {
-      const keep = new Set(["bgy_presensi_dark", "bgy_install_date"]);
-      Object.keys(localStorage)
-        .filter((k) => (k.startsWith("bgy_") || k.startsWith("presensi_")) && !keep.has(k))
-        .forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch { /* ignore */ }
+    await clearLocalData();
 
     window.location.replace("/");
   };

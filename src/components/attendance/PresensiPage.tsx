@@ -14,7 +14,8 @@ import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
 import { QrScanner } from "./QrScanner";
-import { isQrActive, isPjjActive } from "@/lib/features";
+import { isQrActive, isPjjActive, isKelasLocked } from "@/lib/features";
+import { Lock } from "lucide-react";
 import { Tier } from "@/types/enums";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
@@ -27,7 +28,7 @@ function isWeekend(dateStr: string): boolean {
 }
 
 export function PresensiPage() {
-  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom, teacher } = useApp();
+  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom, teacher, tier } = useApp();
   const { toast } = useToast();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -82,7 +83,7 @@ export function PresensiPage() {
     loadLiburKalender();
   }, [loadLiburKalender]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     if (!activeClassroom || isLibur || diLuarPeriode) {
       setLoading(false);
       return;
@@ -94,7 +95,7 @@ export function PresensiPage() {
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     try {
       const [siswa, result] = await Promise.all([
@@ -122,11 +123,13 @@ export function PresensiPage() {
     loadData();
   }, [loadData]);
 
+  const kelasLocked = isKelasLocked(activeClassroom?.id, classrooms, tier);
+
   useEffect(() => {
     const handleRealtimeUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.table && ["attendanceSessions", "attendanceRecords"].includes(detail.table)) {
-        loadData();
+        loadData(true);
       }
     };
     window.addEventListener("realtime-update", handleRealtimeUpdate);
@@ -140,7 +143,7 @@ export function PresensiPage() {
   // untuk kelas mandiri: polling 10 detik sebagai fallback kalau realtime belum aktif
   useEffect(() => {
     if (!isAbsenMandiri || isLibur || diLuarPeriode) return;
-    const iv = setInterval(() => loadData(), 10000);
+    const iv = setInterval(() => loadData(true), 10000);
     return () => clearInterval(iv);
   }, [isAbsenMandiri, isLibur, diLuarPeriode, loadData]);
 
@@ -203,7 +206,7 @@ export function PresensiPage() {
   }, [loadRekapAjaran]);
 
   const handleSelectStatus = async (status: AttendanceStatus, catatan?: string) => {
-    if (!selectedStudent || !sessionId) return;
+    if (!selectedStudent || !sessionId || kelasLocked) return;
 
     await attendanceService.ubahStatus(
       sessionId,
@@ -248,7 +251,7 @@ export function PresensiPage() {
   const getCatatan = (siswaId: number): string | undefined => records.get(siswaId)?.catatan;
 
   const handleQrScan = (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
-    if (!sessionId) return;
+    if (!sessionId || kelasLocked) return;
     const student = payload.token
       ? students.find((s) => s.absenToken === payload.token)
       : students.find((s) => s.id === payload.studentId);
@@ -353,16 +356,61 @@ export function PresensiPage() {
       <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
         <DateNavigator />
 
-        <div className="mb-3 lg:hidden">
+        {classrooms.length > 1 && (
+          <div className="relative mb-3" ref={classRef}>
+            <button
+              onClick={() => setClassDropdown(!classDropdown)}
+              className="flex items-center gap-2 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold cursor-pointer"
+              style={{ borderLeft: `4px solid ${activeColor}`, background: `${activeColor}0d` }}
+            >
+              <span style={{ color: activeColor }}>{activeClassroom?.nama}</span>
+              <ChevronDown size={14} className="ml-auto text-[var(--text-light)]" />
+            </button>
+            {classDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-[100] py-1 animate-slide-down">
+                {classrooms.map((cls, i) => {
+                  const cc = CLASS_COLORS[i % CLASS_COLORS.length];
+                  const isActive = activeClassroom?.id === cls.id;
+                  return (
+                    <button
+                      key={cls.id}
+                      onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
+                      className="block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none hover:opacity-90"
+                      style={{ borderLeft: `4px solid ${cc}`, background: isActive ? `${cc}1a` : "transparent" }}
+                    >
+                      <span style={{ color: isActive ? cc : undefined }}>{cls.nama}</span>
+                      {isActive && <span style={{ color: cc }}> ✓</span>}
+                      {isKelasLocked(cls.id, classrooms, tier) && <Lock size={12} className="inline ml-1 text-[var(--text-light)]" />}
+                    </button>
+                  );
+                })}
+                <div className="border-t border-[var(--border)] mt-1 pt-1">
+                  <button
+                    onClick={() => { setActivePage(PageName.SISWA); setClassDropdown(false); }}
+                    className="flex items-center gap-1 w-full text-left px-[14px] py-[9px] text-[0.75rem] font-semibold text-[#0ea5a0] cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)]"
+                  >
+                    <Plus size={13} /> Tambah Kelas
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-3">
           <RingkasanBar counts={counts} />
         </div>
 
-        <div className="hidden lg:block mb-3">
-          <RingkasanBar counts={counts} />
-        </div>
+        {kelasLocked && (
+          <div className="bg-[#fef3c7] border border-[#fbbf24] rounded-xl p-3 mb-3 flex items-center gap-2 text-[0.74rem] text-[#78350f]">
+            <Lock size={15} className="flex-shrink-0" />
+            <div className="flex-1">Paket FREE hanya bisa mengisi presensi <b>1 kelas</b>. Kelas ini bisa dilihat & direkap, tapi statusnya tidak bisa diubah.</div>
+            <button onClick={() => setActivePage(PageName.UPGRADE)} className="px-[10px] py-[6px] rounded-lg bg-[#d97706] text-white font-bold text-[0.7rem] border-none cursor-pointer flex-shrink-0">Lihat Paket</button>
+          </div>
+        )}
 
         {/* Scan QR — desktop (navbar handles mobile) */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive((teacher?.tier as Tier) || Tier.FREE) && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive(tier) && (
           <button
             onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
             className="hidden lg:flex w-full items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
@@ -373,7 +421,7 @@ export function PresensiPage() {
         )}
 
         {/* QR mode help banner — one-time hint */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive((teacher?.tier as Tier) || Tier.FREE) && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive(tier) && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
           <div className="bg-[rgba(14,165,160,0.08)] border border-[#0ea5a0]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <QrCode size={16} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
@@ -394,7 +442,7 @@ export function PresensiPage() {
         )}
 
         {/* PJJ mode help banner — one-time hint */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isPjjActive((teacher?.tier as Tier) || Tier.FREE) && localStorage.getItem("bgy_pjj_hint_seen") !== "1" && (
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isPjjActive(tier) && localStorage.getItem("bgy_pjj_hint_seen") !== "1" && (
           <div className="bg-[rgba(139,92,246,0.08)] border border-[#8b5cf6]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <div className="flex-shrink-0 mt-[2px] text-[#8b5cf6]">💻</div>
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
@@ -436,7 +484,7 @@ export function PresensiPage() {
         {activeClassroom && !isLibur && (
           <div className="mb-3">
             <button
-              onClick={() => { if (!showRekapAjaran && !rekapAjaran) loadRekapAjaran(); setShowRekapAjaran(!showRekapAjaran); }}
+              onClick={() => setShowRekapAjaran(!showRekapAjaran)}
               className="w-full flex items-center gap-2 px-[10px] py-[8px] border border-[var(--border)] rounded-xl text-[0.72rem] font-semibold cursor-pointer"
               style={{ background: showRekapAjaran ? "var(--input-bg)" : "var(--card-bg)" }}
             >
@@ -457,7 +505,7 @@ export function PresensiPage() {
                 {/* Semester/Tahun toggle */}
                 <div className="flex gap-2 mb-3">
                   <button
-                    onClick={() => { if (!semesterOnly) { setSemesterOnly(true); loadRekapAjaran(); } }}
+                    onClick={() => { if (!semesterOnly) { setSemesterOnly(true); } }}
                     className={`flex-1 py-[6px] rounded-[8px] text-[0.68rem] font-bold border cursor-pointer ${
                       semesterOnly
                         ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
@@ -467,7 +515,7 @@ export function PresensiPage() {
                     Semester {activeAy?.semesterAktif}
                   </button>
                   <button
-                    onClick={() => { if (semesterOnly) { setSemesterOnly(false); loadRekapAjaran(); } }}
+                    onClick={() => { if (semesterOnly) { setSemesterOnly(false); } }}
                     className={`flex-1 py-[6px] rounded-[8px] text-[0.68rem] font-bold border cursor-pointer ${
                       !semesterOnly
                         ? "border-[#0ea5a0] bg-[rgba(14,165,160,0.1)] text-[#0ea5a0]"
@@ -559,46 +607,6 @@ export function PresensiPage() {
           </div>
         )}
 
-        {classrooms.length > 1 && (
-          <div className="relative mb-3" ref={classRef}>
-            <button
-              onClick={() => setClassDropdown(!classDropdown)}
-              className="flex items-center gap-2 w-full px-[10px] py-[9px] bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[0.78rem] font-semibold cursor-pointer"
-              style={{ borderLeft: `4px solid ${activeColor}`, background: `${activeColor}0d` }}
-            >
-              <span style={{ color: activeColor }}>{activeClassroom?.nama}</span>
-              <ChevronDown size={14} className="ml-auto text-[var(--text-light)]" />
-            </button>
-            {classDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg z-[100] py-1 animate-slide-down">
-                {classrooms.map((cls, i) => {
-                  const cc = CLASS_COLORS[i % CLASS_COLORS.length];
-                  const isActive = activeClassroom?.id === cls.id;
-                  return (
-                    <button
-                      key={cls.id}
-                      onClick={() => { setActiveClassroom(cls); setClassDropdown(false); }}
-                      className="block w-full text-left px-[14px] py-[9px] text-[0.8rem] font-semibold cursor-pointer border-none hover:opacity-90"
-                      style={{ borderLeft: `4px solid ${cc}`, background: isActive ? `${cc}1a` : "transparent" }}
-                    >
-                      <span style={{ color: isActive ? cc : undefined }}>{cls.nama}</span>
-                      {isActive && <span style={{ color: cc }}> ✓</span>}
-                    </button>
-                  );
-                })}
-                <div className="border-t border-[var(--border)] mt-1 pt-1">
-                  <button
-                    onClick={() => { setActivePage(PageName.SISWA); setClassDropdown(false); }}
-                    className="flex items-center gap-1 w-full text-left px-[14px] py-[9px] text-[0.75rem] font-semibold text-[#0ea5a0] cursor-pointer border-none bg-transparent hover:bg-[var(--input-bg)]"
-                  >
-                    <Plus size={13} /> Tambah Kelas
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {isLibur || diLuarPeriode ? (
           <div className="text-center py-[40px]">
             <div className="text-[2.5rem] mb-2">📅</div>
@@ -660,7 +668,7 @@ export function PresensiPage() {
                   index={i}
                   status={getStatus(s.id)}
                   catatan={getCatatan(s.id)}
-                  onClick={() => setSelectedStudent(s)}
+                  onClick={() => { if (kelasLocked) { toast("Kelas ini terkunci di paket FREE"); return; } setSelectedStudent(s); }}
                 />
               ))
             )}

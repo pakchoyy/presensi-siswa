@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Smartphone, Clock, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/shared/Toast";
+import { Tier } from "@/types/enums";
 
 interface Device {
   _id: string;
@@ -135,7 +136,7 @@ export function DeviceLimitModal({
           </div>
         </div>
 
-        {tier === "FREE" && (
+        {tier === Tier.FREE && (
           <div className="p-4 border-t border-[var(--border)] bg-blue-50 dark:bg-blue-950/20">
             <p className="text-[0.75rem] text-blue-600 dark:text-blue-400">
               Upgrade ke PRO untuk menggunakan hingga 3 perangkat sekaligus

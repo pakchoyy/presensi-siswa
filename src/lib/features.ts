@@ -19,6 +19,7 @@ const FEATURES: Record<Tier, string[]> = {
     "rekap_custom",
     "bulk_update",
     "support_wa",
+    "backup_local",
   ],
   [Tier.PRO]: [
     "presensi",
@@ -37,6 +38,7 @@ const FEATURES: Record<Tier, string[]> = {
     "support_wa",
     "support_priority",
     "calendar_edit",
+    "backup_local",
   ],
 };
 
@@ -87,4 +89,30 @@ export function isPjjActive(tier: Tier | undefined | null): boolean {
   } catch {
     return false;
   }
+}
+
+export const TRIAL_DAYS = 30;
+
+/** PRO selama masa coba 30 hari untuk akun FREE; setelah itu tier asli. */
+export function effectiveTier(realTier: Tier | undefined | null): Tier {
+  const t = realTier || Tier.FREE;
+  if (t !== Tier.FREE) return t;
+  return trialDaysRemaining() > 0 ? Tier.PRO : Tier.FREE;
+}
+
+export function isOnTrial(realTier: Tier | undefined | null): boolean {
+  return (realTier || Tier.FREE) === Tier.FREE && trialDaysRemaining() > 0;
+}
+
+/** Kelas di luar batas paket (urut id) terkunci: bisa dilihat, tidak bisa diisi presensi. */
+export function isKelasLocked(
+  kelasId: number | undefined | null,
+  classrooms: { id: number }[],
+  tier: Tier | undefined | null
+): boolean {
+  if (kelasId == null) return false;
+  const max = limitsFor(tier).kelas;
+  if (!isFinite(max)) return false;
+  const allowed = [...classrooms].sort((a, b) => a.id - b.id).slice(0, max).map((c) => c.id);
+  return !allowed.includes(kelasId);
 }

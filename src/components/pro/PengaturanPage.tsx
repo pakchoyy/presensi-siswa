@@ -67,13 +67,13 @@ const getAutoHadir = (): boolean => {
 };
 
 export function PengaturanPage() {
-  const { teacher, school, refreshTeacher, setActivePage } = useApp();
+  const { teacher, school, refreshTeacher, setActivePage, tier: appTier, realTier } = useApp();
   const { toast } = useToast();
   const { isCloudConnected, cloudUser, setCloudEmail, clearCloudEmail } = useCloudAuth();
 
-  const tier = teacher?.tier || Tier.FREE;
-  const isPaid = tier === Tier.PRO || tier === Tier.PLUS;
-  const trialLeft = tier === Tier.FREE ? trialDaysRemaining() : 0;
+  const tier = appTier;
+  const isPaid = realTier === Tier.PRO || realTier === Tier.PLUS;
+  const trialLeft = realTier === Tier.FREE ? trialDaysRemaining() : 0;
   const { logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
@@ -802,12 +802,12 @@ export function PengaturanPage() {
         ) : (
           <div className="mb-3 text-[0.74rem] text-[var(--text)]">
             {trialLeft > 0
-              ? <>Kamu memakai <b>FREE</b> — trial tersisa <b>{trialLeft} hari</b>. Maksimal {LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa.</>
-              : <>Masa trial FREE sudah habis. Pilih paket PLUS atau PRO untuk lanjut mengisi presensi.</>}
+              ? <>Kamu sedang <b>coba PRO gratis</b> — tersisa <b>{trialLeft} hari</b>. Setelah itu otomatis jadi FREE ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa), data tetap aman.</>
+              : <>Kamu memakai <b>FREE</b> ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa). Pilih PLUS atau PRO untuk kelas &amp; siswa lebih banyak.</>}
           </div>
         )}
 
-        {tier !== Tier.PRO && (
+        {realTier !== Tier.PRO && (
           <button
             onClick={() => setActivePage(PageName.UPGRADE)}
             className="w-full flex items-center justify-center gap-[6px] py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer mb-3 border-none"
@@ -1243,7 +1243,7 @@ export function PengaturanPage() {
       </div>
 
       {/* Cloud Sync (PLUS & PRO) */}
-      {canUse("cloud_sync", tier) && isCloudConnected && (
+      {canUse("cloud_sync", realTier) && isCloudConnected && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -1365,12 +1365,14 @@ export function PengaturanPage() {
               <div className="bg-[#fef2f2] border border-[#fecaca] rounded-lg p-3 mb-[14px] text-[0.74rem] text-[#991b1b] flex gap-2">
                 <AlertTriangle size={16} className="flex-shrink-0 mt-[1px]" />
                 <span>
-                  Data di HP ini <b>belum tersimpan di cloud</b> dan akan <b>hilang</b> setelah keluar. Simpan file backup dulu supaya bisa dipulihkan.
+                  {canUse("backup_local", tier)
+                    ? <>Data di HP ini <b>belum tersimpan di cloud</b> dan akan <b>hilang</b> setelah keluar. Simpan file backup dulu supaya bisa dipulihkan.</>
+                    : <>Data di HP ini akan <b>hilang permanen</b>.</>}
                 </span>
               </div>
             )}
             <div className="flex flex-col gap-2">
-              {!(isPaid && isCloudConnected) && (
+              {!(isPaid && isCloudConnected) && canUse("backup_local", tier) && (
                 <button
                   onClick={() => doLogout(true)}
                   disabled={loggingOut}
@@ -1385,7 +1387,7 @@ export function PengaturanPage() {
                 disabled={loggingOut}
                 className="w-full py-[10px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer border-none disabled:opacity-60"
               >
-                {loggingOut ? "Mengeluarkan..." : isPaid && isCloudConnected ? "Keluar" : "Keluar tanpa backup"}
+                {loggingOut ? "Mengeluarkan..." : (isPaid && isCloudConnected) || !canUse("backup_local", tier) ? "Keluar" : "Keluar tanpa backup"}
               </button>
               <button
                 onClick={() => setShowLogoutConfirm(false)}

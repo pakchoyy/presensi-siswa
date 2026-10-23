@@ -54,6 +54,8 @@ export function Sidebar() {
     setActivePage,
     setActiveClassroom,
     refreshClassrooms,
+    tier: appTier,
+    realTier,
   } = useApp();
   const { toast } = useToast();
 
@@ -62,7 +64,7 @@ export function Sidebar() {
 
   if (!setupSelesai) return null;
 
-  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const tier = appTier;
   const isPRO = tier === Tier.PRO;
   const canAddKelas = classrooms.length < limitsFor(tier).kelas;
 
@@ -211,7 +213,7 @@ export function Sidebar() {
         </div>
         {NAV_ITEMS.filter(item => {
           // Hide Upgrade menu if already PRO
-          if (item.page === PageName.UPGRADE && isPRO) {
+          if (item.page === PageName.UPGRADE && realTier === Tier.PRO) {
             return false;
           }
           return true;
@@ -228,7 +230,7 @@ export function Sidebar() {
               }`}
             >
               <item.icon size={16} />
-              <span>{item.label}</span>
+              <span>{item.page === PageName.UPGRADE ? (realTier === Tier.PLUS ? "Upgrade PRO" : "Lihat Paket") : item.label}</span>
             </button>
           );
         })}

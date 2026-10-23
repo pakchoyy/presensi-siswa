@@ -32,7 +32,7 @@ import { trialDaysRemaining, tierLabel } from "@/lib/features";
 const WA_NUMBER = "6289530713597";
 
 export function UpgradePage() {
-  const { teacher, refreshTeacher } = useApp();
+  const { teacher, refreshTeacher, tier: appTier, realTier } = useApp();
   const { toast } = useToast();
 
   const [email, setEmail] = useState("");
@@ -42,7 +42,8 @@ export function UpgradePage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
 
-  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const tier = realTier;
+  void appTier;
   const trialLeft = tier === Tier.FREE ? trialDaysRemaining() : 0;
 
   const validateEmail = (val: string) => {
@@ -153,8 +154,8 @@ export function UpgradePage() {
     : tier === Tier.PLUS
       ? "Kamu di tier PLUS. Upgrade PRO untuk unlimited + Mode QR."
       : trialLeft > 0
-        ? `Trial 30 hari — tersisa ${trialLeft} hari.`
-        : "Trial 30 hari sudah habis. Pilih paket untuk lanjut pakai.";
+        ? `Coba PRO gratis — tersisa ${trialLeft} hari. Setelah itu otomatis jadi FREE.`
+        : "Kamu di FREE (1 kelas, 10 siswa). Pilih paket untuk kelas & siswa lebih banyak.";
 
   const badgeStyle = tier === Tier.PRO
     ? { bg: "rgba(245,158,11,0.18)", border: "#f59e0b", text: "#fbbf24" }
@@ -183,7 +184,7 @@ export function UpgradePage() {
         >
           <span>Kamu sekarang: {tierLabel(tier)}</span>
           {tier === Tier.FREE && trialLeft > 0 && (
-            <span className="opacity-80">· Trial {trialLeft} hari lagi</span>
+            <span className="opacity-80">· Coba PRO {trialLeft} hari lagi</span>
           )}
           {tier === Tier.FREE && trialLeft === 0 && (
             <span className="opacity-80">· Trial habis</span>
@@ -195,7 +196,7 @@ export function UpgradePage() {
       {/* FREE card (muted if not FREE) */}
       <TierCard
         name="FREE"
-        tagline="Trial 30 hari, buat coba-coba dulu"
+        tagline="Gratis selamanya — 30 hari pertama coba PRO"
         price={null}
         bullets={[
           "1 kelas · 10 siswa",

@@ -11,11 +11,11 @@ interface LogoUploadProps {
 }
 
 export function LogoUpload({ editable = false }: LogoUploadProps) {
-  const { school, teacher } = useApp();
+  const { school, teacher, tier: appTier } = useApp();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const tier = teacher?.tier || Tier.FREE;
+  const tier = appTier;
   const canCustomize = canUse("logo_report", tier);
   const isPRO = canCustomize; // backward compat for existing branches below
 

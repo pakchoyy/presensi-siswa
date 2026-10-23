@@ -1,47 +1,67 @@
-import { BookOpen, ClipboardCheck, Upload, BarChart3, Database, Calendar, Settings } from "lucide-react";
+import { BookOpen, ClipboardCheck, Upload, BarChart3, Database, Calendar, Settings, Crown, QrCode, Link2, Key, LogOut } from "lucide-react";
+import { PLUS_PRICE, PRO_PRICE } from "@/lib/constants";
 
 const GUIDES = [
   {
-    num: "1",
     icon: ClipboardCheck,
     title: "Presensi Harian",
-    desc: "Buka menu Presensi. Kalau <b>Isi Hadir Otomatis</b> ON (di Pengaturan), semua siswa otomatis berstatus <b>Hadir</b>. Tap nama siswa yang <b>tidak hadir</b>, lalu pilih Sakit/Izin/Alpha. Data langsung tersimpan.",
+    desc: "Buka <b>Presensi</b> di menu bawah. Pilih tanggal & kelas. Kalau <b>Auto Hadir</b> aktif, semua siswa otomatis <b>Hadir</b> — cukup tap nama siswa yang tidak hadir lalu pilih Sakit/Izin/Alpha/Terlambat. Tersimpan otomatis, bisa offline.",
   },
   {
-    num: "2",
-    icon: Settings,
-    title: "Pengaturan Hari Aktif",
-    desc: "Buka menu <b>Pengaturan</b> > <b>Hari Aktif</b>. Pilih <b>Senin - Jumat</b> (Sabtu & Minggu libur) atau <b>Senin - Sabtu</b> (hanya Minggu libur). Hari non-aktif ditandai merah di kalender dan tidak masuk presensi.",
-  },
-  {
-    num: "3",
     icon: Upload,
-    title: "Import Siswa dari Excel",
-    desc: "Download template Excel dari menu Siswa. Isi kolom <b>Nama, NISN, Jenis Kelamin, Kelas</b> — lalu upload. Sistem membaca dan menampilkan pratinjau. Kolom <b>Kelas</b> otomatis membuat kelas baru (sesuai batas kelas paket Anda).",
+    title: "Siswa & Import Excel",
+    desc: "Buka <b>Siswa</b>. Tambah siswa satu per satu, atau download template Excel lalu upload. Kolom <b>Kelas</b> otomatis membuat kelas baru sesuai batas paket.",
   },
   {
-    num: "4",
     icon: BarChart3,
-    title: "Rekap & Export Laporan",
-    desc: "Buka menu Rekap — pilih <b>Bulanan</b> atau <b>Semester</b>. Lihat tabel ringkasan Hadir/Sakit/Izin/Alpha per siswa. Ekspor langsung ke <b>PDF</b> atau <b>Excel</b> untuk laporan ke kepala sekolah.",
+    title: "Rekap & Export",
+    desc: "Buka <b>Rekap</b>. Pilih kelas, lalu periode <b>Bulanan</b>, <b>Semester</b>, atau <b>Rentang</b> tanggal. Ekspor ke <b>PDF</b> atau <b>Excel</b> untuk laporan.",
   },
   {
-    num: "5",
     icon: Calendar,
-    title: "Kalender Akademik (PRO)",
-    desc: "Buka menu Kalender. Versi PRO bisa <b>menandai Hari Libur</b> (merah) dan <b>Hari Penting</b> (biru) — seperti penerimaan rapor, ujian, atau perayaan sekolah. Kalender membantu merencanakan semester.",
+    title: "Kalender",
+    desc: "Buka <b>Kalender</b> untuk melihat hari libur. Menandai <b>Hari Libur</b> dan <b>Hari Penting</b> sendiri hanya untuk paket <b>PRO</b>.",
   },
   {
-    num: "6",
+    icon: Settings,
+    title: "Pengaturan",
+    desc: "Atur <b>Hari Aktif</b> (Senin–Jumat atau Senin–Sabtu), Auto Hadir, logo laporan, Mode QR, dan Mode PJJ dari menu <b>Pengaturan</b>.",
+  },
+  {
+    icon: Crown,
+    title: "Paket & Masa Coba",
+    desc: `Pengguna baru otomatis <b>coba PRO gratis 30 hari</b>. Setelah itu otomatis menjadi <b>FREE</b> (1 kelas, 10 siswa) — data tetap aman dan bisa dilihat. <b>PLUS</b> ${PLUS_PRICE}: 4 kelas, 25 siswa/kelas. <b>PRO</b> ${PRO_PRICE}: tanpa batas.`,
+  },
+  {
+    icon: QrCode,
+    title: "Mode QR (PRO)",
+    desc: "Aktifkan di Pengaturan, cetak kartu QR di menu <b>Siswa</b>, lalu tekan tombol <b>Scan</b> di menu bawah untuk menandai siswa Hadir.",
+  },
+  {
+    icon: Link2,
+    title: "Mode PJJ / Absen Mandiri (PLUS+)",
+    desc: "Di menu <b>Siswa</b>, nyalakan <b>Absen Mandiri</b> per kelas lalu tekan <b>Buat Link Absen</b>. Bagikan link ke siswa supaya mereka absen sendiri dari rumah.",
+  },
+  {
     icon: Database,
-    title: "Backup & Restore Data",
-    desc: "Buka menu Backup — klik <b>Buat Backup Lokal</b> untuk menyimpan data ke file. Simpan di HP atau Google Drive. Kalau ganti HP, <b>Restore</b> dari file yang sama. Paket PLUS &amp; PRO bisa sinkron ke cloud.",
+    title: "Backup (PLUS+)",
+    desc: "Buka <b>Backup</b> untuk menyimpan file backup dan memulihkannya saat ganti HP. PLUS & PRO juga tersinkron otomatis ke cloud.",
+  },
+  {
+    icon: Key,
+    title: "Aktivasi Lisensi",
+    desc: "Setelah membeli paket, buka <b>Pengaturan</b> &gt; <b>Aktivasi Lisensi</b> dan masukkan kode atau email pembelian.",
+  },
+  {
+    icon: LogOut,
+    title: "Keluar Akun",
+    desc: "Keluar akan <b>menghapus data di HP ini</b>. Paket PLUS/PRO yang tersinkron cloud akan memuat data lagi saat masuk dengan email yang sama. Di FREE, data akan hilang permanen.",
   },
 ];
 
 export function PetunjukPage() {
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.85rem] font-bold flex items-center gap-[8px] mb-4">
           <BookOpen size={18} className="text-[#0ea5a0]" /> Petunjuk Penggunaan
@@ -58,13 +78,13 @@ export function PetunjukPage() {
         </div>
 
         <div className="flex flex-col gap-[10px]">
-          {GUIDES.map((g) => (
+          {GUIDES.map((g, i) => (
             <div
-              key={g.num}
+              key={g.title}
               className="flex gap-3 items-start p-[10px] border border-[var(--border)] rounded-[9px] bg-[var(--input-bg)]"
             >
-              <div className="text-[1.2rem] flex-shrink-0 font-bold text-[#0ea5a0]">
-                {g.num}️⃣
+              <div className="w-[26px] h-[26px] rounded-full flex-shrink-0 flex items-center justify-center text-white text-[0.75rem] font-bold bg-[#0ea5a0]">
+                {i + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-[6px] mb-1">

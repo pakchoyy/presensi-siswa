@@ -28,8 +28,9 @@ import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
 
 import { PageName, Tier } from "@/types/enums";
 import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
-import { ForceUpgradeOverlay } from "@/components/pro/ForceUpgradeOverlay";
-import { isTrialExpired, trialDaysRemaining } from "@/lib/features";
+import { TrialEndedModal } from "@/components/pro/TrialEndedModal";
+import { DemoRibbon } from "@/components/shared/DemoRibbon";
+import { trialDaysRemaining } from "@/lib/features";
 
 function getAbsenToken(): string | null {
   const m = window.location.pathname.match(/^\/s\/([^/]+)/);
@@ -94,10 +95,13 @@ function PageContent() {
 }
 
 function AppContent() {
-  const { setupSelesai, teacher, activePage, setActivePage } = useApp();
+  const { setupSelesai, realTier, setActivePage } = useApp();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
-  const tier = teacher?.tier || Tier.FREE;
-  const trialOver = setupSelesai && isTrialExpired(tier);
+  const trialJustEnded =
+    setupSelesai &&
+    realTier === Tier.FREE &&
+    trialDaysRemaining() <= 0 &&
+    localStorage.getItem("bgy_trial_end_seen") !== "1";
   // Trigger install_date save on first render
   useEffect(() => { trialDaysRemaining(); }, []);
   
@@ -138,6 +142,7 @@ function AppContent() {
   return (
     <>
       <Header />
+      <DemoRibbon />
       <div className="flex flex-1">
         <Sidebar />
         <PageRouter />
@@ -150,8 +155,8 @@ function AppContent() {
       )}
       <BottomNav />
       {setupSelesai && <InstallPrompt />}
-      {trialOver && activePage !== PageName.UPGRADE && activePage !== PageName.PENGATURAN && (
-        <ForceUpgradeOverlay onGoToUpgrade={() => setActivePage(PageName.UPGRADE)} />
+      {trialJustEnded && (
+        <TrialEndedModal onLihatPaket={() => setActivePage(PageName.UPGRADE)} />
       )}
     </>
   );

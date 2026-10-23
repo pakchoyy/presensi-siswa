@@ -10,6 +10,7 @@ import { APP_BRAND } from "@/lib/constants";
 import { inisial, generateId } from "@/lib/utils";
 import { School, User, Calendar, Users, Upload, Plus, Check, Clock } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
+import { demoService } from "@/services/demo.service";
 
 const WIZARD_TOTAL = 6;
 
@@ -81,6 +82,19 @@ export function WizardSetup() {
     }
     setSiswaList((prev) => [...prev, { id: generateId(), nama }]);
     setSiswaInput("");
+  };
+
+  const [seeding, setSeeding] = useState(false);
+  const cobaDataContoh = async () => {
+    setSeeding(true);
+    try {
+      await demoService.seed();
+      await refreshClassrooms();
+      toast("Mode Contoh aktif — silakan coba-coba dulu");
+    } catch {
+      toast("Gagal membuat data contoh");
+      setSeeding(false);
+    }
   };
 
   const selesaikan = async () => {
@@ -156,6 +170,14 @@ export function WizardSetup() {
                 ))}
               </div>
             </div>
+            <div className="text-center text-[0.72rem] text-[var(--text-light)] my-3">— atau —</div>
+            <button
+              onClick={cobaDataContoh}
+              disabled={seeding}
+              className="w-full py-[11px] rounded-[10px] border-[1.5px] border-dashed border-[#0ea5a0] bg-[rgba(14,165,160,0.06)] text-[#0ea5a0] font-bold text-[0.82rem] cursor-pointer disabled:opacity-60"
+            >
+              {seeding ? "Menyiapkan contoh..." : "Coba dulu dengan data contoh"}
+            </button>
           </div>
         )}
 

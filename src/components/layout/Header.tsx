@@ -9,11 +9,11 @@ import { LicenseExpiryBadge } from "@/components/layout/LicenseExpiryBadge";
 import { Moon, Sun, Menu } from "lucide-react";
 
 export function Header() {
-  const { activePage, darkMode, toggleDarkMode, setupSelesai, teacher } =
+  const { activePage, darkMode, toggleDarkMode, setupSelesai, realTier } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  let subtitle = "| Presensi Siswa";
+  let subtitle = "| Presensi";
 
   if (!setupSelesai) {
     subtitle = "Setup Awal";
@@ -52,25 +52,26 @@ export function Header() {
           <LogoUpload />
           <div className="min-w-0">
             <div className="text-[1rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
-              {setupSelesai ? `Bantu Guru Yuk ${subtitle}` : "Setup"}
+              {setupSelesai ? (<><span className="hidden sm:inline">Bantu Guru Yuk </span>{subtitle.replace(/^\| /, "")}</>) : "Setup"}
             </div>
           </div>
         </div>
 
         {setupSelesai && (() => {
-          const tier = teacher?.tier || Tier.FREE;
-          const trialDays = tier === Tier.FREE ? trialDaysRemaining() : 0;
-          const label = tier === Tier.PRO ? "PRO" : tier === Tier.PLUS ? "PLUS" : trialDays > 0 ? `FREE ${trialDays}d` : "FREE";
-          const warn = tier === Tier.FREE && trialDays <= 7;
+          const trialDays = realTier === Tier.FREE ? trialDaysRemaining() : 0;
+          const onTrial = trialDays > 0;
+          const tier = onTrial ? Tier.PRO : realTier;
+          const label = onTrial ? `PRO · Trial ${trialDays}h` : tier === Tier.PRO ? "PRO" : tier === Tier.PLUS ? "PLUS" : "FREE";
+          const warn = onTrial && trialDays <= 7;
           return (
-            <span className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 ${
-              tier === Tier.PRO
+            <span className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 whitespace-nowrap ${
+              warn
+                ? "bg-[#dc2626]/25 text-[#fecaca] border border-[#dc2626]/40"
+                : tier === Tier.PRO
                 ? "bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/30"
                 : tier === Tier.PLUS
                   ? "bg-[#0ea5a0]/20 text-[#5eead4] border border-[#0ea5a0]/30"
-                  : warn
-                    ? "bg-[#dc2626]/25 text-[#fecaca] border border-[#dc2626]/40"
-                    : "bg-white/10 text-white/60 border border-white/20"
+                  : "bg-white/10 text-white/60 border border-white/20"
             }`}>
               {label}
             </span>

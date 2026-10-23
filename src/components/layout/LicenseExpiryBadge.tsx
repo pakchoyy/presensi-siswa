@@ -1,6 +1,7 @@
 import { useApp } from "@/contexts/AppContext";
 import { licenseService } from "@/services/license.service";
 import { Tier } from "@/types/enums";
+import { tierLabel } from "@/lib/features";
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 
@@ -38,7 +39,7 @@ export function LicenseExpiryBadge() {
           ? "rgba(245,158,11,0.85)"
           : "rgba(14,165,160,0.75)",
       }}
-      title={`Lisensi PRO habis dalam ${daysRemaining} hari`}
+      title={`Lisensi ${tierLabel(teacher?.tier as Tier)} habis dalam ${daysRemaining} hari`}
     >
       <AlertCircle size={10} />
       {daysRemaining === 0 ? "Habis" : `${daysRemaining}hr`}

@@ -12,11 +12,12 @@ import { canUse } from "@/lib/features";
 import { Database, Download, Upload, RotateCcw, AlertTriangle, Cloud, Lock } from "lucide-react";
 
 export function BackupRestorePage() {
-  const { refreshClassrooms, teacher } = useApp();
+  const { refreshClassrooms, teacher, tier: appTier, realTier } = useApp();
   const { cloudEmail } = useCloudAuth();
   const { toast } = useToast();
-  const tier = teacher?.tier || Tier.FREE;
-  const canCloud = canUse("cloud_sync", tier);
+  const tier = appTier;
+  const canCloud = canUse("cloud_sync", realTier);
+  const canLocal = canUse("backup_local", tier);
   const canManualBackup = canUse("backup_manual", tier);
   const isPRO = canManualBackup; // backward compat
 
@@ -116,7 +117,20 @@ export function BackupRestorePage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
-      {/* Backup Lokal */}
+      {!canLocal && (
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
+          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
+            <Database size={15} className="text-[var(--text-light)]" /> Backup & Pulihkan
+            <Lock size={11} className="text-[#b45309]" />
+          </div>
+          <p className="text-[var(--text-light)] text-[0.72rem]">
+            Simpan & pulihkan file backup tersedia untuk paket PLUS atau PRO.
+          </p>
+        </div>
+      )}
+
+      {/* Backup Lokal — PLUS+ */}
+      {canLocal && (
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <Database size={15} /> Backup Lokal
@@ -129,6 +143,7 @@ export function BackupRestorePage() {
           <Download size={15} /> {backingUp ? "Membuat backup..." : "Buat Backup Lokal"}
         </button>
       </div>
+      )}
 
       {/* Backup Cloud (PLUS/PRO) */}
       {canCloud ? (
@@ -178,8 +193,8 @@ export function BackupRestorePage() {
         </div>
       )}
 
-      {/* Restore Lokal — PRO Only */}
-      {isPRO ? (
+      {/* Restore Lokal — PLUS+ */}
+      {canLocal && (
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <RotateCcw size={15} /> Pulihkan dari Backup
@@ -209,16 +224,6 @@ export function BackupRestorePage() {
           </div>
         )}
       </div>
-      ) : (
-        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
-          <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
-            <RotateCcw size={15} /> Pulihkan Backup
-            <Lock size={11} className="text-[#b45309]" />
-          </div>
-          <p className="text-[var(--text-light)] text-[0.72rem]">
-            Fitur restore backup hanya tersedia untuk pengguna PRO.
-          </p>
-        </div>
       )}
     </div>
   );

@@ -9,7 +9,8 @@ import type { Student, Classroom } from "@/types/entities";
 import { PageName } from "@/types/enums";
 import { STATUS_COLOR } from "@/lib/constants";
 import { todayStr, formatTanggalPendek } from "@/lib/utils";
-import { Filter, Table, FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { Filter, Table, FileText, FileSpreadsheet, ChevronDown, Lock, Users } from "lucide-react";
+import { isKelasLocked } from "@/lib/features";
 
 const CLASS_COLORS = ["#0ea5a0", "#f59e0b", "#8b5cf6", "#ef4444", "#3b82f6", "#10b981", "#f97316", "#ec4899"];
 
@@ -21,7 +22,7 @@ const MONTH_LABELS = [
 const SEMESTER_LABELS = ["Ganjil (Jul–Des)", "Genap (Jan–Jun)"];
 
 export function RekapPage() {
-  const { activeClassroom, school, teacher, classrooms, setActiveClassroom, setActivePage } = useApp();
+  const { activeClassroom, school, teacher, classrooms, setActiveClassroom, setActivePage, tier } = useApp();
   const { toast } = useToast();
 
   const [tab, setTab] = useState<"bulanan" | "semester" | "rentang">("bulanan");
@@ -219,8 +220,35 @@ export function RekapPage() {
 
   return (
     <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      {/* Header */}
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-3 mb-3">
+        <div className="text-[0.95rem] font-extrabold text-[var(--text)]">Rekap Kehadiran</div>
+        <div className="text-[0.74rem] text-[var(--text-light)] mt-[2px]">
+          {activeClassroom?.nama ?? "—"} · {students.length} siswa · {dateRange.label}
+        </div>
+      </div>
+
       {/* Classroom switcher */}
-      {classrooms.length > 1 && (
+      <div className="text-[0.68rem] font-bold text-[var(--text-light)] uppercase tracking-[0.4px] mb-[5px]">Kelas</div>
+      {classrooms.length <= 4 ? (
+        <div className="flex flex-wrap gap-[6px] mb-3">
+          {classrooms.map((cls, i) => {
+            const cc = CLASS_COLORS[i % CLASS_COLORS.length];
+            const isActive = activeClassroom?.id === cls.id;
+            return (
+              <button
+                key={cls.id}
+                onClick={() => setActiveClassroom(cls)}
+                className="inline-flex items-center gap-1 px-[12px] py-[7px] rounded-full text-[0.76rem] font-bold cursor-pointer border-[1.5px]"
+                style={{ borderColor: isActive ? cc : "var(--border)", background: isActive ? `${cc}1a` : "var(--card-bg)", color: isActive ? cc : "var(--text)" }}
+              >
+                {cls.nama}
+                {isKelasLocked(cls.id, classrooms, tier) && <Lock size={11} className="text-[var(--text-light)]" />}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
         <div className="relative mb-3" ref={classRef}>
           <button
             onClick={() => setClassDropdown(!classDropdown)}
@@ -244,6 +272,7 @@ export function RekapPage() {
                   >
                     <span style={{ color: isActive ? cc : undefined }}>{cls.nama}</span>
                     {isActive && <span style={{ color: cc }}> ✓</span>}
+                    {isKelasLocked(cls.id, classrooms, tier) && <Lock size={11} className="inline ml-1 text-[var(--text-light)]" />}
                   </button>
                 );
               })}
@@ -253,6 +282,7 @@ export function RekapPage() {
       )}
 
       {/* Tab selector */}
+      <div className="text-[0.68rem] font-bold text-[var(--text-light)] uppercase tracking-[0.4px] mb-[5px]">Periode</div>
       <div className="flex gap-1 mb-3 bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-1">
         <button
           onClick={() => setTab("bulanan")}
@@ -407,7 +437,11 @@ export function RekapPage() {
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-[var(--text-light)] text-[0.75rem] py-[14px] text-center">Belum ada data</td>
+                  <td colSpan={7} className="text-[var(--text-light)] text-[0.75rem] py-[18px] text-center">
+                    <Users size={22} className="mx-auto mb-1 opacity-60" />
+                    <div className="mb-2">Belum ada siswa di kelas ini</div>
+                    <button onClick={() => setActivePage(PageName.SISWA)} className="px-3 py-[6px] rounded-lg bg-[#0ea5a0] text-white font-bold text-[0.72rem] border-none cursor-pointer">Tambah Siswa</button>
+                  </td>
                 </tr>
               ) : (
                 exportableData.map((d) => (

@@ -15,7 +15,7 @@ import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { AttendanceStatus } from "@/types/enums";
 import { useToast } from "@/components/shared/Toast";
-import { canUse } from "@/lib/features";
+import { canUse, isKelasLocked } from "@/lib/features";
 import type { Student, AttendanceRecord } from "@/types/entities";
 
 interface NavItemData {
@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItemData[] = [
 ];
 
 export function BottomNav() {
-  const { activePage, setActivePage, setupSelesai, teacher, activeClassroom, tanggalAktif } = useApp();
+  const { activePage, setActivePage, setupSelesai, activeClassroom, classrooms, tanggalAktif, tier: appTier } = useApp();
   const { toast } = useToast();
   const [showQr, setShowQr] = useState(false);
   const [lastScanned, setLastScanned] = useState<{ nama: string; status: string } | null>(null);
@@ -75,11 +75,15 @@ export function BottomNav() {
 
   if (!setupSelesai) return null;
 
-  const tier = (teacher?.tier as Tier) || Tier.FREE;
+  const tier = appTier;
   const canScan = canUse("qr_mode", tier);
 
   const handleQrScan = async (payload: { studentId?: number; token?: string }, pickedStatus?: string) => {
     if (!activeClassroom || !tanggalAktif) return;
+    if (isKelasLocked(activeClassroom.id, classrooms, tier)) {
+      setLastScanned({ nama: "Kelas terkunci", status: "Paket FREE hanya 1 kelas" });
+      return;
+    }
     // Fallback: kalau cache belum siap, load on-the-fly
     let students = studentsCache.current;
     let sessionId = sessionIdCache.current;

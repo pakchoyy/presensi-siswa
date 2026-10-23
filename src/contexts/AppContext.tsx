@@ -17,6 +17,7 @@ import { licenseService } from "@/services/license.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tier } from "@/types/enums";
 import { todayStr } from "@/lib/utils";
+import { effectiveTier } from "@/lib/features";
 
 interface AppState {
   setupSelesai: boolean;
@@ -38,6 +39,10 @@ interface AppContextType extends AppState {
   refreshClassrooms: () => Promise<void>;
   refreshStudents: (classroomId: number) => Promise<Student[]>;
   refreshTeacher: () => Promise<void>;
+  /** Tier untuk fitur (PRO selama masa coba). */
+  tier: Tier;
+  /** Tier asli dari lisensi — untuk cloud & tampilan lisensi. */
+  realTier: Tier;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -143,6 +148,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         ...state,
+        tier: effectiveTier((state.teacher?.tier as Tier) || Tier.FREE),
+        realTier: ((state.teacher?.tier as Tier) || Tier.FREE),
         setActivePage,
         setTanggalAktif,
         setActiveClassroom,
