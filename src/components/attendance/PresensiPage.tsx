@@ -394,7 +394,7 @@ export function PresensiPage() {
 
   return (
     <>
-      <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
         <DateNavigator />
 
         {classrooms.length > 1 && (

@@ -5,18 +5,28 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0ea5a0",
+  "theme_color": "#0a8f5a",
   "background_color": "#f0f4f8",
   "icons": [
     {
-      "src": "/guru-cibisd2.png",
+      "src": "/icons/py-192-v2.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/guru-cibisd2.png",
+      "src": "/icons/py-512-v2.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/py-maskable-512-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/",
+  "scope": "/"
 }

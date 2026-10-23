@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { resolveLogo } from "@/lib/constants";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { Search, UserPlus, Trash2, FileSpreadsheet, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download, Lock } from "lucide-react";
@@ -576,7 +577,7 @@ export function SiswaPage() {
       const doc = await generateQrCardsPdf(studentsWithToken, {
         namaKelas: formatKelasLabel(targetKelas.nama),
         namaSekolah: school?.nama,
-        logoUrl: school?.logoUrl || "/guru-cibisd2.png",
+        logoUrl: resolveLogo(school?.logoUrl),
         baseUrl: window.location.origin,
       });
       doc.save(`Kartu_QR_${targetKelas.nama}.pdf`);
@@ -601,7 +602,7 @@ export function SiswaPage() {
   // View: Daftar Kelas (Cards)
   if (view === "kelas") {
     return (
-      <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <GraduationCap size={16} /> Daftar Kelas
         </div>
@@ -811,7 +812,7 @@ export function SiswaPage() {
 
   // View: Detail Siswa per Kelas
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
       {/* Back button */}
       <button
         onClick={backToKelas}

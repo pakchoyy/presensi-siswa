@@ -141,7 +141,7 @@ export function CloudSettingsPage() {
 
   if (!cloudEmail || !cloudUser) {
     return (
-      <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] text-center">
           <AlertCircle size={40} className="mx-auto mb-3 text-[var(--text-light)]" />
           <div className="text-[0.85rem] font-bold mb-2">Belum Login</div>
@@ -160,7 +160,7 @@ export function CloudSettingsPage() {
   }
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
       <button
         onClick={() => setActivePage(PageName.PENGATURAN)}
         className="flex items-center gap-2 text-[0.78rem] font-bold text-[#0ea5a0] mb-3 bg-transparent border-none cursor-pointer"

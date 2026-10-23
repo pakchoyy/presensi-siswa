@@ -3,24 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0ea5a0" />
+    <meta name="theme-color" content="#0a8f5a" />
     <meta name="description" content="Presensi Yuk — aplikasi presensi siswa paling sederhana untuk guru" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/guru-cibisd2.png" type="image/png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icons/py-favicon-32-v2.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/icons/py-apple-180-v2.png" />
     <title>Presensi Yuk | Siswa</title>
     <style>
       #loadingScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0ea5a0,#0d7a8a,#2d6a7f);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;color:#fff;font-family:'Segoe UI',system-ui,sans-serif}
-      #loadingScreen img{width:96px;height:96px;border-radius:18px;margin-bottom:24px;animation:lsPulse 1.5s ease-in-out infinite}
-      #loadingScreen .ls-title{font-size:1.6rem;font-weight:800;letter-spacing:.5px}
-      #loadingScreen .ls-sub{font-size:.9rem;opacity:.8;margin-top:8px}
+      #loadingScreen img{width:96px;height:96px;border-radius:22px;margin-bottom:22px;box-shadow:0 8px 24px rgba(0,0,0,.18);animation:lsPulse 1.5s ease-in-out infinite}
+      #loadingScreen .ls-title{font-size:1.6rem;font-weight:800;letter-spacing:.3px;white-space:nowrap}
+      #loadingScreen .ls-title span{font-weight:500;opacity:.85;font-style:normal}
       @keyframes lsPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
     </style>
   </head>
   <body>
     <div id="loadingScreen">
-      <img src="/guru-cibisd2.png" alt="" />
-      <div class="ls-title"><i>Presensi Yuk</i></div>
-      <div class="ls-sub">Siswa</div>
+      <img src="/icons/py-192-v2.png" alt="" />
+      <div class="ls-title"><i>Presensi Yuk</i> <span>| Siswa</span></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

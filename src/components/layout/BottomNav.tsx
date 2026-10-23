@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { isQrActive, QR_MODE_EVENT } from "@/lib/features";
 import { PageName } from "@/types/enums";
+import { Marquee } from "@/components/layout/Marquee";
 import {
   ClipboardCheck,
   BarChart3,
@@ -37,9 +38,26 @@ export function BottomNav() {
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener(QR_MODE_EVENT, sync); window.removeEventListener("storage", sync); };
   }, [tier]);
+  // Strip info duduk tepat di atas puncak tombol tengah, jadi tidak pernah tertutup.
+  const centerRef = useRef<HTMLDivElement>(null);
+  const [tickerBottom, setTickerBottom] = useState(84);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = centerRef.current;
+      if (el) setTickerBottom(Math.ceil(window.innerHeight - el.getBoundingClientRect().top) + 6);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [setupSelesai]);
+
   if (!setupSelesai) return null;
 
   return (
+    <>
+    <div className="lg:hidden fixed left-1/2 -translate-x-1/2 w-full max-w-app z-[290]" style={{ bottom: tickerBottom }}>
+      <Marquee />
+    </div>
     <nav
       className="lg:hidden fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] border-t border-[var(--border)] flex items-end z-[300] py-[6px] px-1"
       style={{ boxShadow: "0 -2px 12px rgba(0,0,0,.08)" }}
@@ -62,6 +80,7 @@ export function BottomNav() {
               aria-label={qrOn ? "Scan QR" : "Presensi"}
             >
               <div
+                ref={centerRef}
                 className={`w-[54px] h-[54px] rounded-full flex items-center justify-center text-white shadow-lg border-4 border-[var(--card-bg)] ${isActive ? "" : "opacity-90"}`}
                 style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
               >
@@ -85,5 +104,6 @@ export function BottomNav() {
         );
       })}
     </nav>
+    </>
   );
 }

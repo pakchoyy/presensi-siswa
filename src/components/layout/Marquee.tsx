@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { MAIN_SITE_URL } from "@/lib/constants";
 
@@ -9,8 +9,9 @@ const MESSAGES = [
   "Yuk cobain semuanya di ",
 ];
 
-// Strip info di bawah header. Bisa ditutup (muncul lagi setelah 3 hari),
-// ketuk untuk jeda. Dulu di atas navbar dan tertutup tombol tengah.
+// Strip info: di HP duduk di atas navbar (di atas puncak tombol tengah),
+// di layar lebar di bawah header. Bisa ditutup (muncul lagi setelah 3 hari),
+// ketuk untuk jeda. Saat tampil, --ticker-h menambah ruang bawah halaman.
 const HIDE_KEY = "bgy_ticker_hide_until";
 const HIDE_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -25,6 +26,11 @@ function isHidden(): boolean {
 export function Marquee() {
   const [hidden, setHidden] = useState(isHidden);
   const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--ticker-h", hidden ? "0px" : "34px");
+    return () => { root.style.setProperty("--ticker-h", "0px"); };
+  }, [hidden]);
   if (hidden) return null;
 
   const duplicated = [...MESSAGES, ...MESSAGES];
@@ -34,7 +40,7 @@ export function Marquee() {
   };
 
   return (
-    <div className="ticker-wrap -mx-3 w-auto">
+    <div className="ticker-wrap">
       <div className="ticker-badge">Info</div>
       <div className="ticker-track" onClick={() => setPaused((p) => !p)}>
         <div className="ticker-content" style={paused ? { animationPlayState: "paused" } : undefined}>

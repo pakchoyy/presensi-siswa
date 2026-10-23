@@ -614,7 +614,7 @@ export function PengaturanPage() {
   const daysRemaining = licenseInfo?.daysRemaining;
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[calc(100px+var(--ticker-h,0px))] lg:pb-4">
       {/* Status Tier */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">

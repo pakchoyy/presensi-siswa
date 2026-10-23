@@ -9,7 +9,7 @@
   "outputDirectory": "dist",
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/(assets|icons)/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -27,7 +27,7 @@
       ]
     },
     {
-      "source": "/((?!assets/|api/).*)",
+      "source": "/((?!assets/|icons/|api/).*)",
       "headers": [
         {
           "key": "Cache-Control",

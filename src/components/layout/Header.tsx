@@ -89,7 +89,7 @@ export function Header() {
           )}
         </div>
       </div>
-      {setupSelesai && <Marquee />}
+      {setupSelesai && <div className="hidden lg:block -mx-3"><Marquee /></div>}
     </header>
   );
 }
