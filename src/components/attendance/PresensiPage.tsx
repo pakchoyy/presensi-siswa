@@ -14,7 +14,7 @@ import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
 const QrScanner = lazy(() => import("./QrScanner").then((m) => ({ default: m.QrScanner })));
-import { isQrActive, isPjjActive, isKelasLocked } from "@/lib/features";
+import { isQrActive, isPjjActive, isKelasLocked, QR_MODE_EVENT } from "@/lib/features";
 import { Lock } from "lucide-react";
 import { Tier } from "@/types/enums";
 
@@ -89,6 +89,12 @@ export function PresensiPage() {
   const isAbsenMandiri = !!activeClassroom?.allowSiswaAbsenMandiri;
   // untuk kelas mandiri (siswa absen sendiri) jangan auto-Hadir, biar "belum absen" kelihatan
   const [autoHadirPref, setAutoHadirPref] = useState(() => localStorage.getItem("bgy_auto_hadir") !== "0");
+  // Mode QR mematikan Auto Hadir; ikuti perubahannya tanpa perlu muat ulang.
+  useEffect(() => {
+    const sync = () => setAutoHadirPref(localStorage.getItem("bgy_auto_hadir") !== "0");
+    window.addEventListener(QR_MODE_EVENT, sync);
+    return () => window.removeEventListener(QR_MODE_EVENT, sync);
+  }, []);
   const [tipSeen, setTipSeen] = useState(() => localStorage.getItem("bgy_tip_klik_seen") === "1");
   const autoHadir = !isAbsenMandiri && autoHadirPref;
   const toggleAutoHadir = () => {

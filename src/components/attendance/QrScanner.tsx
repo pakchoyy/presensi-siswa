@@ -144,13 +144,15 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <button
           onClick={() => setSoundOn(!soundOn)}
-          className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
+          aria-label={soundOn ? "Matikan suara" : "Nyalakan suara"}
+          className="w-11 h-11 rounded-full bg-white/20 text-white flex items-center justify-center"
         >
           {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
         </button>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
+          aria-label="Tutup pemindai"
+          className="w-11 h-11 rounded-full bg-white/20 text-white flex items-center justify-center"
         >
           <X size={20} />
         </button>
