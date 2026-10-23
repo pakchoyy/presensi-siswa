@@ -3,7 +3,6 @@ import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import type { License } from "@/types/entities";
 import { Tier } from "@/types/enums";
 import { generateId, timestamp } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
 
 export interface ActivationResult {
   success: boolean;
@@ -24,12 +23,9 @@ function tierFromKode(kode: string): Tier {
 }
 
 async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; data: any }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const { data: sess } = await supabase.auth.getSession();
-  if (sess.session?.access_token) headers.Authorization = `Bearer ${sess.session.access_token}`;
   const res = await fetch("/api/license", {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));

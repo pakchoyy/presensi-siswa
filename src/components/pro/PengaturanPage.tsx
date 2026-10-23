@@ -536,9 +536,19 @@ export function PengaturanPage() {
       }
 
       if (!licenseData) {
-        toast("❌ Paket PLUS/PRO belum aktif untuk email ini. Masukkan kode lisensi di Aktivasi Lisensi.");
-        setConnecting(false);
-        return;
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("email", emailAddress)
+          .maybeSingle();
+        if (profileErr) console.error("profile query error:", profileErr);
+
+        if (!profile || (profile.tier !== "PRO" && profile.tier !== "PLUS")) {
+          toast("❌ Email ini belum punya paket PLUS/PRO.");
+          setConnecting(false);
+          return;
+        }
+        foundTier = profile.tier === "PLUS" ? Tier.PLUS : Tier.PRO;
       }
 
       // Pastikan profile ada agar CloudAuthContext mendeteksi cloud connected
