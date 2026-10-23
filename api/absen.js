@@ -123,8 +123,10 @@ export default async function handler(req, res) {
     if (!kelas || !kelas.allow) return res.status(403).json({ error: "Absen mandiri belum diaktifkan" });
 
     const today = todayStr();
-    // cek hari libur (cloud atau public)
-    const { data: libur } = await supabase.from("calendar_entries").select("id").eq("tanggal", today).eq("jenis", "HariLibur").limit(1);
+    // cek hari libur dari kalender guru (cloud); siswa non-cloud pakai tabel lama
+    const { data: libur } = student.isCloud
+      ? await supabase.from("cloud_calendar_entries").select("id").eq("user_id", student.userId).eq("tanggal", today).eq("jenis", "HariLibur").limit(1)
+      : await supabase.from("calendar_entries").select("id").eq("tanggal", today).eq("jenis", "HariLibur").limit(1);
     if (libur && libur.length > 0) return res.status(403).json({ error: "Hari libur, tidak ada presensi" });
 
     // upsert sesi & record

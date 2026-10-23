@@ -1,5 +1,6 @@
 import { db } from "@/repositories/dexie/db";
 import { supabase } from "@/lib/supabase";
+import { getDeviceId } from "@/lib/device";
 
 export type SyncStatus = "tersinkron" | "menyinkronkan" | "menunggu" | "error";
 
@@ -349,6 +350,15 @@ export const syncService = {
     try {
       const userId = await getUserIdByEmail(email);
       if (!userId) return { uploaded: 0, downloaded: 0, hasChanges: false, ok: false };
+
+      // Perangkat yang sudah dikeluarkan (batas perangkat) berhenti sinkron; data lokal tetap aman.
+      // shortcut: dicek di klien, cukup untuk pengguna biasa; kunci di RLS kalau ada yang mengakali.
+      const { data: dev, error: devErr } = await supabase.from("devices").select("id").eq("user_id", userId).eq("device_id", getDeviceId()).maybeSingle();
+      if (!devErr && !dev) {
+        _userIdCache = null;
+        await supabase.auth.signOut();
+        return { uploaded: 0, downloaded: 0, hasChanges: false, ok: false };
+      }
 
       const lastSync = getLastSyncTimestamp();
       const now = Date.now();

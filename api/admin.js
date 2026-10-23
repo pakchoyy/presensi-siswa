@@ -3,12 +3,12 @@ import { getSettings, balanceOf } from "./license.js";
 
 // Halaman super admin. Semua aksi diverifikasi di server: token sesi OTP (Supabase Auth)
 // + email harus ada di daftar admin. Tidak ada pengecekan yang hanya di browser.
-const DEFAULT_ADMINS = ["pulsachoy@gmail.com", "choiruddin2410@gmail.com", "admin@bantuguruyuk.web.id"];
 const ADMINS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
-const adminList = () => (ADMINS.length ? ADMINS : DEFAULT_ADMINS);
+// Admin hanya dari env ADMIN_EMAILS (Vercel); kosong = tidak ada admin.
+const adminList = () => ADMINS;
 
 const DAY = 86400000;
 const TIERS = ["PLUS", "PRO"];

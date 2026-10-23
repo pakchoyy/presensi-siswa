@@ -1,13 +1,6 @@
-<!-- convex-ai-start -->
+Presensi Yuk | Siswa — Vite + React + TypeScript PWA.
 
-This project uses [Convex](https://convex.dev) as its backend.
-
-When working on Convex code, **always read
-`convex/_generated/ai/guidelines.md` first** for important guidelines on
-how to correctly use Convex APIs and patterns. The file contains rules that
-override what you may have learned about Convex from training data.
-
-Convex agent skills for common tasks can be installed by running
-`npx convex ai-files install`.
-
-<!-- convex-ai-end -->
+- Data lokal: Dexie/IndexedDB (`src/repositories/dexie`).
+- Backend: Supabase (auth email OTP, Postgres + RLS, project `ikemxrcimsqsbbnuhkld`) dan Vercel serverless di `api/*.js` (service role, lisensi, OTP lewat Resend, admin, affiliate, absen mandiri).
+- Perubahan skema/RLS dicatat sebagai SQL di `scripts/`.
+- Cek sebelum push: `npx tsc --noEmit` dan `npx vite build`.

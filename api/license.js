@@ -24,21 +24,13 @@ const normKode = (k) => String(k || "").toUpperCase().trim().slice(0, 64);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KODE_RE = /^BGY-[A-Z0-9-]{4,60}$/;
 
-// Rate limit sederhana per IP (best-effort: memori per instance serverless).
-const HITS = new Map();
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_HITS = 20;
-function rateLimited(ip) {
-  const now = Date.now();
-  const rec = HITS.get(ip);
-  if (!rec || now - rec.start > WINDOW_MS) {
-    HITS.set(ip, { start: now, n: 1 });
-    if (HITS.size > 5000) HITS.clear();
-    return false;
-  }
-  rec.n++;
-  return rec.n > MAX_HITS;
+// Rate limit bersama semua instance (tabel rate_hits lewat fungsi rate_hit). Gagal cek = tidak membatasi.
+async function rateLimited(supabase, key, max, windowS) {
+  const { data, error } = await supabase.rpc("rate_hit", { p_key: key, p_max: max, p_window_s: windowS });
+  return !error && data === true;
 }
+// Hanya aksi yang mengubah/menebak lisensi yang dibatasi; status, info & affiliate bebas.
+const LIMITED_ACTIONS = new Set(["activate", "renew", "restore", "withdraw"]);
 
 async function markTier(supabase, email, tier) {
   if (!VALID_TIERS.includes(tier)) tier = "PRO";
@@ -138,35 +130,23 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   const { count } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", buyerEmail).eq("status", "digunakan");
   if ((count || 0) > 1) return "not_new";
   const cfg = await getSettings(supabase);
-  const since = new Date(Date.now() - SEMESTER_MS).toISOString();
-  const { count: given } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("owner_email", ref.owner_email).gte("created_at", since);
-  if ((given || 0) >= cfg.affiliate_cap_per_semester) return "cap";
   // Affiliate khusus PRO: kode milik pelanggan PLUS (lama) tidak lagi menghasilkan bonus.
   const lic = await activeLicense(supabase, ref.owner_email);
   if (!isPro(lic)) return "owner_not_pro";
-  // buyer_email unik: insert gagal bila pembeli ini sudah pernah dipakai referral.
-  // Besar bonus mengikuti paket yang dibeli pembeli.
+  // Besar bonus mengikuti paket pembeli. Cap, tambah hari & komisi dikerjakan atomik di DB (affiliate_credit).
   const isProBuy = buyerTier === "PRO";
-  const days = isProBuy ? cfg.affiliate_bonus_days_pro : cfg.affiliate_bonus_days_plus;
-  const commission = isProBuy ? cfg.affiliate_commission_pro : cfg.affiliate_commission_plus;
-  const { error: insErr } = await supabase
-    .from("referral_rewards")
-    .insert({ code, owner_email: ref.owner_email, buyer_email: buyerEmail, days, buyer_tier: buyerTier });
-  if (insErr) return "used";
-  if (days > 0) {
-    await supabase.from("licenses").update({ tanggal_berakhir: Math.max(Date.now(), lic.tanggal_berakhir || 0) + days * 86400000 }).eq("id", lic.id);
-  }
-  if (commission > 0) {
-    await supabase.from("affiliate_ledger").insert({
-      owner_email: ref.owner_email,
-      type: "earn",
-      amount: commission,
-      status: "ok",
-      buyer_email: buyerEmail,
-      note: `Pembelian ${buyerTier} pakai kode ${code}`,
-    });
-  }
-  return "ok";
+  const { data, error } = await supabase.rpc("affiliate_credit", {
+    p_code: code,
+    p_owner: ref.owner_email,
+    p_buyer: buyerEmail,
+    p_tier: buyerTier,
+    p_days: isProBuy ? cfg.affiliate_bonus_days_pro : cfg.affiliate_bonus_days_plus,
+    p_commission: isProBuy ? cfg.affiliate_commission_pro : cfg.affiliate_commission_plus,
+    p_cap: cfg.affiliate_cap_per_semester,
+    p_license_id: lic.id,
+  });
+  if (error) throw error;
+  return data;
 }
 
 async function sessionEmail(supabase, req) {
@@ -276,7 +256,7 @@ async function renew(supabase, body) {
   const tier = tierFromKode(kode);
   const { data: current } = await supabase
     .from("licenses")
-    .select("id, tanggal_berakhir")
+    .select("id, tier, tanggal_berakhir")
     .eq("email", email)
     .eq("status", "digunakan")
     .eq("product", "siswa")
@@ -285,6 +265,11 @@ async function renew(supabase, body) {
     .maybeSingle();
 
   const now = Date.now();
+  // Jangan turunkan PRO yang masih aktif lewat kode PLUS.
+  if (tier === "PLUS" && current && (current.tier || "PRO") === "PRO" && (!current.tanggal_berakhir || current.tanggal_berakhir > now)) {
+    const sampai = current.tanggal_berakhir ? new Date(current.tanggal_berakhir).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-";
+    return [409, { error: `Paket PRO masih aktif sampai ${sampai}. Pakai kode PRO untuk memperpanjang.` }];
+  }
   const base = current?.tanggal_berakhir ? Math.max(now, current.tanggal_berakhir) : now;
   const newExpiry = base + SEMESTER_MS;
 
@@ -358,12 +343,15 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   res.setHeader("Cache-Control", "no-store");
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
-  if (rateLimited(ip)) return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
   const { action } = req.body || {};
   const fn = ACTIONS[action];
   if (!fn) return res.status(400).json({ error: "Action tidak dikenal" });
   try {
-    const [code, payload] = await fn(getSupabase(), req.body, req);
+    const supabase = getSupabase();
+    if (LIMITED_ACTIONS.has(action) && (await rateLimited(supabase, "lic:" + ip, 30, 600))) {
+      return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
+    }
+    const [code, payload] = await fn(supabase, req.body, req);
     return res.status(code).json(payload);
   } catch {
     return res.status(500).json({ error: "Gagal memproses lisensi di server" });

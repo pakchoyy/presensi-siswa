@@ -11,19 +11,10 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-// Rate limit sederhana (memori per instance): 1x per 60 dtk dan 5x per jam per email, 20x per jam per IP.
-const HITS = new Map();
-function limited(key, max, windowMs) {
-  const now = Date.now();
-  const list = (HITS.get(key) || []).filter((t) => now - t < windowMs);
-  if (list.length >= max) {
-    HITS.set(key, list);
-    return true;
-  }
-  list.push(now);
-  HITS.set(key, list);
-  if (HITS.size > 5000) HITS.clear();
-  return false;
+// Rate limit bersama semua instance (fungsi DB rate_hit): 1x/60 dtk & 5x/jam per email, 20x/jam per IP.
+async function limited(supabase, key, max, windowS) {
+  const { data, error } = await supabase.rpc("rate_hit", { p_key: key, p_max: max, p_window_s: windowS });
+  return !error && data === true;
 }
 
 async function generateCode(supabase, email) {
@@ -55,15 +46,16 @@ export default async function handler(req, res) {
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Email tidak valid." });
 
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
-  if (limited("ip:" + ip, 20, 3600_000) || limited("h:" + email, 5, 3600_000)) {
+  const supabase = getSupabase();
+  if ((await limited(supabase, "otp-ip:" + ip, 20, 3600)) || (await limited(supabase, "otp-h:" + email, 5, 3600))) {
     return res.status(429).json({ error: "Terlalu sering minta kode. Coba lagi nanti." });
   }
-  if (limited("m:" + email, 1, 60_000)) {
+  if (await limited(supabase, "otp-m:" + email, 1, 60)) {
     return res.status(429).json({ error: "Tunggu 1 menit sebelum minta kode lagi." });
   }
 
   try {
-    const code = await generateCode(getSupabase(), email);
+    const code = await generateCode(supabase, email);
     if (!code) throw new Error("No OTP generated");
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
