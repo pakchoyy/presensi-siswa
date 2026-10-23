@@ -189,6 +189,15 @@ export async function backupToCloud(email: string, type: "auto" | "manual" = "ma
       created_at: Date.now(),
     });
 
+    // Simpan maksimal 3 backup terbaru per akun (backup disimpan di database, kuotanya terbatas).
+    const { data: old } = await supabase
+      .from("cloud_backups")
+      .select("id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(3, 100);
+    if (old?.length) await supabase.from("cloud_backups").delete().in("id", old.map((b) => b.id)).eq("user_id", userId);
+
     return true;
   } catch (error) {
     console.error("Backup to cloud failed:", error);
