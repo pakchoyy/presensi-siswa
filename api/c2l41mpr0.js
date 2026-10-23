@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHmac, timingSafeEqual } from "crypto";
 
-// Link klaim hanya diberikan toko ke pembeli yang sudah bayar (file_url produk kreacy).
-// ?t=<KLAIM_TOKEN_PLUS|KLAIM_TOKEN_PRO> menentukan paket. Kode yang diberikan langsung
-// ditandai 'terkirim' supaya tidak terlihat pembeli lain; cookie menjaga kode tetap sama saat di-refresh.
+// Link klaim dibuat toko Kreacy untuk pesanan yang sudah dibayar:
+// ?t=<KLAIM_TOKEN_PLUS|KLAIM_TOKEN_PRO>&order=<id pesanan>&sig=<HMAC-SHA256(KLAIM_HMAC_SECRET, id pesanan)>.
+// Satu pesanan = satu kode (licenses.klaim_order unik); membuka link lagi menampilkan kode yang sama.
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,9 +18,10 @@ function tierFromToken(t) {
   return null;
 }
 
-function readCookie(req, name) {
-  const m = String(req.headers.cookie || "").match(new RegExp("(?:^|; )" + name + "=([A-Z0-9-]+)"));
-  return m ? m[1] : null;
+export function validOrderSig(order, sig, secret) {
+  if (!secret || !/^[A-Za-z0-9-]{1,64}$/.test(order) || !/^[0-9a-f]{64}$/.test(sig)) return false;
+  const expected = createHmac("sha256", secret).update(order).digest();
+  return timingSafeEqual(expected, Buffer.from(sig, "hex"));
 }
 
 export default async function handler(req, res) {
@@ -33,37 +35,34 @@ export default async function handler(req, res) {
   let kode = "";
   let error = "";
 
-  if (!tier) {
+  const order = String(req.query.order || "");
+  if (!tier || !validOrderSig(order, String(req.query.sig || ""), process.env.KLAIM_HMAC_SECRET)) {
     error = "Link klaim tidak valid. Buka link dari halaman pesanan di toko, atau hubungi admin.";
   } else {
-    const cookieName = "bgy_klaim_" + tier;
     try {
       const supabaseAdmin = getSupabaseAdmin();
-      const prev = readCookie(req, cookieName);
-      if (prev) {
-        const { data } = await supabaseAdmin.from("licenses").select("kode").eq("kode", prev).maybeSingle();
-        if (data) kode = data.kode;
-      }
+      const byOrder = async () =>
+        (await supabaseAdmin.from("licenses").select("kode").eq("klaim_order", order).maybeSingle()).data?.kode || "";
+      kode = await byOrder();
       for (let i = 0; !kode && i < 3; i++) {
-        let q = supabaseAdmin.from("licenses").select("id, kode").eq("status", "tersedia").eq("product", "siswa");
+        let q = supabaseAdmin.from("licenses").select("id").eq("status", "tersedia").eq("product", "siswa");
         // Kode lama BGY-PS-XXXX (tier PRO) ikut dipakai untuk PRO.
         q = tier === "PLUS" ? q.eq("tier", "PLUS") : q.eq("tier", "PRO");
         const { data: available, error: queryError } = await q.limit(1);
         if (queryError) throw queryError;
         if (!available || available.length === 0) break;
-        const { data: claimed } = await supabaseAdmin
+        const { data: claimed, error: claimError } = await supabaseAdmin
           .from("licenses")
-          .update({ status: "terkirim" })
+          .update({ status: "terkirim", klaim_order: order })
           .eq("id", available[0].id)
           .eq("status", "tersedia")
           .select("kode");
-        if (claimed && claimed.length) kode = claimed[0].kode;
+        // 23505: pesanan yang sama sedang diklaim bersamaan; ambil kode milik pesanan itu.
+        if (claimError?.code === "23505") kode = await byOrder();
+        else if (claimError) throw claimError;
+        else if (claimed && claimed.length) kode = claimed[0].kode;
       }
-      if (kode) {
-        res.setHeader("Set-Cookie", `${cookieName}=${kode}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
-      } else {
-        error = "Stok kode habis. Hubungi admin via WhatsApp.";
-      }
+      if (!kode) error = "Stok kode habis. Hubungi admin via WhatsApp.";
     } catch (e) {
       error = "Gagal menghubungi server. Coba lagi nanti.";
     }
