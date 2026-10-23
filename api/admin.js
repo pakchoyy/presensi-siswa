@@ -418,6 +418,8 @@ function announcementFields(b) {
       title,
       body: cleanText(b.body, 1000),
       target,
+      // Aplikasi tujuan; default Siswa sampai admin punya pilihan Siswa/Guru.
+      product: ["siswa", "guru", "all"].includes(b.product) ? b.product : "siswa",
       level,
       link_url: link || null,
       link_label: link ? cleanText(b.link_label, 40) || "Buka" : null,

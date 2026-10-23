@@ -329,6 +329,7 @@ async function announcements(res) {
     .from("announcements")
     .select("id, title, body, target, level, link_url, link_label, starts_at")
     .eq("active", true)
+    .in("product", ["siswa", "all"])
     .lte("starts_at", now)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("starts_at", { ascending: false })
