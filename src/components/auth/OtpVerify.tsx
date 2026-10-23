@@ -141,7 +141,7 @@ export function OtpVerify({ email: initialEmail, title = "Masuk dengan email", o
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               onKeyDown={(e) => e.key === "Enter" && verify()}
-              placeholder="Kode 6 angka"
+              placeholder="Kode dari email"
               className="w-full mb-3 px-3 py-[12px] rounded-[10px] border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] text-center text-[1.3rem] tracking-[0.4em] font-bold"
             />
             <button onClick={verify} disabled={busy} className="w-full py-[11px] rounded-[10px] text-white font-bold text-[0.85rem] border-none cursor-pointer disabled:opacity-60" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}>

@@ -551,7 +551,9 @@ export function PengaturanPage() {
         if (downloaded > 0) {
           toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
         } else {
-          toast("✅ Device berhasil terhubung!");
+          // Cloud masih kosong: data yang sudah ada di HP ini jadi data awal akun.
+          const uploaded = await syncService.initialUpload(emailAddress);
+          toast(uploaded > 0 ? `✅ ${uploaded} data di HP ini disimpan ke cloud` : "✅ Device berhasil terhubung!");
         }
       } catch (error) {
         console.error("Download error:", error);

@@ -158,7 +158,7 @@ function AdminLogin({ onDone }: { onDone: () => void }) {
       <p className="text-[0.78rem] text-[var(--text-light)] mt-0 mb-3">Masukkan email admin, lalu kode yang dikirim ke email itu.</p>
       <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value.trim().toLowerCase())} placeholder="email admin" className={`${inputCls} mb-2`} disabled={sent} />
       {sent && (
-        <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="Kode 6 angka" maxLength={8} className={`${inputCls} mb-2 text-center tracking-[0.4em] font-bold`} />
+        <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="Kode dari email" maxLength={8} className={`${inputCls} mb-2 text-center tracking-[0.4em] font-bold`} />
       )}
       <button onClick={sent ? verify : send} disabled={busy || !email} className={`${btnMain} w-full`} style={mainBg}>
         {busy ? "Memproses..." : sent ? "Masuk" : "Kirim kode"}
