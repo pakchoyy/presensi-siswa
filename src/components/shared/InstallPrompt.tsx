@@ -13,7 +13,7 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && "ontouchend" in document);
 }
 
-/** Banner ringkas ajakan install, tidak menghalangi aplikasi. Tiap kunjungan di browser. */
+/** Kartu ajakan install di tengah layar, tiap kunjungan di browser. "Nanti" berlaku sampai tab ditutup. */
 export function InstallPrompt() {
   const [mode, setMode] = useState<"android" | "ios" | null>(null);
 
@@ -56,39 +56,48 @@ export function InstallPrompt() {
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="Install aplikasi"
-      className="fixed left-1/2 -translate-x-1/2 top-[62px] z-[400] w-[calc(100%-24px)] max-w-[420px] animate-fade-in"
+      className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-black/45 animate-fade-in"
+      onClick={later}
     >
       <div
-        className="flex items-center gap-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl pl-3 pr-2 py-[10px]"
-        style={{ boxShadow: "0 8px 24px rgba(0,0,0,.14)" }}
+        className="relative w-full max-w-[340px] bg-[var(--card-bg)] rounded-3xl px-6 pt-7 pb-5 text-center"
+        style={{ boxShadow: "0 20px 50px rgba(0,0,0,.3)" }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <img src={DEFAULT_LOGO} alt="" className="w-10 h-10 rounded-xl flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-[0.82rem] font-extrabold text-[var(--text)] leading-tight">Install Presensi Yuk</div>
-          {mode === "ios" ? (
-            <div className="text-[0.7rem] text-[var(--text-light)] leading-snug">
-              Ketuk <Share size={12} className="inline -mt-[2px]" /> <b>Bagikan</b>, lalu <b>Tambahkan ke Layar Utama</b>
-            </div>
-          ) : (
-            <div className="text-[0.7rem] text-[var(--text-light)] leading-snug">Lebih cepat dibuka & bisa dipakai offline</div>
-          )}
-        </div>
+        <button
+          onClick={later}
+          aria-label="Tutup"
+          className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded-xl text-[var(--text-light)] bg-transparent border-none cursor-pointer"
+        >
+          <X size={18} />
+        </button>
+        <img src={DEFAULT_LOGO} alt="" className="w-20 h-20 rounded-[22px] mx-auto mb-3" />
+        <div className="text-[1.15rem] font-extrabold text-[var(--text)] leading-tight">Install Presensi Yuk</div>
+        {mode === "ios" ? (
+          <p className="text-[0.9rem] text-[var(--text-light)] leading-relaxed mt-2 mb-4">
+            Ketuk <Share size={15} className="inline -mt-[3px]" /> <b>Bagikan</b> di bawah layar, lalu pilih <b>Tambahkan ke Layar Utama</b>.
+          </p>
+        ) : (
+          <p className="text-[0.9rem] text-[var(--text-light)] leading-relaxed mt-2 mb-4">
+            Buka langsung dari layar HP, lebih cepat, dan tetap bisa dipakai tanpa internet.
+          </p>
+        )}
         {mode === "android" && (
           <button
             onClick={install}
-            className="flex items-center gap-1 min-h-[40px] px-3 rounded-xl text-white font-bold text-[0.78rem] border-none cursor-pointer flex-shrink-0"
+            className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-2xl text-white font-bold text-[0.95rem] border-none cursor-pointer"
             style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}
           >
-            <Download size={15} /> Install
+            <Download size={18} /> Install Sekarang
           </button>
         )}
         <button
           onClick={later}
-          aria-label="Nanti"
-          className="w-10 h-10 flex items-center justify-center rounded-xl text-[var(--text-light)] bg-transparent border-none cursor-pointer flex-shrink-0"
+          className="w-full min-h-[44px] mt-2 rounded-2xl text-[var(--text-light)] font-semibold text-[0.88rem] bg-transparent border-none cursor-pointer"
         >
-          <X size={18} />
+          {mode === "ios" ? "Mengerti" : "Nanti saja"}
         </button>
       </div>
     </div>

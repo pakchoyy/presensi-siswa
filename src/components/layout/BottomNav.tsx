@@ -51,7 +51,7 @@ export function BottomNav() {
       const centerTop = Math.ceil(window.innerHeight - center.getBoundingClientRect().top);
       const fill = Math.max(0, centerTop - navTop + 4);
       setBand({ bottom: navTop, fill });
-      document.documentElement.style.setProperty("--ticker-h", `${28 + fill}px`);
+      document.documentElement.style.setProperty("--ticker-h", `${34 + fill}px`);
     };
     measure();
     window.addEventListener("resize", measure);
