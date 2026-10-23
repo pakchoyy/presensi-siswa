@@ -178,7 +178,9 @@ export default function App() {
   if (typeof window !== "undefined" && isAdminPath()) {
     return (
       <Suspense fallback={<div className="p-6 text-center text-[var(--text-light)]">Memuat admin...</div>}>
-        <AdminPage />
+        <ToastProvider>
+          <AdminPage />
+        </ToastProvider>
       </Suspense>
     );
   }

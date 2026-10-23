@@ -47,27 +47,56 @@ async function latestLicense(supabase, email) {
 }
 
 // ── Pengguna ──
-async function users(supabase, body) {
-  const q = String(body.q || "").toLowerCase().trim().replace(/[%_,()]/g, "").slice(0, 80);
-  let query = supabase
+const SOON_MS = 14 * DAY;
+
+async function allLicenses(supabase) {
+  const { data, error } = await supabase
     .from("licenses")
     .select("email, kode, tier, tanggal_aktivasi, tanggal_berakhir")
     .eq("status", "digunakan")
     .eq("product", "siswa")
     .not("email", "is", null)
     .order("tanggal_aktivasi", { ascending: false })
-    .limit(300);
-  if (q) query = query.ilike("email", `%${q}%`);
-  const { data: lics, error } = await query;
+    .limit(5000);
   if (error) throw error;
-  // Satu baris per email: lisensi dengan masa berlaku terpanjang.
+  return data || [];
+}
+
+// Satu baris per email: lisensi dengan masa berlaku terpanjang.
+function groupByEmail(lics) {
   const byEmail = new Map();
-  for (const l of lics || []) {
+  for (const l of lics) {
     const cur = byEmail.get(l.email);
-    if (!cur || (l.tanggal_berakhir || 0) > (cur.tanggal_berakhir || 0)) byEmail.set(l.email, { ...l, jumlahKode: (cur?.jumlahKode || 0) + 1 });
-    else cur.jumlahKode++;
+    if (!cur) byEmail.set(l.email, { ...l, jumlahKode: 1, pertama: l.tanggal_aktivasi });
+    else {
+      cur.jumlahKode++;
+      cur.pertama = Math.min(cur.pertama || Infinity, l.tanggal_aktivasi || Infinity);
+      if ((l.tanggal_berakhir || 0) > (cur.tanggal_berakhir || 0)) Object.assign(cur, { tier: l.tier, tanggal_berakhir: l.tanggal_berakhir, tanggal_aktivasi: l.tanggal_aktivasi });
+    }
   }
-  const emails = [...byEmail.keys()].slice(0, 60);
+  return byEmail;
+}
+
+const isActive = (l, now) => !!l.tanggal_berakhir && l.tanggal_berakhir > now;
+
+async function users(supabase, body) {
+  const q = String(body.q || "").toLowerCase().trim().slice(0, 80);
+  const filter = String(body.filter || "all");
+  const now = Date.now();
+  let rows = [...groupByEmail(await allLicenses(supabase)).values()];
+  if (q) rows = rows.filter((l) => l.email.includes(q));
+  rows = rows.filter((l) => {
+    if (filter === "PRO" || filter === "PLUS") return (l.tier || "PRO") === filter;
+    if (filter === "aktif") return isActive(l, now);
+    if (filter === "expired") return !isActive(l, now);
+    if (filter === "soon") return isActive(l, now) && l.tanggal_berakhir - now <= SOON_MS;
+    return true;
+  });
+  if (filter === "soon") rows.sort((a, b) => a.tanggal_berakhir - b.tanggal_berakhir);
+  else rows.sort((a, b) => (b.tanggal_aktivasi || 0) - (a.tanggal_aktivasi || 0));
+  const total = rows.length;
+  rows = rows.slice(0, 150);
+  const emails = rows.map((l) => l.email);
   const { data: profiles } = emails.length
     ? await supabase.from("profiles").select("id, email").in("email", emails)
     : { data: [] };
@@ -78,20 +107,59 @@ async function users(supabase, body) {
   const devCount = new Map();
   for (const d of devices || []) devCount.set(d.user_id, (devCount.get(d.user_id) || 0) + 1);
   const pidByEmail = new Map((profiles || []).map((p) => [p.email, p.id]));
-  const now = Date.now();
   return [200, {
-    users: emails.map((e) => {
-      const l = byEmail.get(e);
-      return {
-        email: e,
-        tier: l.tier || "PRO",
-        aktif: !l.tanggal_berakhir || l.tanggal_berakhir > now,
-        tanggalAktivasi: l.tanggal_aktivasi,
-        tanggalBerakhir: l.tanggal_berakhir,
-        jumlahKode: l.jumlahKode,
-        perangkat: devCount.get(pidByEmail.get(e)) || 0,
-      };
-    }),
+    total,
+    users: rows.map((l) => ({
+      email: l.email,
+      tier: l.tier || "PRO",
+      aktif: isActive(l, now),
+      tanggalAktivasi: l.tanggal_aktivasi || null,
+      tanggalBerakhir: l.tanggal_berakhir || null,
+      jumlahKode: l.jumlahKode,
+      perangkat: devCount.get(pidByEmail.get(l.email)) || 0,
+    })),
+  }];
+}
+
+// ── Ringkasan ──
+const PRICE = { PLUS: 17000, PRO: 32000 };
+
+async function summary(supabase) {
+  const now = Date.now();
+  const d = new Date();
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const semStart = new Date(d.getFullYear(), d.getMonth() < 6 ? 0 : 6, 1).getTime();
+  const lics = await allLicenses(supabase);
+  const users = [...groupByEmail(lics).values()];
+  const aktif = { PLUS: 0, PRO: 0 };
+  let expired = 0;
+  const soon = [];
+  for (const u of users) {
+    if (isActive(u, now)) {
+      aktif[u.tier === "PLUS" ? "PLUS" : "PRO"]++;
+      if (u.tanggal_berakhir - now <= SOON_MS) soon.push({ email: u.email, tier: u.tier || "PRO", tanggalBerakhir: u.tanggal_berakhir });
+    } else expired++;
+  }
+  soon.sort((a, b) => a.tanggalBerakhir - b.tanggalBerakhir);
+  // Pembelian = kode yang diaktivasi pada periode itu (termasuk perpanjangan).
+  const count = (from) => {
+    const c = { PLUS: 0, PRO: 0 };
+    for (const l of lics) if ((l.tanggal_aktivasi || 0) >= from && !String(l.kode || "").startsWith("AUTO")) c[l.tier === "PLUS" ? "PLUS" : "PRO"]++;
+    return { ...c, pendapatan: c.PLUS * PRICE.PLUS + c.PRO * PRICE.PRO };
+  };
+  const [stockRes, { data: pend }] = await Promise.all([
+    codeStock(supabase),
+    supabase.from("affiliate_ledger").select("amount").eq("type", "withdraw").eq("status", "pending").limit(1000),
+  ]);
+  return [200, {
+    totalPengguna: users.length,
+    aktif,
+    expired,
+    akanHabis: soon.slice(0, 30),
+    bulanIni: count(monthStart),
+    semesterIni: count(semStart),
+    stok: stockRes[1].stock,
+    penarikanPending: { jumlah: (pend || []).length, total: (pend || []).reduce((s, r) => s + (r.amount || 0), 0) },
   }];
 }
 
@@ -145,9 +213,9 @@ async function codeStock(supabase) {
 // dengan masa berlaku yang SAMA (bisa dipakai di Pulihkan). Tanpa email → masuk stok biasa.
 async function generateCodes(supabase, body) {
   const tier = String(body.tier || "").toUpperCase();
-  const n = intIn(body.n ?? 1, 1, 100);
+  const n = intIn(body.n ?? 1, 1, 1000);
   const email = normEmail(body.email);
-  if (!TIERS.includes(tier) || !n) return [400, { error: "Paket atau jumlah tidak valid (1–100)" }];
+  if (!TIERS.includes(tier) || !n) return [400, { error: "Paket atau jumlah tidak valid (1–1000)" }];
   if (email && !EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
 
   if (email) {
@@ -162,10 +230,96 @@ async function generateCodes(supabase, body) {
     return [200, { ok: true, codes: [kode], bound: !!active, tanggalBerakhir: active ? lic.tanggal_berakhir : null }];
   }
 
-  const rows = Array.from({ length: n }, () => ({ kode: newCode(tier), tier, product: "siswa", status: "tersedia" }));
-  const { error } = await supabase.from("licenses").insert(rows);
-  if (error) throw error;
-  return [200, { ok: true, codes: rows.map((r) => r.kode), bound: false }];
+  const kodes = [...new Set(Array.from({ length: n }, () => newCode(tier)))];
+  for (let i = 0; i < kodes.length; i += 200) {
+    const rows = kodes.slice(i, i + 200).map((kode) => ({ kode, tier, product: "siswa", status: "tersedia" }));
+    const { error } = await supabase.from("licenses").insert(rows);
+    if (error) throw error;
+  }
+  return [200, { ok: true, count: kodes.length, codes: kodes.slice(0, 20), bound: false }];
+}
+
+// ── Ganti email & hapus pengguna ──
+// Data cloud tertaut ke profiles.id, jadi cukup pindahkan email di profil/lisensi/affiliate.
+// auth_id dilepas supaya email baru wajib verifikasi kode email sekali.
+const CLOUD_TABLES = [
+  "cloud_attendance_records", "cloud_attendance_sessions", "cloud_students", "cloud_classrooms",
+  "cloud_calendar_entries", "cloud_academic_years", "cloud_teachers", "cloud_schools",
+  "cloud_tombstones", "cloud_backups", "sync_metadata", "sync_queue", "devices",
+];
+
+async function hasCloudData(supabase, profileId) {
+  for (const t of ["cloud_schools", "cloud_students", "cloud_attendance_records", "devices"]) {
+    const { count } = await supabase.from(t).select("user_id", { count: "exact", head: true }).eq("user_id", profileId);
+    if (count) return true;
+  }
+  return false;
+}
+
+async function changeEmail(supabase, body) {
+  const from = normEmail(body.email);
+  const to = normEmail(body.newEmail);
+  if (!EMAIL_RE.test(from) || !EMAIL_RE.test(to) || from === to) return [400, { error: "Email lama/baru tidak valid" }];
+
+  const { data: targetLic } = await supabase.from("licenses").select("id").eq("email", to).eq("status", "digunakan").limit(1);
+  if (targetLic && targetLic.length) return [409, { error: `${to} sudah punya lisensi. Tidak bisa digabung otomatis.` }];
+  const { data: target } = await supabase.from("profiles").select("id, tier").eq("email", to).maybeSingle();
+  if (target) {
+    // Profil kosong (mis. dibuat otomatis saat login admin) boleh diganti; yang berisi data ditolak.
+    if (await hasCloudData(supabase, target.id)) return [409, { error: `${to} sudah punya data cloud. Tidak bisa digabung otomatis.` }];
+    const { error } = await supabase.from("profiles").delete().eq("id", target.id);
+    if (error) throw error;
+  }
+
+  const { data: prof } = await supabase.from("profiles").select("id").eq("email", from).maybeSingle();
+  const now = new Date().toISOString();
+  if (prof) {
+    await supabase.from("devices").delete().eq("user_id", prof.id);
+    const { error } = await supabase.from("profiles").update({ email: to, auth_id: null, updated_at: now }).eq("id", prof.id);
+    if (error) throw error;
+  }
+  const moved = {};
+  for (const [table, col] of [
+    ["licenses", "email"], ["referrals", "owner_email"], ["referral_rewards", "owner_email"], ["referral_rewards", "buyer_email"],
+    ["affiliate_ledger", "owner_email"], ["affiliate_ledger", "buyer_email"], ["teacher_settings", "email"],
+  ]) {
+    const { data, error } = await supabase.from(table).update({ [col]: to }).eq(col, from).select(col);
+    if (error && !/column|relation/i.test(error.message)) throw error;
+    if (data && data.length) moved[`${table}.${col}`] = data.length;
+  }
+  return [200, { ok: true, profile: !!prof, moved }];
+}
+
+async function deleteUser(supabase, body) {
+  const email = normEmail(body.email);
+  if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
+  if (adminList().includes(email)) return [400, { error: "Akun admin tidak bisa dihapus dari sini" }];
+  const { data: prof } = await supabase.from("profiles").select("id, auth_id").eq("email", email).maybeSingle();
+  const removed = {};
+  if (prof) {
+    for (const t of CLOUD_TABLES) {
+      const { data, error } = await supabase.from(t).delete().eq("user_id", prof.id).select("user_id");
+      if (error && !/column|relation/i.test(error.message)) throw error;
+      if (data && data.length) removed[t] = data.length;
+    }
+  }
+  const { data: lics } = await supabase.from("licenses").delete().eq("email", email).select("id");
+  removed.licenses = (lics || []).length;
+  await supabase.from("teacher_settings").delete().eq("email", email);
+  await supabase.from("referrals").delete().eq("owner_email", email);
+  // Riwayat affiliate disimpan tapi dianonimkan.
+  const anon = "terhapus@" + (prof?.id || "pengguna").slice(0, 8);
+  await supabase.from("referral_rewards").update({ owner_email: anon }).eq("owner_email", email);
+  await supabase.from("referral_rewards").update({ buyer_email: anon }).eq("buyer_email", email);
+  await supabase.from("affiliate_ledger").update({ owner_email: anon }).eq("owner_email", email);
+  await supabase.from("affiliate_ledger").update({ buyer_email: anon }).eq("buyer_email", email);
+  if (prof) {
+    await supabase.from("profiles").delete().eq("id", prof.id);
+    for (const uid of new Set([prof.auth_id, prof.id].filter(Boolean))) {
+      await supabase.auth.admin.deleteUser(uid).catch(() => {});
+    }
+  }
+  return [200, { ok: true, removed }];
 }
 
 // ── Affiliate ──
@@ -250,8 +404,11 @@ async function settingsSet(supabase, body) {
 
 const ACTIONS = {
   me: async () => [200, { ok: true }],
+  summary,
   users,
   extend,
+  change_email: changeEmail,
+  delete_user: deleteUser,
   set_tier: setTier,
   reset_devices: resetDevices,
   code_stock: codeStock,

@@ -172,3 +172,14 @@ body {
 .animate-scale-pop {
   animation: scale-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* Toast */
+.toast-in { animation: toast-in 260ms cubic-bezier(.2,.9,.3,1.2); }
+.toast-out { animation: toast-out 220ms ease-in forwards; }
+.toast-bar { width: 100%; transform-origin: left; animation-name: toast-bar; animation-timing-function: linear; animation-fill-mode: forwards; opacity: .55; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(-10px) scale(.97); } }
+@keyframes toast-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast-in, .toast-out, .toast-bar { animation: none; }
+}

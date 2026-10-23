@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { cloudLoginService } from "@/services/cloud-login.service";
 import { DEFAULT_LOGO } from "@/lib/constants";
-import { Users, KeyRound, Gift, Settings, Search, Loader2, LogOut, Copy, RefreshCw } from "lucide-react";
+import { Users, KeyRound, Gift, Settings, Search, Loader2, LogOut, Copy, RefreshCw, LayoutDashboard } from "lucide-react";
+import { useToast } from "@/components/shared/Toast";
 
 // Halaman super admin (/admin). Semua data & aksi lewat /api/admin yang memeriksa
 // sesi OTP + daftar email admin di server; halaman ini hanya tampilan.
@@ -20,8 +21,9 @@ async function adminApi<T = any>(action: string, body: Record<string, unknown> =
 }
 
 const rp = (n: number) => "Rp" + (n || 0).toLocaleString("id-ID");
+// Tanggal 0/1 (data uji lama) dianggap kosong supaya tidak tampil "1 Jan 1970".
 const tgl = (v: number | string | null) =>
-  v ? new Date(v).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—";
+  v && new Date(v).getFullYear() > 2000 ? new Date(v).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 const card = "bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-3 mb-3";
 const inputCls = "w-full px-3 py-[10px] rounded-[10px] border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] text-[0.85rem]";
@@ -29,13 +31,21 @@ const btn = "min-h-[40px] px-3 rounded-[10px] font-bold text-[0.78rem] border-no
 const btnMain = `${btn} text-white`;
 const mainBg = { background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" };
 
-type Tab = "users" | "codes" | "affiliate" | "settings";
+type Tab = "summary" | "users" | "codes" | "affiliate" | "settings";
+
+const TABS = [
+  ["summary", "Ringkasan", LayoutDashboard],
+  ["users", "Pengguna", Users],
+  ["codes", "Kode", KeyRound],
+  ["affiliate", "Affiliate", Gift],
+  ["settings", "Atur", Settings],
+] as const;
 
 export default function AdminPage() {
   const [stage, setStage] = useState<"check" | "login" | "denied" | "ok">("check");
   const [me, setMe] = useState("");
-  const [tab, setTab] = useState<Tab>("users");
-  const [msg, setMsg] = useState("");
+  const [tab, setTab] = useState<Tab>("summary");
+  const { toast } = useToast();
 
   useEffect(() => {
     document.title = "Admin — Presensi Yuk";
@@ -53,7 +63,7 @@ export default function AdminPage() {
 
   useEffect(() => { check(); }, [check]);
 
-  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 3500); };
+  const flash = useCallback((m: string, type?: "success" | "error" | "info") => toast(m, type), [toast]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -74,7 +84,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-[720px] mx-auto px-3 pt-3 pb-10">
+      <main className="max-w-[720px] mx-auto px-3 pt-3 pb-[96px]">
         {stage === "check" && <Center><Loader2 className="animate-spin" /></Center>}
         {stage === "login" && <AdminLogin onDone={check} />}
         {stage === "denied" && (
@@ -87,23 +97,7 @@ export default function AdminPage() {
         {stage === "ok" && (
           <>
             <div className="text-[0.72rem] text-[var(--text-light)] mb-2">Masuk sebagai <b>{me}</b></div>
-            <nav className="grid grid-cols-4 gap-1 mb-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-1">
-              {([
-                ["users", "Pengguna", Users],
-                ["codes", "Kode", KeyRound],
-                ["affiliate", "Affiliate", Gift],
-                ["settings", "Atur", Settings],
-              ] as const).map(([k, label, Icon]) => (
-                <button
-                  key={k}
-                  onClick={() => setTab(k)}
-                  className={`min-h-[48px] flex flex-col items-center justify-center gap-[2px] rounded-lg border-none cursor-pointer text-[0.68rem] font-bold ${tab === k ? "text-white" : "bg-transparent text-[var(--text-light)]"}`}
-                  style={tab === k ? mainBg : undefined}
-                >
-                  <Icon size={16} /> {label}
-                </button>
-              ))}
-            </nav>
+            {tab === "summary" && <SummaryTab flash={flash} go={setTab} />}
             {tab === "users" && <UsersTab flash={flash} />}
             {tab === "codes" && <CodesTab flash={flash} />}
             {tab === "affiliate" && <AffiliateTab flash={flash} />}
@@ -112,8 +106,23 @@ export default function AdminPage() {
         )}
       </main>
 
-      {msg && (
-        <div className="fixed left-1/2 -translate-x-1/2 bottom-5 z-50 px-4 py-[10px] rounded-xl bg-[#1e293b] text-white text-[0.8rem] shadow-lg max-w-[90vw]">{msg}</div>
+      {stage === "ok" && (
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-20 bg-[var(--card-bg)] border-t border-[var(--border)] grid grid-cols-5"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)", boxShadow: "0 -4px 16px rgba(0,0,0,.06)" }}
+        >
+          {TABS.map(([k, label, Icon]) => (
+            <button
+              key={k}
+              onClick={() => { setTab(k); window.scrollTo(0, 0); }}
+              className={`min-h-[60px] flex flex-col items-center justify-center gap-[3px] border-none bg-transparent cursor-pointer text-[0.66rem] font-bold ${tab === k ? "text-[#0d7a8a]" : "text-[var(--text-light)]"}`}
+              aria-current={tab === k ? "page" : undefined}
+            >
+              <span className={`w-10 h-7 rounded-full flex items-center justify-center ${tab === k ? "bg-[#0ea5a0]/15" : ""}`}><Icon size={18} /></span>
+              {label}
+            </button>
+          ))}
+        </nav>
       )}
     </div>
   );
@@ -160,48 +169,165 @@ function AdminLogin({ onDone }: { onDone: () => void }) {
   );
 }
 
-type Flash = { flash: (m: string) => void };
+type Flash = { flash: (m: string, type?: "success" | "error" | "info") => void };
+
+interface Summary {
+  totalPengguna: number;
+  aktif: { PLUS: number; PRO: number };
+  expired: number;
+  akanHabis: { email: string; tier: string; tanggalBerakhir: number }[];
+  bulanIni: { PLUS: number; PRO: number; pendapatan: number };
+  semesterIni: { PLUS: number; PRO: number; pendapatan: number };
+  stok: Record<string, number>;
+  penarikanPending: { jumlah: number; total: number };
+}
+
+function Stat({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: string }) {
+  return (
+    <div className="rounded-xl bg-[var(--input-bg)] p-3">
+      <div className="text-[0.7rem] text-[var(--text-light)] font-semibold">{label}</div>
+      <div className="text-[1.35rem] font-extrabold leading-tight" style={tone ? { color: tone } : undefined}>{value}</div>
+      {sub && <div className="text-[0.68rem] text-[var(--text-light)] mt-[2px]">{sub}</div>}
+    </div>
+  );
+}
+
+function SummaryTab({ flash, go }: Flash & { go: (t: Tab) => void }) {
+  const [d, setD] = useState<Summary | null>(null);
+  const load = useCallback(async () => {
+    setD(null);
+    const { status, data } = await adminApi<Summary>("summary");
+    if (status === 200) setD(data); else flash(data.error || "Gagal memuat ringkasan", "error");
+  }, [flash]);
+  useEffect(() => { load(); }, [load]);
+  if (!d) return <Center><Loader2 className="animate-spin" /></Center>;
+  const bulan = new Date().toLocaleDateString("id-ID", { month: "long" });
+  return (
+    <>
+      <div className={card}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="font-bold text-[0.85rem]">Pengguna berbayar</div>
+          <button onClick={load} aria-label="Muat ulang" className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--input-bg)] text-[var(--text-light)] border-none cursor-pointer"><RefreshCw size={14} /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Total pengguna" value={d.totalPengguna} />
+          <Stat label="Expired" value={d.expired} tone="#dc2626" />
+          <Stat label="PRO aktif" value={d.aktif.PRO} tone="#d97706" />
+          <Stat label="PLUS aktif" value={d.aktif.PLUS} tone="#0d7a8a" />
+        </div>
+      </div>
+
+      <div className={card}>
+        <div className="font-bold text-[0.85rem] mb-2">Penjualan</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label={`Bulan ${bulan}`} value={rp(d.bulanIni.pendapatan)} sub={`${d.bulanIni.PRO} PRO · ${d.bulanIni.PLUS} PLUS`} tone="#16a34a" />
+          <Stat label="Semester ini" value={rp(d.semesterIni.pendapatan)} sub={`${d.semesterIni.PRO} PRO · ${d.semesterIni.PLUS} PLUS`} tone="#16a34a" />
+        </div>
+        <p className="text-[0.66rem] text-[var(--text-light)] mt-2 mb-0">Estimasi dari kode yang diaktivasi × harga (PLUS Rp17.000, PRO Rp32.000).</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <button onClick={() => go("codes")} className="text-left border-none p-0 bg-transparent cursor-pointer text-[var(--text)]">
+          <Stat label="Stok kode" value={`${d.stok.PRO ?? 0} / ${d.stok.PLUS ?? 0}`} sub="PRO / PLUS" />
+        </button>
+        <button onClick={() => go("affiliate")} className="text-left border-none p-0 bg-transparent cursor-pointer text-[var(--text)]">
+          <Stat label="Tarik dana menunggu" value={d.penarikanPending.jumlah} sub={rp(d.penarikanPending.total)} tone={d.penarikanPending.jumlah ? "#d97706" : undefined} />
+        </button>
+      </div>
+
+      <div className={card}>
+        <div className="font-bold text-[0.85rem] mb-2">Akan habis ≤ 14 hari ({d.akanHabis.length})</div>
+        {d.akanHabis.length === 0 ? (
+          <p className="text-[0.78rem] text-[var(--text-light)] text-center py-2 m-0">Tidak ada.</p>
+        ) : d.akanHabis.map((u) => {
+          const sisa = Math.max(0, Math.ceil((u.tanggalBerakhir - Date.now()) / 86400000));
+          return (
+            <div key={u.email} className="flex items-center gap-2 py-2 border-t border-[var(--border)] first:border-t-0">
+              <span className="text-[0.8rem] font-semibold truncate flex-1">{u.email}</span>
+              <span className="text-[0.65rem] font-bold text-[var(--text-light)]">{u.tier}</span>
+              <span className={`text-[0.7rem] font-bold px-2 py-[2px] rounded-full ${sisa <= 3 ? "bg-[#dc2626]/15 text-[#dc2626]" : "bg-[#f59e0b]/15 text-[#d97706]"}`}>{sisa} hari</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 interface AdminUser {
   email: string; tier: string; aktif: boolean; tanggalAktivasi: number | null; tanggalBerakhir: number | null; jumlahKode: number; perangkat: number;
 }
 
+const FILTERS = [
+  ["all", "Semua"], ["PRO", "PRO"], ["PLUS", "PLUS"], ["aktif", "Aktif"], ["expired", "Expired"], ["soon", "Akan habis"],
+] as const;
+
 function UsersTab({ flash }: Flash) {
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<string>("all");
   const [list, setList] = useState<AdminUser[] | null>(null);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [days, setDays] = useState("30");
+  const [newEmail, setNewEmail] = useState("");
 
-  const search = useCallback(async (query: string) => {
+  const search = useCallback(async (query: string, f: string) => {
     setBusy(true);
-    const { status, data } = await adminApi<{ users: AdminUser[] }>("users", { q: query });
+    const { status, data } = await adminApi<{ users: AdminUser[]; total: number }>("users", { q: query, filter: f });
     setBusy(false);
-    if (status === 200) setList(data.users); else flash(data.error || "Gagal memuat");
+    if (status === 200) { setList(data.users); setTotal(data.total); } else flash(data.error || "Gagal memuat", "error");
   }, [flash]);
 
-  useEffect(() => { search(""); }, [search]);
+  useEffect(() => { search(q, filter); }, [filter, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (action: string, body: Record<string, unknown>, ok: string) => {
     setBusy(true);
     const { status, data } = await adminApi(action, body);
     setBusy(false);
-    flash(status === 200 ? ok : data.error || "Gagal");
-    if (status === 200) search(q);
+    if (status === 200) flash(ok, "success"); else flash(data.error || "Gagal", "error");
+    if (status === 200) { setOpen(null); search(q, filter); }
+    return status === 200;
+  };
+
+  const changeEmail = async (email: string) => {
+    const to = newEmail.trim().toLowerCase();
+    if (!to.includes("@")) return flash("Isi email baru dulu", "error");
+    if (!confirm(`Pindahkan lisensi & data ${email} ke ${to}?\nPengguna harus verifikasi kode email lagi di HP-nya.`)) return;
+    if (await act("change_email", { email, newEmail: to }, `Dipindah ke ${to}`)) setNewEmail("");
+  };
+
+  const remove = (email: string) => {
+    const typed = prompt(`Hapus PERMANEN ${email}?\nLisensi, data cloud, perangkat, dan akun login ikut terhapus.\n\nKetik HAPUS untuk lanjut.`);
+    if (typed?.trim().toUpperCase() !== "HAPUS") return;
+    act("delete_user", { email }, `${email} dihapus`);
   };
 
   return (
     <>
-      <form onSubmit={(e) => { e.preventDefault(); search(q); }} className="flex gap-2 mb-3">
+      <form onSubmit={(e) => { e.preventDefault(); search(q, filter); }} className="flex gap-2 mb-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari email…" className={inputCls} />
         <button type="submit" className={`${btnMain} flex-shrink-0`} style={mainBg} aria-label="Cari"><Search size={16} /></button>
       </form>
+      <div className="flex gap-[6px] overflow-x-auto pb-2 mb-1 -mx-3 px-3" style={{ scrollbarWidth: "none" }}>
+        {FILTERS.map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setFilter(k)}
+            className={`flex-shrink-0 min-h-[34px] px-3 rounded-full text-[0.74rem] font-bold border cursor-pointer ${filter === k ? "text-white border-transparent" : "bg-[var(--card-bg)] text-[var(--text)] border-[var(--border)]"}`}
+            style={filter === k ? mainBg : undefined}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {list && <div className="text-[0.7rem] text-[var(--text-light)] mb-2">{total} pengguna{total > list.length ? ` · menampilkan ${list.length}` : ""}</div>}
       {!list ? <Center><Loader2 className="animate-spin" /></Center> : list.length === 0 ? (
         <Center>Tidak ada pengguna.</Center>
       ) : (
         list.map((u) => (
           <div key={u.email} className={card}>
-            <button onClick={() => setOpen(open === u.email ? null : u.email)} className="w-full text-left bg-transparent border-none p-0 cursor-pointer text-[var(--text)]">
+            <button onClick={() => { setOpen(open === u.email ? null : u.email); setNewEmail(""); }} className="w-full text-left bg-transparent border-none p-0 cursor-pointer text-[var(--text)]">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[0.85rem] truncate flex-1">{u.email}</span>
                 <span className={`text-[0.65rem] font-bold px-2 py-[2px] rounded-full ${u.tier === "PRO" ? "bg-[#f59e0b]/15 text-[#d97706]" : "bg-[#0ea5a0]/15 text-[#0ea5a0]"}`}>{u.tier}</span>
@@ -222,9 +348,16 @@ function UsersTab({ flash }: Flash) {
                     <button key={t} disabled={busy || u.tier === t} onClick={() => act("set_tier", { email: u.email, tier: t }, `Paket jadi ${t}`)} className={`${btn} flex-1 bg-[var(--input-bg)] text-[var(--text)]`}>Jadikan {t}</button>
                   ))}
                 </div>
-                <button disabled={busy} onClick={() => confirm(`Keluarkan semua perangkat ${u.email}?`) && act("reset_devices", { email: u.email }, "Perangkat direset")} className={`${btn} w-full bg-[#dc2626]/10 text-[#dc2626]`}>
-                  Reset perangkat ({u.perangkat})
-                </button>
+                <div className="flex gap-2">
+                  <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email baru" className={inputCls} />
+                  <button disabled={busy || !newEmail} onClick={() => changeEmail(u.email)} className={`${btn} flex-shrink-0 bg-[var(--input-bg)] text-[var(--text)]`}>Ganti email</button>
+                </div>
+                <div className="flex gap-2">
+                  <button disabled={busy} onClick={() => confirm(`Keluarkan semua perangkat ${u.email}?`) && act("reset_devices", { email: u.email }, "Perangkat direset")} className={`${btn} flex-1 bg-[#f59e0b]/12 text-[#b45309]`}>
+                    Reset perangkat ({u.perangkat})
+                  </button>
+                  <button disabled={busy} onClick={() => remove(u.email)} className={`${btn} flex-1 bg-[#dc2626]/10 text-[#dc2626]`}>Hapus pengguna</button>
+                </div>
               </div>
             )}
           </div>
@@ -251,15 +384,16 @@ function CodesTab({ flash }: Flash) {
 
   const gen = async (bind: boolean) => {
     setBusy(true);
-    const { status, data } = await adminApi<{ codes: string[]; bound: boolean; tanggalBerakhir: number | null }>("generate_codes", bind ? { tier, email } : { tier, n: Number(n) });
+    const { status, data } = await adminApi<{ codes: string[]; count?: number; bound: boolean; tanggalBerakhir: number | null }>("generate_codes", bind ? { tier, email } : { tier, n: Number(n) });
     setBusy(false);
-    if (status !== 200) return flash(data.error || "Gagal membuat kode");
+    if (status !== 200) return flash(data.error || "Gagal membuat kode", "error");
     setCodes(data.codes);
     setNote(bind
       ? data.bound
         ? `Kode cadangan untuk ${email}, berlaku sampai ${tgl(data.tanggalBerakhir)}. Pengguna memulihkan dengan email + kode ini.`
         : `${email} tidak punya lisensi aktif — kode masuk stok dan bisa diaktivasi biasa.`
-      : `${data.codes.length} kode ${tier} masuk stok.`);
+      : `${data.count ?? data.codes.length} kode ${tier} masuk stok${(data.count ?? 0) > data.codes.length ? ` (20 pertama ditampilkan)` : ""}.`);
+    flash("Kode dibuat", "success");
     load();
   };
 
@@ -291,7 +425,7 @@ function CodesTab({ flash }: Flash) {
         </div>
         <div className="font-bold text-[0.82rem] mb-1">Tambah stok</div>
         <div className="flex gap-2">
-          <input type="number" min={1} max={100} value={n} onChange={(e) => setN(e.target.value)} className={`${inputCls} w-24`} aria-label="Jumlah kode" />
+          <input type="number" min={1} max={1000} value={n} onChange={(e) => setN(e.target.value)} className={`${inputCls} w-24`} aria-label="Jumlah kode" />
           <button disabled={busy} onClick={() => gen(false)} className={`${btnMain} flex-1`} style={mainBg}>Buat {n || 0} kode {tier}</button>
         </div>
       </div>
