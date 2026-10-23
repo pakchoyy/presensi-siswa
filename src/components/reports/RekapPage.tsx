@@ -388,17 +388,17 @@ export function RekapPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-5 gap-2 mb-3">
+      <div className="grid grid-cols-5 gap-[6px] mb-3">
         {[
-          { label: "HADIR", value: totalH, key: "H" },
-          { label: "SAKIT", value: totalS, key: "S" },
-          { label: "IZIN", value: totalI, key: "I" },
-          { label: "ALPHA", value: totalA, key: "A" },
-          { label: "TERLAMBAT", value: totalT, key: "T" },
+          { label: "Hadir", value: totalH, key: "H" },
+          { label: "Sakit", value: totalS, key: "S" },
+          { label: "Izin", value: totalI, key: "I" },
+          { label: "Alpha", value: totalA, key: "A" },
+          { label: "Telat", value: totalT, key: "T" },
         ].map((item) => (
           <div
             key={item.key}
-            className="bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] rounded-[10px] py-[10px] px-[6px] text-center"
+            className="bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] rounded-[10px] py-[10px] px-[2px] text-center min-w-0"
           >
             <b
               className="block text-[1.1rem]"
