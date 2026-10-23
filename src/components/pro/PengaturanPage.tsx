@@ -10,7 +10,7 @@ import { Tier, Jenjang, PageName } from "@/types/enums";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PRO_PRICE, PLUS_PRICE } from "@/lib/constants";
 import { canUse, LIMITS, tierLabel, trialDaysRemaining } from "@/lib/features";
-import { createBackup, downloadBackup } from "@/services/backup.service";
+import { saveLogoutBackup } from "@/services/backup.service";
 import { LICENSE_DURATION_DAYS } from "@/lib/constants";
 import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { generateId, getActiveDays } from "@/lib/utils";
@@ -429,32 +429,24 @@ export function PengaturanPage() {
     setLicenseInfo(null);
   };
 
-  const doLogout = async (withBackup: boolean) => {
+  const doLogout = async () => {
     setLoggingOut(true);
     try {
-      if (withBackup) {
-        const blob = await createBackup();
-        downloadBackup(blob);
-        await new Promise((r) => setTimeout(r, 800));
-      }
-      // Kirim perubahan terakhir dulu; data lokal akan dihapus setelah keluar.
+      // Kirim perubahan terakhir dulu kalau terhubung cloud.
+      let synced = false;
       if (isCloudConnected && cloudUser?.email) {
-        const { ok } = await syncService.incrementalSync(cloudUser.email);
-        if (!ok && !(await showConfirmDialog({
-          title: "Data belum tersinkron",
-          message: "Ada data belum tersinkron. Tetap keluar? Data yang belum terkirim akan hilang dari HP ini.",
-          confirmText: "Tetap keluar",
-          cancelText: "Batal",
-          danger: true,
-        }))) {
-          setLoggingOut(false);
-          return;
-        }
+        synced = (await syncService.incrementalSync(cloudUser.email)).ok;
+      }
+      // Belum aman di cloud: selalu simpan backup (file Download + salinan di HP) sebelum data dihapus.
+      if (!synced && localStorage.getItem("bgy_demo_mode") !== "1") {
+        await saveLogoutBackup();
+        toast("✅ File backup disimpan di folder Download");
+        await new Promise((r) => setTimeout(r, 1200));
       }
       await logout();
     } catch (err) {
       console.error("Logout gagal:", err);
-      toast("❌ Gagal keluar. Coba lagi.");
+      toast("❌ Gagal keluar. Data tidak dihapus, coba lagi.");
       setLoggingOut(false);
     }
   };
@@ -1329,29 +1321,17 @@ export function PengaturanPage() {
               <div className="bg-[#fef2f2] border border-[#fecaca] rounded-lg p-3 mb-[14px] text-[0.74rem] text-[#991b1b] flex gap-2">
                 <AlertTriangle size={16} className="flex-shrink-0 mt-[1px]" />
                 <span>
-                  {canUse("backup_local", tier)
-                    ? <>Data di HP ini <b>belum tersimpan di cloud</b> dan akan <b>hilang</b> setelah keluar. Simpan file backup dulu supaya bisa dipulihkan.</>
-                    : <>Data di HP ini akan <b>hilang permanen</b>.</>}
+                  Data di HP ini <b>belum tersimpan di cloud</b>. Sebelum keluar, file backup otomatis disimpan ke folder <b>Download</b> dan bisa dipulihkan dari layar awal.
                 </span>
               </div>
             )}
             <div className="flex flex-col gap-2">
-              {!(isPaid && isCloudConnected) && canUse("backup_local", tier) && (
-                <button
-                  onClick={() => doLogout(true)}
-                  disabled={loggingOut}
-                  className="w-full py-[10px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer border-none disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-                >
-                  Backup lalu keluar
-                </button>
-              )}
               <button
-                onClick={() => doLogout(false)}
+                onClick={() => doLogout()}
                 disabled={loggingOut}
                 className="w-full py-[10px] rounded-[10px] bg-[#ef4444] text-white font-bold text-[0.82rem] cursor-pointer border-none disabled:opacity-60"
               >
-                {loggingOut ? "Mengeluarkan..." : (isPaid && isCloudConnected) || !canUse("backup_local", tier) ? "Keluar" : "Keluar tanpa backup"}
+                {loggingOut ? "Mengeluarkan..." : "Keluar"}
               </button>
               <button
                 onClick={() => setShowLogoutConfirm(false)}

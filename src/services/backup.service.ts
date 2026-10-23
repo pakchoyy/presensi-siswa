@@ -80,7 +80,30 @@ export function downloadBackup(blob: Blob) {
   a.href = url;
   a.download = `backup_presensi_${date}.json`;
   a.click();
-  URL.revokeObjectURL(url);
+  // Android Chrome bisa membatalkan unduhan kalau URL langsung dicabut.
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// Salinan pengaman saat Keluar. Kunci ini sengaja tidak berawalan bgy_/presensi_
+// supaya tidak ikut terhapus oleh clearLocalData().
+const LOGOUT_BACKUP_KEY = "py_logout_backup";
+
+/** Simpan backup ke file Download + salinan di HP ini. Dipanggil sebelum data lokal dihapus. */
+export async function saveLogoutBackup(): Promise<void> {
+  const blob = await createBackup();
+  downloadBackup(blob);
+  try { localStorage.setItem(LOGOUT_BACKUP_KEY, await blob.text()); } catch { /* penyimpanan penuh: file Download tetap ada */ }
+}
+
+export function getLogoutBackup(): BackupData | null {
+  try {
+    const raw = localStorage.getItem(LOGOUT_BACKUP_KEY);
+    return raw ? (JSON.parse(raw) as BackupData) : null;
+  } catch { return null; }
+}
+
+export function clearLogoutBackup() {
+  try { localStorage.removeItem(LOGOUT_BACKUP_KEY); } catch { /* ignore */ }
 }
 
 export function readBackupFile(file: File): Promise<BackupData> {
