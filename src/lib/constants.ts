@@ -34,7 +34,7 @@ export const PRO_PRICE = "Rp32.000/semester";
 
 export const LICENSE_DURATION_DAYS = 180;
 
-export const KREACY_PLUS_URL = "https://kreacy.my.id/produk/8nonq6ro";
+export const KREACY_PLUS_URL = "https://kreacy.my.id/produk/uzq4ki96";
 export const KREACY_PRO_URL = "https://kreacy.my.id/produk/8nonq6ro";
 
 // Kept for backward compat where still referenced; prefer LIMITS from @/lib/features
