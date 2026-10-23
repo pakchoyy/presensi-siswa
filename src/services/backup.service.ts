@@ -131,10 +131,14 @@ export async function restoreFromBackup(backup: BackupData): Promise<number> {
 }
 
 async function getUserIdByEmail(email: string): Promise<string | null> {
+  // Butuh sesi login (kode OTP) untuk email ini; RLS hanya mengizinkan profile milik sendiri.
+  const { data: sess } = await supabase.auth.getSession();
+  const authUser = sess.session?.user;
+  if (!authUser || authUser.email?.toLowerCase() !== email.toLowerCase().trim()) return null;
   const { data } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email.toLowerCase().trim())
+    .eq("auth_id", authUser.id)
     .maybeSingle();
   return data?.id || null;
 }

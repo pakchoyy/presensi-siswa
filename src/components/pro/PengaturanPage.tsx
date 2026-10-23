@@ -15,7 +15,7 @@ import { LICENSE_DURATION_DAYS } from "@/lib/constants";
 import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { trackDevice } from "@/contexts/AuthContext";
+import { OtpVerify } from "@/components/auth/OtpVerify";
 import {
   Settings,
   ArrowUpCircle,
@@ -124,6 +124,7 @@ export function PengaturanPage() {
   // Login device lain state
   const [loginEmail, setLoginEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showEmergencyTools, setShowEmergencyTools] = useState(false);
 
@@ -516,97 +517,17 @@ export function PengaturanPage() {
       return;
     }
     
+    setOtpEmail(emailAddress);
+  };
+
+  // Dipanggil setelah email terverifikasi (OTP) dan perangkat lolos batas di server.
+  const finishDeviceLogin = async (result: { tier: Tier; tanggalBerakhir: number | null }, emailAddress: string) => {
+    if (!teacher) return;
+    setOtpEmail(null);
     setConnecting(true);
-    
+    const foundTier = result.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
+    const licenseData = { tanggal_berakhir: result.tanggalBerakhir };
     try {
-      // Cek izin baca ke Supabase (RLS). Kalau di-block, tampilkan pesan nyata.
-      const { error: accessErr } = await supabase.from("profiles").select("id").limit(1);
-      if (accessErr) {
-        console.error("RLS/profiles access error:", accessErr);
-        toast("❌ Tidak bisa akses cloud. Cek izin/RLS profile di dashboard. (" + (accessErr.message || "unknown") + ")");
-        setConnecting(false);
-        return;
-      }
-
-      let licenseData: { tanggal_berakhir: number | null } | null = null;
-      let foundTier: Tier = Tier.PRO;
-      try {
-        const lookup = await licenseService.lookupByEmail(emailAddress);
-        if (lookup.found) {
-          licenseData = { tanggal_berakhir: lookup.tanggalBerakhir };
-          if (lookup.tier === Tier.PLUS) foundTier = Tier.PLUS;
-        }
-      } catch (licenseErr) {
-        console.error("license query error:", licenseErr);
-      }
-
-      if (!licenseData) {
-        const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
-          .select("tier")
-          .eq("email", emailAddress)
-          .maybeSingle();
-        if (profileErr) console.error("profile query error:", profileErr);
-
-        if (!profile || (profile.tier !== "PRO" && profile.tier !== "PLUS")) {
-          toast("❌ Email ini belum punya paket PLUS/PRO.");
-          setConnecting(false);
-          return;
-        }
-        foundTier = profile.tier === "PLUS" ? Tier.PLUS : Tier.PRO;
-      }
-
-      // Pastikan profile ada agar CloudAuthContext mendeteksi cloud connected
-      const { data: existingProfile, error: profileCheckErr } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", emailAddress)
-        .maybeSingle();
-      if (profileCheckErr) {
-        console.error("profile check error:", profileCheckErr);
-        toast("❌ Gagal cek profile di cloud: " + (profileCheckErr.message || "unknown"));
-        setConnecting(false);
-        return;
-      }
-
-      let profileId: string | null = null;
-      if (existingProfile) {
-        const { error: updErr } = await supabase
-          .from("profiles")
-          .update({ tier: foundTier, updated_at: new Date().toISOString() })
-          .eq("id", existingProfile.id);
-        if (updErr) {
-          console.error("profile update error:", updErr);
-          toast("❌ Gagal update profile cloud: " + (updErr.message || "unknown"));
-          setConnecting(false);
-          return;
-        }
-        profileId = existingProfile.id;
-      } else {
-        const { data: inserted, error: insErr } = await supabase
-          .from("profiles")
-          .insert({
-            id: crypto.randomUUID(),
-            email: emailAddress,
-            name: teacher?.nama || emailAddress.split("@")[0] || "User",
-            tier: foundTier,
-            updated_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (insErr) {
-          console.error("profile insert error:", insErr);
-          toast("❌ Gagal daftarkan email di cloud: " + (insErr.message || "unknown"));
-          setConnecting(false);
-          return;
-        }
-        profileId = inserted?.id ?? null;
-      }
-
-      if (profileId) {
-        trackDevice(profileId).catch(() => {});
-      }
-      
       localStorage.setItem("presensi_cloud_email", emailAddress);
       
       try {
@@ -1413,6 +1334,15 @@ export function PengaturanPage() {
       )}
 
       {/* First-time sync reminder: kartu kecil di atas navbar, tidak menutupi layar */}
+      {otpEmail && (
+        <OtpVerify
+          email={otpEmail}
+          title="Hubungkan ke cloud"
+          onConnected={(r, e) => finishDeviceLogin(r, e)}
+          onClose={() => setOtpEmail(null)}
+        />
+      )}
+
       {showSyncPrompt && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-[84px] lg:bottom-6 w-[calc(100%-24px)] max-w-[420px] z-[350] animate-slide-up">
           <div className="bg-[var(--card-bg)] border border-[#0ea5a0]/40 rounded-2xl p-3 flex items-start gap-3" style={{ boxShadow: "var(--shadow-lg)" }}>

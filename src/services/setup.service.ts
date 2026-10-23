@@ -45,16 +45,6 @@ export const setupService = {
 
         if (masihAktif) {
           defaultTier = lic.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
-        } else {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("tier")
-            .eq("email", normalizedEmail)
-            .maybeSingle();
-
-          if (profile && (profile.tier === "PRO" || profile.tier === "PLUS")) {
-            defaultTier = profile.tier as Tier;
-          }
         }
       } catch {
         // Offline — default to FREE

@@ -14,7 +14,7 @@ import { Marquee } from "@/components/layout/Marquee";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { WizardSetup } from "@/components/wizard/WizardSetup";
-import { LoginPage } from "@/components/auth/LoginPage";
+import { CloudVerifyBanner } from "@/components/layout/CloudVerifyBanner";
 import { PresensiPage } from "@/components/attendance/PresensiPage";
 import { RekapPage } from "@/components/reports/RekapPage";
 import { SiswaPage } from "@/components/students/SiswaPage";
@@ -152,6 +152,7 @@ function AppContent() {
     <>
       <Header />
       <DemoRibbon />
+      {setupSelesai && <CloudVerifyBanner />}
       <div className="flex flex-1">
         <Sidebar />
         <PageRouter />

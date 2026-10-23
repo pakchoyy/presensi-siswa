@@ -119,9 +119,13 @@ async function renew(supabase, body) {
 }
 
 // Cek lisensi aktif milik sebuah email (menggantikan query langsung ke tabel dari browser).
-async function status(supabase, body) {
-  const email = normEmail(body.email);
-  if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
+// Hanya untuk email yang sudah terverifikasi (kode OTP): email diambil dari token, bukan dari body.
+async function status(supabase, body, req) {
+  const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!token) return [401, { error: "Verifikasi email dulu" }];
+  const { data: u, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !u?.user?.email) return [401, { error: "Sesi tidak valid" }];
+  const email = normEmail(u.user.email);
   const { data, error } = await supabase
     .from("licenses")
     .select("tanggal_berakhir, tier")
@@ -164,7 +168,7 @@ export default async function handler(req, res) {
   const fn = ACTIONS[action];
   if (!fn) return res.status(400).json({ error: "Action tidak dikenal" });
   try {
-    const [code, payload] = await fn(getSupabase(), req.body);
+    const [code, payload] = await fn(getSupabase(), req.body, req);
     return res.status(code).json(payload);
   } catch {
     return res.status(500).json({ error: "Gagal memproses lisensi di server" });

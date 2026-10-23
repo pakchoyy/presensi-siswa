@@ -73,10 +73,14 @@ async function getUserIdByEmail(email: string): Promise<string | null> {
   if (_userIdCache && _userIdCache.email === email.toLowerCase().trim()) {
     return _userIdCache.id;
   }
+  // Butuh sesi login (kode OTP) untuk email ini; RLS hanya mengizinkan profile milik sendiri.
+  const { data: sess } = await supabase.auth.getSession();
+  const authUser = sess.session?.user;
+  if (!authUser || authUser.email?.toLowerCase() !== email.toLowerCase().trim()) return null;
   const { data } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email.toLowerCase().trim())
+    .eq("auth_id", authUser.id)
     .maybeSingle();
   if (data?.id) {
     _userIdCache = { email: email.toLowerCase().trim(), id: data.id };

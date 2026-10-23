@@ -3,6 +3,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { supabase } from "@/lib/supabase";
 import { syncService } from "@/services/sync.service";
 import { db } from "@/repositories/dexie/db";
+import { getDeviceId, getDeviceName } from "@/lib/device";
+import { cloudLoginService } from "@/services/cloud-login.service";
+
+export { getDeviceId, getDeviceName };
 
 interface User {
   id: string;
@@ -40,36 +44,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const DEVICE_ID_KEY = "presensi_device_id";
-
-function getDeviceId(): string {
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
-  if (!deviceId) {
-    deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2)}`;
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
-  }
-  return deviceId;
-}
-
-function getDeviceName(): string {
-  const ua = navigator.userAgent;
-  let browser = "Browser";
-  let os = "Unknown";
-
-  if (ua.includes("Chrome")) browser = "Chrome";
-  else if (ua.includes("Firefox")) browser = "Firefox";
-  else if (ua.includes("Safari")) browser = "Safari";
-  else if (ua.includes("Edge")) browser = "Edge";
-
-  if (ua.includes("Windows")) os = "Windows";
-  else if (ua.includes("Mac")) os = "Mac";
-  else if (ua.includes("Linux")) os = "Linux";
-  else if (ua.includes("Android")) os = "Android";
-  else if (ua.includes("iOS")) os = "iOS";
-
-  return `${browser} on ${os}`;
-}
 
 async function checkDeviceLimit(userId: string): Promise<{ allowed: boolean; devices: Device[]; tier: string; limit: number }> {
   const { data: profile } = await supabase
@@ -282,14 +256,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const userId = user?.id;
-    const deviceId = getDeviceId();
-
-    if (userId) {
-      try {
-        await supabase.from("devices").delete().eq("user_id", userId).eq("device_id", deviceId);
-      } catch { /* ignore */ }
-    }
+    // Lepas jatah perangkat ini di server sebelum sesi dihapus.
+    await cloudLoginService.release();
 
     try { await supabase.auth.signOut(); } catch { /* offline: still clear locally */ }
 

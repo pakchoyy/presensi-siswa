@@ -3,6 +3,7 @@ import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import type { License } from "@/types/entities";
 import { Tier } from "@/types/enums";
 import { generateId, timestamp } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 export interface ActivationResult {
   success: boolean;
@@ -23,9 +24,12 @@ function tierFromKode(kode: string): Tier {
 }
 
 async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; data: any }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const { data: sess } = await supabase.auth.getSession();
+  if (sess.session?.access_token) headers.Authorization = `Bearer ${sess.session.access_token}`;
   const res = await fetch("/api/license", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -33,7 +37,7 @@ async function callLicenseApi(body: Record<string, unknown>): Promise<{ ok: bool
 }
 
 export const licenseService = {
-  /** Cek lisensi aktif milik email lewat server (tabel licenses tidak dibaca langsung dari browser). */
+  /** Cek lisensi aktif milik email yang sedang login (OTP). Tanpa sesi, server menolak (401). */
   async lookupByEmail(email: string): Promise<{ found: boolean; tier: Tier | null; tanggalBerakhir: number | null }> {
     const { ok, data } = await callLicenseApi({ action: "status", email });
     if (!ok) throw new Error(data.error || "Gagal cek lisensi");

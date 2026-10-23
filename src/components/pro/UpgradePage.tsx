@@ -10,6 +10,7 @@ import {
 import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import { syncService } from "@/services/sync.service";
+import { OtpVerify } from "@/components/auth/OtpVerify";
 import type { License } from "@/types/entities";
 import {
   Check,
@@ -52,6 +53,7 @@ export function UpgradePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [checking, setChecking] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const [showVerify, setShowVerify] = useState(!!link);
   const verifyRef = useRef<HTMLDivElement>(null);
   // Datang dari link toko: langsung gulir ke form aktivasi.
@@ -118,21 +120,8 @@ export function UpgradePage() {
     if (!validateEmail(email)) return;
     const kodeUp = kode.trim().toUpperCase();
     if (!kodeUp && teacher) {
-      // Ganti HP / lupa kode: pulihkan cukup dengan email (dibatasi jumlah perangkat).
-      setChecking(true);
-      try {
-        const normalizedEmail = email.trim().toLowerCase();
-        const lic = await licenseService.lookupByEmail(normalizedEmail);
-        if (lic.found && lic.tier && (!lic.tanggalBerakhir || lic.tanggalBerakhir > Date.now())) {
-          await finishActivation(lic.tier, lic.tanggalBerakhir || Date.now() + LICENSE_DURATION_DAYS * 86400000, normalizedEmail, "EMAIL-RESTORE", false);
-          return;
-        }
-        setErrorMessage("Email ini belum punya paket aktif. Masukkan kode lisensi dari toko.");
-      } catch {
-        setErrorMessage("Gagal cek lisensi. Periksa koneksi internet.");
-      } finally {
-        setChecking(false);
-      }
+      // Ganti HP / lupa kode: pulihkan dengan email + kode verifikasi yang dikirim ke email itu.
+      setOtpEmail(email.trim().toLowerCase());
       return;
     }
     if (!/^BGY-[A-Z0-9-]{4,60}$/.test(kodeUp)) {
@@ -386,7 +375,7 @@ export function UpgradePage() {
               spellCheck={false}
               className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.85rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
             />
-            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Cukup isi email, kosongkan kode.</p>
+            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Isi email, kosongkan kode — kami kirim kode verifikasi ke email itu.</p>
             <button
               onClick={handleActivate}
               disabled={checking}
@@ -411,6 +400,17 @@ export function UpgradePage() {
         )}
       </div>
 
+      {otpEmail && (
+        <OtpVerify
+          email={otpEmail}
+          title="Pulihkan lisensi"
+          onConnected={(r, e) => {
+            setOtpEmail(null);
+            return finishActivation(r.tier, r.tanggalBerakhir || Date.now() + LICENSE_DURATION_DAYS * 86400000, e, "EMAIL-RESTORE", false);
+          }}
+          onClose={() => setOtpEmail(null)}
+        />
+      )}
       {showConfetti && (
         <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={400} />
       )}
