@@ -38,27 +38,41 @@ export function BottomNav() {
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener(QR_MODE_EVENT, sync); window.removeEventListener("storage", sync); };
   }, [tier]);
-  // Strip info duduk tepat di atas puncak tombol tengah, jadi tidak pernah tertutup.
+  // Strip info menempel ke atas navbar; latar oranye mengisi sampai navbar,
+  // teksnya tetap di atas puncak tombol tengah sehingga tidak pernah tertutup.
+  const navRef = useRef<HTMLElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
-  const [tickerBottom, setTickerBottom] = useState(84);
+  const [band, setBand] = useState({ bottom: 64, fill: 20 });
   useLayoutEffect(() => {
     const measure = () => {
-      const el = centerRef.current;
-      if (el) setTickerBottom(Math.ceil(window.innerHeight - el.getBoundingClientRect().top) + 6);
+      const nav = navRef.current, center = centerRef.current;
+      if (!nav || !center) return;
+      const navTop = Math.round(window.innerHeight - nav.getBoundingClientRect().top);
+      const centerTop = Math.ceil(window.innerHeight - center.getBoundingClientRect().top);
+      const fill = Math.max(0, centerTop - navTop + 4);
+      setBand({ bottom: navTop, fill });
+      document.documentElement.style.setProperty("--ticker-h", `${28 + fill}px`);
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      document.documentElement.style.setProperty("--ticker-h", "0px");
+    };
   }, [setupSelesai]);
 
   if (!setupSelesai) return null;
 
   return (
     <>
-    <div className="lg:hidden fixed left-1/2 -translate-x-1/2 w-full max-w-app z-[290]" style={{ bottom: tickerBottom }}>
+    <div
+      className="lg:hidden fixed left-1/2 -translate-x-1/2 w-full max-w-app z-[290]"
+      style={{ bottom: band.bottom, paddingBottom: band.fill, background: "linear-gradient(90deg, #fbbf24, #f59e0b)" }}
+    >
       <Marquee />
     </div>
     <nav
+      ref={navRef}
       className="lg:hidden fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] border-t border-[var(--border)] flex items-end z-[300] py-[6px] px-1"
       style={{ boxShadow: "0 -2px 12px rgba(0,0,0,.08)" }}
     >

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useState } from "react";
 import { MAIN_SITE_URL } from "@/lib/constants";
 
 const MESSAGES = [
@@ -9,35 +8,11 @@ const MESSAGES = [
   "Yuk cobain semuanya di ",
 ];
 
-// Strip info: di HP duduk di atas navbar (di atas puncak tombol tengah),
-// di layar lebar di bawah header. Bisa ditutup (muncul lagi setelah 3 hari),
-// ketuk untuk jeda. Saat tampil, --ticker-h menambah ruang bawah halaman.
-const HIDE_KEY = "bgy_ticker_hide_until";
-const HIDE_MS = 3 * 24 * 60 * 60 * 1000;
-
-function isHidden(): boolean {
-  try {
-    return Number(localStorage.getItem(HIDE_KEY) || 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
-
+// Strip info: di HP duduk di atas navbar (lihat BottomNav), di layar lebar
+// di bawah header. Ketuk untuk jeda.
 export function Marquee() {
-  const [hidden, setHidden] = useState(isHidden);
   const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--ticker-h", hidden ? "0px" : "34px");
-    return () => { root.style.setProperty("--ticker-h", "0px"); };
-  }, [hidden]);
-  if (hidden) return null;
-
   const duplicated = [...MESSAGES, ...MESSAGES];
-  const close = () => {
-    try { localStorage.setItem(HIDE_KEY, String(Date.now() + HIDE_MS)); } catch { /* ignore */ }
-    setHidden(true);
-  };
 
   return (
     <div className="ticker-wrap">
@@ -63,14 +38,6 @@ export function Marquee() {
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={close}
-        aria-label="Tutup info"
-        className="flex-shrink-0 w-[36px] h-[28px] flex items-center justify-center bg-transparent border-none cursor-pointer text-[#1e293b]"
-      >
-        <X size={15} />
-      </button>
     </div>
   );
 }
