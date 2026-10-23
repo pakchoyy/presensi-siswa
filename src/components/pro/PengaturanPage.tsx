@@ -98,6 +98,11 @@ export function PengaturanPage() {
   const [customDays, setCustomDays] = useState<string>(localStorage.getItem("bgy_hari_aktif_custom") || "1,2,3,4,5,6");
   const [autoHadir, setAutoHadir] = useState(getAutoHadir());
   const [qrMode, setQrMode] = useState(localStorage.getItem("bgy_qr_mode") === "1");
+  useEffect(() => {
+    const sync = () => setQrMode(localStorage.getItem("bgy_qr_mode") === "1");
+    window.addEventListener("bgy-qr-mode", sync);
+    return () => window.removeEventListener("bgy-qr-mode", sync);
+  }, []);
   const [pjjMode, setPjjMode] = useState(localStorage.getItem("bgy_pjj_mode") === "1");
   const [qrPicker, setQrPicker] = useState(localStorage.getItem("bgy_qr_picker") === "1");
   const qrOn = qrMode && canQrMode;
@@ -137,7 +142,7 @@ export function PengaturanPage() {
   // First-time PRO sync reminder
   useEffect(() => {
     const reminded = localStorage.getItem("bgy_pro_sync_reminded");
-    if (isPaid && !isCloudConnected && !reminded) {
+    if (isPaid && !isCloudConnected && !reminded && localStorage.getItem("bgy_demo_mode") !== "1") {
       const timer = setTimeout(() => setShowSyncPrompt(true), 800);
       return () => clearTimeout(timer);
     }
@@ -1095,6 +1100,7 @@ export function PengaturanPage() {
                 const newVal = !qrMode;
                 setQrMode(newVal);
                 localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
+                window.dispatchEvent(new Event("bgy-qr-mode"));
                 if (newVal) {
                   localStorage.removeItem("bgy_qr_hint_seen");
                   if (pjjMode) {
@@ -1185,6 +1191,7 @@ export function PengaturanPage() {
                 if (qrMode) {
                   setQrMode(false);
                   localStorage.setItem("bgy_qr_mode", "0");
+                  window.dispatchEvent(new Event("bgy-qr-mode"));
                 }
               }
               window.dispatchEvent(new Event("storage"));
@@ -1405,45 +1412,30 @@ export function PengaturanPage() {
         </div>
       )}
 
-      {/* First-time PRO sync prompt */}
+      {/* First-time sync reminder: kartu kecil di atas navbar, tidak menutupi layar */}
       {showSyncPrompt && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-end lg:items-center justify-center animate-fade-in" onClick={() => setShowSyncPrompt(false)}>
-          <div className="bg-[var(--card-bg)] rounded-t-2xl lg:rounded-2xl w-full max-w-[420px] mx-4 px-4 pt-[18px] pb-[22px] animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-[14px]" />
-            <div className="flex justify-center mb-3">
-              <div className="w-14 h-14 rounded-full bg-[#0ea5a0]/10 flex items-center justify-center">
-                <Smartphone size={28} className="text-[#0ea5a0]" />
-              </div>
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-[84px] lg:bottom-6 w-[calc(100%-24px)] max-w-[420px] z-[350] animate-slide-up">
+          <div className="bg-[var(--card-bg)] border border-[#0ea5a0]/40 rounded-2xl p-3 flex items-start gap-3" style={{ boxShadow: "var(--shadow-lg)" }}>
+            <div className="w-9 h-9 rounded-full bg-[#0ea5a0]/10 flex items-center justify-center flex-shrink-0">
+              <Smartphone size={18} className="text-[#0ea5a0]" />
             </div>
-            <div className="text-[0.85rem] font-bold mb-2 text-center text-[var(--text)]">
-              Paket kamu sudah aktif 🎉
-            </div>
-            <p className="text-[var(--text-light)] text-[0.75rem] text-center mb-[14px]">
-              Aktifkan <b>Sinkronisasi Cloud</b> agar data kamu aman dan bisa diakses dari perangkat lain. Cukup sekali, selanjutnya otomatis!
-            </p>
-            <div className="bg-[rgba(14,165,160,0.06)] rounded-lg p-3 mb-3 text-[0.7rem] text-[var(--text)]">
-              <b>Cara:</b> Di kartu <b>Paket & Lisensi</b> paling atas, buka <b>Ambil data dari cloud</b> → masukkan email → <b>Hubungkan & ambil data</b>.
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); }}
-                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] text-[var(--text)] font-bold text-[0.82rem] cursor-pointer"
-              >
-                Nanti
-              </button>
+            <div className="flex-1 min-w-0">
+              <div className="text-[0.8rem] font-bold text-[var(--text)]">Paket kamu sudah aktif 🎉</div>
+              <p className="text-[0.7rem] text-[var(--text-light)] leading-snug mt-[2px]">Hubungkan email di kartu <b>Paket &amp; Lisensi</b> supaya data aman di cloud.</p>
               <button
                 onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                className="flex-1 flex items-center justify-center py-[10px] px-[14px] rounded-[10px] text-white font-bold text-[0.82rem] cursor-pointer"
+                className="mt-2 py-[7px] px-[12px] rounded-[9px] text-white font-bold text-[0.74rem] border-none cursor-pointer"
                 style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
               >
-                Oke, Saya Mau!
+                Hubungkan sekarang
               </button>
             </div>
             <button
-              onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); setActivePage(PageName.CLOUD_SETTINGS); }}
-              className="w-full text-center text-[0.68rem] text-[#0ea5a0] font-semibold mt-2 bg-transparent border-none cursor-pointer"
+              onClick={() => { setShowSyncPrompt(false); localStorage.setItem("bgy_pro_sync_reminded", "1"); }}
+              className="text-[var(--text-light)] text-[1.1rem] leading-none bg-transparent border-none cursor-pointer px-1"
+              aria-label="Tutup"
             >
-              Buka Pengaturan Cloud Sync
+              ×
             </button>
           </div>
         </div>

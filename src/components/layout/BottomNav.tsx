@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { isQrActive, QR_MODE_EVENT } from "@/lib/features";
 import { PageName } from "@/types/enums";
 import {
   ClipboardCheck,
@@ -6,6 +8,7 @@ import {
   Users,
   Calendar,
   Settings,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,7 +28,15 @@ const NAV_ITEMS: NavItemData[] = [
 ];
 
 export function BottomNav() {
-  const { activePage, setActivePage, setupSelesai } = useApp();
+  const { activePage, setActivePage, setupSelesai, tier } = useApp();
+  const [qrOn, setQrOn] = useState(() => isQrActive(tier));
+  useEffect(() => {
+    const sync = () => setQrOn(isQrActive(tier));
+    sync();
+    window.addEventListener(QR_MODE_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(QR_MODE_EVENT, sync); window.removeEventListener("storage", sync); };
+  }, [tier]);
   if (!setupSelesai) return null;
 
   return (
@@ -39,17 +50,24 @@ export function BottomNav() {
           return (
             <button
               key={item.page}
-              onClick={() => setActivePage(item.page)}
+              onClick={() => {
+                if (qrOn) {
+                  // Mode QR: tombol tengah langsung membuka pemindai di halaman Presensi
+                  sessionStorage.setItem("bgy_open_scan", "1");
+                  window.dispatchEvent(new Event("bgy-open-scan"));
+                }
+                setActivePage(item.page);
+              }}
               className="flex-1 flex flex-col items-center -mt-5 bg-transparent border-none cursor-pointer font-[inherit]"
-              aria-label="Presensi"
+              aria-label={qrOn ? "Scan QR" : "Presensi"}
             >
               <div
                 className={`w-[54px] h-[54px] rounded-full flex items-center justify-center text-white shadow-lg border-4 border-[var(--card-bg)] ${isActive ? "" : "opacity-90"}`}
                 style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
               >
-                <item.icon size={24} />
+                {qrOn ? <QrCode size={24} /> : <item.icon size={24} />}
               </div>
-              <span className={`text-[10px] font-bold mt-[1px] ${isActive ? "text-[#0ea5a0]" : "text-[var(--text-light)]"}`}>{item.label}</span>
+              <span className={`text-[10px] font-bold mt-[1px] ${isActive ? "text-[#0ea5a0]" : "text-[var(--text-light)]"}`}>{qrOn ? "Scan QR" : item.label}</span>
             </button>
           );
         }

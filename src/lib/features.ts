@@ -116,3 +116,19 @@ export function isKelasLocked(
   const allowed = [...classrooms].sort((a, b) => a.id - b.id).slice(0, max).map((c) => c.id);
   return !allowed.includes(kelasId);
 }
+
+export const QR_MODE_EVENT = "bgy-qr-mode";
+
+/** Nyalakan/matikan Mode QR dan beri tahu semua komponen (hamburger, navbar, Pengaturan). */
+export function setQrMode(on: boolean): void {
+  try {
+    localStorage.setItem("bgy_qr_mode", on ? "1" : "0");
+    if (on) {
+      localStorage.setItem("bgy_pjj_mode", "0");
+      localStorage.setItem("bgy_auto_hadir", "0");
+      localStorage.removeItem("bgy_qr_hint_seen");
+    }
+  } catch { /* ignore */ }
+  window.dispatchEvent(new Event(QR_MODE_EVENT));
+  window.dispatchEvent(new Event("storage"));
+}

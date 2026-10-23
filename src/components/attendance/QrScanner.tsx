@@ -121,7 +121,8 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
 
     return () => {
       stopped = true;
-      scannerRef.current?.stop().catch(() => {});
+      // stop() melempar error sinkron kalau kamera belum sempat jalan (mis. ditutup cepat)
+      try { scannerRef.current?.stop().catch(() => {}); } catch { /* belum berjalan */ }
       audioCtxRef.current?.close().catch(() => {});
     };
   }, [playBeep]);

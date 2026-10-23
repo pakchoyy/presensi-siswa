@@ -4,9 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { PLUS_PRICE } from "@/lib/constants";
-import { canUse, isQrActive } from "@/lib/features";
+import { canUse, isQrActive, setQrMode as saveQrMode, QR_MODE_EVENT } from "@/lib/features";
 import { licenseService } from "@/services/license.service";
-import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode } from "lucide-react";
+import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -23,6 +23,12 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [qrMode, setQrMode] = useState(isQrActive(appTier));
+  useEffect(() => {
+    const sync = () => setQrMode(isQrActive(appTier));
+    sync();
+    window.addEventListener(QR_MODE_EVENT, sync);
+    return () => window.removeEventListener(QR_MODE_EVENT, sync);
+  }, [appTier]);
   const [lic, setLic] = useState<{ berakhir: string; daysRemaining: number } | null>(null);
 
   useEffect(() => {
@@ -73,27 +79,30 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           <BookOpen size={16} /> Petunjuk
         </button>
 
-        {canUse("qr_mode", tier) && (
-        <button
-          onClick={() => {
-            const newVal = !qrMode;
-            setQrMode(newVal);
-            localStorage.setItem("bgy_qr_mode", newVal ? "1" : "0");
-            if (newVal) {
-              localStorage.setItem("bgy_pjj_mode", "0");
-              localStorage.setItem("bgy_auto_hadir", "0");
-              localStorage.removeItem("bgy_qr_hint_seen");
-              toast("✅ Mode QR: ON — Auto Hadir dimatikan, cetak kartu di menu Siswa");
-            } else {
-              toast("Mode QR: OFF");
-            }
-            window.dispatchEvent(new Event("storage"));
-            onClose();
-          }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-        >
-          <QrCode size={16} /> Mode QR {qrMode ? <span className="ml-auto text-[0.65rem] font-bold text-[#0ea5a0]">ON</span> : <span className="ml-auto text-[0.65rem] text-[var(--text-light)]">OFF</span>}
-        </button>
+        {canUse("qr_mode", tier) ? (
+          <button
+            role="switch"
+            aria-checked={qrMode}
+            onClick={() => {
+              const newVal = !qrMode;
+              saveQrMode(newVal);
+              toast(newVal ? "✅ Mode QR ON — tombol tengah jadi Scan QR" : "Mode QR OFF");
+            }}
+            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          >
+            <QrCode size={16} /> Mode QR
+            <span className={`ml-auto relative w-[36px] h-[20px] rounded-full transition-colors ${qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"}`}>
+              <span className={`absolute top-[2px] w-[16px] h-[16px] rounded-full bg-white shadow transition-all ${qrMode ? "left-[18px]" : "left-[2px]"}`} />
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text-light)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          >
+            <QrCode size={16} /> Mode QR
+            <span className="ml-auto flex items-center gap-1 text-[0.62rem] font-bold px-[7px] py-[2px] rounded-full bg-[#f59e0b]/15 text-[#d97706]"><Lock size={10} /> PRO</span>
+          </button>
         )}
 
         {isPaid && isAuthenticated && (

@@ -36,6 +36,7 @@ export function PresensiPage() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
   const [classDropdown, setClassDropdown] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState("");
   const classRef = useRef<HTMLDivElement>(null);
@@ -64,6 +65,22 @@ export function PresensiPage() {
   const isSebelumPeriode = activeAy ? tanggalAktif < activeAy.tanggalMulai : false;
   const isSesudahPeriode = activeAy ? tanggalAktif > activeAy.tanggalSelesai : false;
   const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
+
+  // Tombol "Scan QR" di navbar (Mode QR): buka pemindai begitu data kelas siap.
+  const [scanReq, setScanReq] = useState(0);
+  useEffect(() => {
+    const onReq = () => setScanReq((n) => n + 1);
+    window.addEventListener("bgy-open-scan", onReq);
+    return () => window.removeEventListener("bgy-open-scan", onReq);
+  }, []);
+  useEffect(() => {
+    if (sessionStorage.getItem("bgy_open_scan") !== "1" || !dataReady || loading || !isQrActive(tier)) return;
+    sessionStorage.removeItem("bgy_open_scan");
+    if (!activeClassroom || students.length === 0) { toast("Belum ada siswa di kelas ini untuk di-scan"); return; }
+    if (isLibur || diLuarPeriode) { toast("Hari ini bukan hari presensi"); return; }
+    setLastScanned(null);
+    setShowQrScanner(true);
+  }, [scanReq, dataReady, loading, activeClassroom, students.length, isLibur, diLuarPeriode, tier]);
   const isAbsenMandiri = !!activeClassroom?.allowSiswaAbsenMandiri;
   // untuk kelas mandiri (siswa absen sendiri) jangan auto-Hadir, biar "belum absen" kelihatan
   const [autoHadirPref, setAutoHadirPref] = useState(() => localStorage.getItem("bgy_auto_hadir") !== "0");
@@ -97,6 +114,7 @@ export function PresensiPage() {
   const loadData = useCallback(async (silent = false) => {
     if (!activeClassroom || isLibur || diLuarPeriode) {
       setLoading(false);
+      setDataReady(true);
       return;
     }
     
@@ -127,6 +145,7 @@ export function PresensiPage() {
       toast('Gagal memuat data presensi');
     } finally {
       setLoading(false);
+      setDataReady(true);
     }
   }, [activeClassroom, tanggalAktif, isLibur, diLuarPeriode, toast]);
 
@@ -420,23 +439,12 @@ export function PresensiPage() {
           </div>
         )}
 
-        {/* Scan QR (hanya saat Mode QR aktif) */}
-        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive(tier) && (
-          <button
-            onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
-            className="flex w-full items-center justify-center gap-2 py-[11px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
-            style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
-          >
-            <QrCode size={16} /> Scan QR Presensi
-          </button>
-        )}
-
         {/* QR mode help banner — one-time hint */}
         {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive(tier) && localStorage.getItem("bgy_qr_hint_seen") !== "1" && (
           <div className="bg-[rgba(14,165,160,0.08)] border border-[#0ea5a0]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <QrCode size={16} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
-              <b>Mode QR aktif.</b> Cetak kartu QR di menu <b>Siswa</b>. Siswa scan pakai kamera HP sendiri untuk pilih status, atau guru scan dari tombol <b>Scan QR Presensi</b> di atas untuk tandai Hadir.
+              <b>Mode QR aktif.</b> Cetak kartu QR di menu <b>Siswa</b>. Siswa scan pakai kamera HP sendiri untuk pilih status, atau guru ketuk tombol <b>Scan QR</b> di tengah navbar untuk tandai Hadir.
             </div>
             <button
               onClick={(e) => {
