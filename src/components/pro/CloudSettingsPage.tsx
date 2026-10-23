@@ -85,8 +85,12 @@ export function CloudSettingsPage() {
     try {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudEmail);
-      toast(`✅ ${downloaded} data ditarik dari cloud`, "success");
-      window.location.reload();
+      if (downloaded > 0) {
+        toast(`✅ ${downloaded} data dimuat — menyegarkan tampilan…`, "success");
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast("⚠️ Tidak ada data diambil dari cloud.", "info");
+      }
     } catch (error) {
       toast("❌ Gagal tarik data dari cloud", "error");
     } finally {
@@ -255,7 +259,10 @@ export function CloudSettingsPage() {
               setSyncing(true);
               try {
                 const count = await syncService.downloadAll(cloudEmail);
-                toast(count > 0 ? `✅ ${count} data ditarik dari cloud` : "⚠️ Tidak ada data diambil dari cloud.");
+                if (count > 0) {
+                  toast(`✅ ${count} data dimuat — menyegarkan tampilan…`);
+                  setTimeout(() => window.location.reload(), 1500);
+                } else toast("⚠️ Tidak ada data diambil dari cloud.");
               } catch (error) {
                 toast("❌ Tarik gagal. Coba lagi.");
               } finally {

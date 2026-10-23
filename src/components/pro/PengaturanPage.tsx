@@ -374,14 +374,12 @@ export function PengaturanPage() {
     try {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudUser.email);
-      await refreshTeacher();
-      window.dispatchEvent(new Event("data-changed"));
-      toast(
-        downloaded > 0
-          ? `✅ ${downloaded} data ditarik dari cloud`
-          : "⚠️ Tidak ada data baru di cloud untuk ditarik",
-        downloaded > 0 ? "success" : "info"
-      );
+      if (downloaded > 0) {
+        toast(`✅ ${downloaded} data dimuat — menyegarkan tampilan…`, "success");
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast("⚠️ Tidak ada data baru di cloud untuk ditarik", "info");
+      }
     } catch (error) {
       toast("❌ Gagal tarik data dari cloud", "error");
     } finally {
@@ -538,7 +536,7 @@ export function PengaturanPage() {
       try {
         const downloaded = await syncService.downloadAll(emailAddress);
         if (downloaded > 0) {
-          toast(`✅ ${downloaded} data berhasil di-download dari cloud`);
+          toast(`✅ ${downloaded} data dimuat — menyegarkan tampilan…`);
         } else {
           // Cloud masih kosong: data yang sudah ada di HP ini jadi data awal akun.
           const uploaded = await syncService.initialUpload(emailAddress);
@@ -581,7 +579,7 @@ export function PengaturanPage() {
       await refreshTeacher();
       
       setConnecting(false);
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error("Device login error:", error);
       toast("❌ Gagal menghubungkan. Coba lagi.");
