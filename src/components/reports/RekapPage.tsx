@@ -4,7 +4,6 @@ import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
-import { exportPDF, exportExcel } from "@/services/export.service";
 import type { Student, Classroom } from "@/types/entities";
 import { PageName } from "@/types/enums";
 import { STATUS_COLOR } from "@/lib/constants";
@@ -167,6 +166,7 @@ export function RekapPage() {
     try {
       setExporting("pdf");
       toast("Menyiapkan file PDF...");
+      const { exportPDF } = await import("@/services/export.service");
       await exportPDF({
         school,
         teacher,
@@ -189,6 +189,7 @@ export function RekapPage() {
     try {
       setExporting("excel");
       toast("Menyiapkan file Excel...");
+      const { exportExcel } = await import("@/services/export.service");
       await exportExcel({
         school,
         teacher,

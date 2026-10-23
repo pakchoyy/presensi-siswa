@@ -40,6 +40,13 @@ export const licenseService = {
     return { found: !!data.found, tier: (data.tier as Tier) ?? null, tanggalBerakhir: data.tanggalBerakhir ?? null };
   },
 
+  /** Pasang ulang lisensi yang sudah pernah diaktivasi (email + kode harus cocok). */
+  async restore(email: string, kode: string): Promise<{ ok: boolean; tier?: Tier; tanggalBerakhir?: number; error?: string }> {
+    const { ok, data } = await callLicenseApi({ action: "restore", email: email.toLowerCase().trim(), kode: kode.toUpperCase().trim() });
+    if (!ok) return { ok: false, error: data.error || "Gagal memulihkan lisensi" };
+    return { ok: true, tier: data.tier as Tier, tanggalBerakhir: data.tanggalBerakhir };
+  },
+
   async validateKode(email: string, kode: string): Promise<ActivationResult> {
     if (!email || !email.includes("@")) {
       return { success: false, message: "Email tidak valid" };
@@ -59,7 +66,8 @@ export const licenseService = {
     }
 
     const existing = await licenseRepo.getActive(guruId);
-    if (existing) {
+    // PLUS boleh naik ke PRO; selain itu tolak lisensi ganda
+    if (existing && !((existing.tier || Tier.PRO) === Tier.PLUS && tierFromKode(kode.toUpperCase().trim()) === Tier.PRO)) {
       return { success: false, message: "Kamu sudah memiliki lisensi aktif" };
     }
 
@@ -86,6 +94,7 @@ export const licenseService = {
         statusLisensi: "Aktif",
       };
 
+      if (existing) await licenseRepo.expire(existing.id);
       await licenseRepo.save(license_);
       await teacherRepo.updateTier(guruId, tier);
 

@@ -25,22 +25,34 @@ import { useToast } from "@/components/shared/Toast";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { Tier } from "@/types/enums";
 import { generateId } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { readAktivasiLink, clearAktivasiLink } from "@/lib/aktivasi-link";
 import Confetti from "react-confetti";
 import { trialDaysRemaining, tierLabel } from "@/lib/features";
 
 const WA_NUMBER = "6289530713597";
 
+const COMPARE_ROWS: [string, string, string, string][] = [
+  ["Kelas", "1", "4", "∞"],
+  ["Siswa / kelas", "10", "25", "∞"],
+  ["Cloud sync", "—", "1 HP", "3 perangkat"],
+  ["Mode PJJ", "—", "✓", "✓"],
+  ["Mode QR", "—", "—", "✓"],
+  ["Kalender edit", "—", "—", "✓"],
+  ["Logo di laporan", "—", "✓", "✓"],
+];
+
 export function UpgradePage() {
   const { teacher, refreshTeacher, tier: appTier, realTier } = useApp();
   const { toast } = useToast();
 
-  const [email, setEmail] = useState("");
+  const link = readAktivasiLink();
+  const [email, setEmail] = useState(link?.email || "");
+  const [kode, setKode] = useState(link?.kode || "");
   const [emailError, setEmailError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [checking, setChecking] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showVerify, setShowVerify] = useState(false);
+  const [showVerify, setShowVerify] = useState(!!link);
 
   const tier = realTier;
   void appTier;
@@ -67,9 +79,42 @@ export function UpgradePage() {
     window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
   };
 
-  const handleCheckEmail = async () => {
+  const finishActivation = async (resolvedTier: Tier, expiry: number, normalizedEmail: string, kodeLisensi: string, alreadySaved: boolean) => {
+    if (!teacher) return;
+    if (!alreadySaved) {
+      const license: License = {
+        id: generateId(),
+        guruId: teacher.id,
+        emailAktivasi: normalizedEmail,
+        kodeLisensi,
+        tier: resolvedTier,
+        tanggalAktivasi: Date.now(),
+        tanggalBerakhir: expiry,
+        statusLisensi: "Aktif",
+      };
+      await licenseRepo.save(license);
+      await teacherRepo.update(teacher.id, { ...teacher, tier: resolvedTier, email: normalizedEmail });
+    }
+    await refreshTeacher();
+    localStorage.setItem("presensi_cloud_email", normalizedEmail);
+    clearAktivasiLink();
+    toast(`✅ Lisensi aktif — kamu sekarang ${resolvedTier} 🎉`);
+    setShowConfetti(true);
+    syncService.initialUpload(normalizedEmail).catch(() => {});
+    setTimeout(() => {
+      setShowConfetti(false);
+      window.location.reload();
+    }, 3000);
+  };
+
+  const handleActivate = async () => {
     setErrorMessage("");
     if (!validateEmail(email)) return;
+    const kodeUp = kode.trim().toUpperCase();
+    if (!/^BGY-[A-Z0-9-]{4,60}$/.test(kodeUp)) {
+      setErrorMessage("Masukkan kode lisensi dari toko (format BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX).");
+      return;
+    }
     if (!teacher) {
       setErrorMessage("Data guru tidak ditemukan");
       return;
@@ -77,72 +122,21 @@ export function UpgradePage() {
     setChecking(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const lookup = await licenseService.lookupByEmail(normalizedEmail);
-      const licenseData = lookup.found ? { tanggal_berakhir: lookup.tanggalBerakhir } : null;
-
-      if (licenseData) {
-        const now = Date.now();
-        const expiry = licenseData.tanggal_berakhir || (now + LICENSE_DURATION_DAYS * 24 * 60 * 60 * 1000);
-        const resolvedTier: Tier = (lookup.tier as Tier) || Tier.PRO;
-        const license: License = {
-          id: generateId(),
-          guruId: teacher.id,
-          emailAktivasi: normalizedEmail,
-          kodeLisensi: "EMAIL-VERIFIED",
-          tier: resolvedTier,
-          tanggalAktivasi: now,
-          tanggalBerakhir: expiry,
-          statusLisensi: "Aktif",
-        };
-        await licenseRepo.save(license);
-        await teacherRepo.update(teacher.id, { ...teacher, tier: resolvedTier, email: normalizedEmail });
-        await refreshTeacher();
-        localStorage.setItem("presensi_cloud_email", normalizedEmail);
-        toast(`✅ Email terverifikasi — kamu sekarang ${resolvedTier} 🎉`);
-        setShowConfetti(true);
-        syncService.initialUpload(normalizedEmail).catch(() => {});
-        setTimeout(() => {
-          setShowConfetti(false);
-          window.location.reload();
-        }, 3000);
-      } else {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("tier")
-          .eq("email", normalizedEmail)
-          .maybeSingle();
-
-        if (profile && (profile.tier === "PRO" || profile.tier === "PLUS")) {
-          const now = Date.now();
-          const resolvedTier: Tier = profile.tier === "PLUS" ? Tier.PLUS : Tier.PRO;
-          const license: License = {
-            id: generateId(),
-            guruId: teacher.id,
-            emailAktivasi: normalizedEmail,
-            kodeLisensi: "EMAIL-VERIFIED",
-            tier: resolvedTier,
-            tanggalAktivasi: now,
-            tanggalBerakhir: now + LICENSE_DURATION_DAYS * 24 * 60 * 60 * 1000,
-            statusLisensi: "Aktif",
-          };
-          await licenseRepo.save(license);
-          await teacherRepo.update(teacher.id, { ...teacher, tier: resolvedTier, email: normalizedEmail });
-          await refreshTeacher();
-          localStorage.setItem("presensi_cloud_email", normalizedEmail);
-          toast(`✅ Email terverifikasi — kamu sekarang ${resolvedTier} 🎉`);
-          setShowConfetti(true);
-          syncService.initialUpload(normalizedEmail).catch(() => {});
-          setTimeout(() => {
-            setShowConfetti(false);
-            window.location.reload();
-          }, 3000);
-        } else {
-          setErrorMessage("Email belum terdaftar sebagai PLUS/PRO. Hubungi admin WA di bawah.");
-        }
+      const res = await licenseService.activate(normalizedEmail, kodeUp, teacher.id);
+      if (res.success && res.tier) {
+        await finishActivation(res.tier, res.tanggalBerakhir || Date.now(), normalizedEmail, kodeUp, true);
+        return;
       }
+      // Kode sudah pernah dipakai email ini (mis. ganti HP) → pulihkan
+      const restored = await licenseService.restore(normalizedEmail, kodeUp);
+      if (restored.ok && restored.tier) {
+        await finishActivation(restored.tier, restored.tanggalBerakhir || Date.now() + LICENSE_DURATION_DAYS * 86400000, normalizedEmail, kodeUp, false);
+        return;
+      }
+      setErrorMessage(res.message || restored.error || "Aktivasi gagal. Hubungi admin WA di bawah.");
     } catch (err) {
-      console.error("Check email error:", err);
-      setErrorMessage("Gagal mengecek email. Periksa koneksi internet.");
+      console.error("Activate error:", err);
+      setErrorMessage("Gagal aktivasi. Periksa koneksi internet.");
     } finally {
       setChecking(false);
     }
@@ -191,6 +185,36 @@ export function UpgradePage() {
           )}
         </div>
         <p className="text-[0.68rem] opacity-70 mt-3">{heroSub}</p>
+      </div>
+
+      {/* Tabel pembanding singkat */}
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl mb-3 overflow-hidden">
+        <table className="w-full text-[0.7rem] text-[var(--text)]">
+          <thead>
+            <tr className="bg-[var(--input-bg)]">
+              <th className="text-left font-bold px-3 py-2">Fitur</th>
+              <th className="font-bold px-1 py-2 text-[#64748b]">FREE</th>
+              <th className="font-bold px-1 py-2 text-[#0ea5a0]">PLUS</th>
+              <th className="font-bold px-1 py-2 text-[#d97706]">PRO</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARE_ROWS.map(([label, f, p, r]) => (
+              <tr key={label} className="border-t border-[var(--border)]">
+                <td className="px-3 py-[6px] text-[var(--text-light)]">{label}</td>
+                <td className="text-center px-1">{f}</td>
+                <td className="text-center px-1">{p}</td>
+                <td className="text-center px-1 font-semibold">{r}</td>
+              </tr>
+            ))}
+            <tr className="border-t border-[var(--border)] bg-[var(--input-bg)]">
+              <td className="px-3 py-[6px] font-bold">Harga / semester</td>
+              <td className="text-center px-1">Gratis</td>
+              <td className="text-center px-1">{PLUS_PRICE.replace("/semester", "")}</td>
+              <td className="text-center px-1 font-bold">{PRO_PRICE.replace("/semester", "")}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {/* FREE card (muted if not FREE) */}
@@ -257,6 +281,20 @@ export function UpgradePage() {
         showCrown
       />
 
+      {/* Copywriting PRO — jujur, tanpa klaim berlebihan */}
+      {tier !== Tier.PRO && (
+        <div className="rounded-xl p-4 mb-3 border border-[#f59e0b]/40 bg-[rgba(245,158,11,0.08)]">
+          <div className="text-[0.9rem] font-extrabold text-[var(--text)] mb-1">
+            Cuma Rp5.300 sebulan — kurang dari segelas es teh seminggu.
+          </div>
+          <p className="text-[0.74rem] text-[var(--text-light)] leading-relaxed">
+            Dengan {PRO_PRICE.replace("/semester", "")} per semester, semua kelas & siswa masuk tanpa batas, data tersimpan di cloud
+            (tidak hilang kalau HP rusak), bisa dibuka di 3 perangkat, dan presensi pagi lebih cepat pakai scan kartu QR.
+            Bayar sekali per semester, tidak ada tagihan otomatis.
+          </p>
+        </div>
+      )}
+
       {/* Trust row */}
       <div className="flex items-start gap-2 bg-[var(--input-bg)] rounded-xl p-3 mb-3 text-[0.7rem] text-[var(--text-light)] leading-relaxed">
         <ShieldCheck size={15} className="text-[#0ea5a0] flex-shrink-0 mt-[1px]" />
@@ -289,8 +327,8 @@ export function UpgradePage() {
         >
           <Mail size={16} className="text-[#0ea5a0]" />
           <div className="flex-1">
-            <div className="text-[0.82rem] font-bold text-[var(--text)]">Sudah pernah beli?</div>
-            <div className="text-[0.68rem] text-[var(--text-light)]">Verifikasi email untuk aktivasi di perangkat ini</div>
+            <div className="text-[0.82rem] font-bold text-[var(--text)]">Aktivasi Lisensi</div>
+            <div className="text-[0.68rem] text-[var(--text-light)]">Sudah beli? Masukkan email &amp; kode dari toko</div>
           </div>
           <ChevronDown
             size={18}
@@ -315,8 +353,18 @@ export function UpgradePage() {
             {emailError && (
               <p className="text-[0.7rem] text-red-500 mb-2">{emailError}</p>
             )}
+            <input
+              type="text"
+              value={kode}
+              onChange={(e) => { setKode(e.target.value.toUpperCase()); setErrorMessage(""); }}
+              placeholder="BGY-PS-PRO-XXXX"
+              autoCapitalize="characters"
+              spellCheck={false}
+              className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.85rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
+            />
+            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP? Masukkan email &amp; kode yang sama — lisensi dipulihkan.</p>
             <button
-              onClick={handleCheckEmail}
+              onClick={handleActivate}
               disabled={checking}
               className="w-full py-[11px] rounded-lg font-bold text-[0.85rem] text-white border-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               style={{ background: checking ? "#999" : "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}

@@ -59,7 +59,7 @@ body {
   color: var(--text);
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -72,7 +72,7 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--bg);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 @media (min-width: 1024px) {

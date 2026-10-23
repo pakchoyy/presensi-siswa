@@ -19,8 +19,26 @@ function getSupabase() {
   return createClient(url, key);
 }
 
-const normEmail = (e) => String(e || "").toLowerCase().trim();
-const normKode = (k) => String(k || "").toUpperCase().trim();
+const normEmail = (e) => String(e || "").toLowerCase().trim().slice(0, 254);
+const normKode = (k) => String(k || "").toUpperCase().trim().slice(0, 64);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const KODE_RE = /^BGY-[A-Z0-9-]{4,60}$/;
+
+// Rate limit sederhana per IP (best-effort: memori per instance serverless).
+const HITS = new Map();
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_HITS = 20;
+function rateLimited(ip) {
+  const now = Date.now();
+  const rec = HITS.get(ip);
+  if (!rec || now - rec.start > WINDOW_MS) {
+    HITS.set(ip, { start: now, n: 1 });
+    if (HITS.size > 5000) HITS.clear();
+    return false;
+  }
+  rec.n++;
+  return rec.n > MAX_HITS;
+}
 
 async function markTier(supabase, email, tier) {
   if (!VALID_TIERS.includes(tier)) tier = "PRO";
@@ -52,8 +70,8 @@ async function kodeError(supabase, kode) {
 async function activate(supabase, body) {
   const email = normEmail(body.email);
   const kode = normKode(body.kode);
-  if (!email.includes("@")) return [400, { error: "Email tidak valid" }];
-  if (kode.length < 8) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
+  if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
+  if (!KODE_RE.test(kode)) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
 
   const tier = tierFromKode(kode);
   const now = Date.now();
@@ -61,7 +79,7 @@ async function activate(supabase, body) {
   const ok = await claimKode(supabase, kode, {
     email,
     tier,
-    guru_id: body.guruId ?? null,
+    guru_id: Number.isFinite(Number(body.guruId)) ? Number(body.guruId) : null,
     tanggal_aktivasi: now,
     tanggal_berakhir: tanggalBerakhir,
   });
@@ -74,8 +92,8 @@ async function activate(supabase, body) {
 async function renew(supabase, body) {
   const email = normEmail(body.email);
   const kode = normKode(body.kode);
-  if (!email.includes("@")) return [400, { error: "Email tidak valid" }];
-  if (kode.length < 8) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
+  if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
+  if (!KODE_RE.test(kode)) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
 
   const tier = tierFromKode(kode);
   const { data: current } = await supabase
@@ -103,7 +121,7 @@ async function renew(supabase, body) {
 // Cek lisensi aktif milik sebuah email (menggantikan query langsung ke tabel dari browser).
 async function status(supabase, body) {
   const email = normEmail(body.email);
-  if (!email.includes("@")) return [400, { error: "Email tidak valid" }];
+  if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
   const { data, error } = await supabase
     .from("licenses")
     .select("tanggal_berakhir, tier")
@@ -117,10 +135,31 @@ async function status(supabase, body) {
   return [200, { found: !!data, tier: data?.tier ?? null, tanggalBerakhir: data?.tanggal_berakhir ?? null }];
 }
 
-const ACTIONS = { activate, renew, status };
+// Pasang ulang lisensi di perangkat baru: butuh email + kode yang SAMA dengan saat aktivasi.
+async function restore(supabase, body) {
+  const email = normEmail(body.email);
+  const kode = normKode(body.kode);
+  if (!EMAIL_RE.test(email) || !KODE_RE.test(kode)) return [400, { error: "Email atau kode tidak valid" }];
+  const { data, error } = await supabase
+    .from("licenses")
+    .select("tier, tanggal_berakhir")
+    .eq("kode", kode)
+    .eq("email", email)
+    .eq("status", "digunakan")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return [404, { error: "Kode sudah dipakai email lain atau tidak ditemukan" }];
+  if (data.tanggal_berakhir && data.tanggal_berakhir < Date.now()) return [410, { error: "Lisensi sudah berakhir" }];
+  return [200, { ok: true, tier: data.tier || tierFromKode(kode), tanggalBerakhir: data.tanggal_berakhir }];
+}
+
+const ACTIONS = { activate, renew, status, restore };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Cache-Control", "no-store");
+  const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
+  if (rateLimited(ip)) return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
   const { action } = req.body || {};
   const fn = ACTIONS[action];
   if (!fn) return res.status(400).json({ error: "Action tidak dikenal" });

@@ -10,7 +10,7 @@ import { PageName } from "@/types/enums";
 import { Moon, Sun, Menu } from "lucide-react";
 
 export function Header() {
-  const { activePage, darkMode, toggleDarkMode, setupSelesai, realTier, teacher, setActivePage } =
+  const { darkMode, toggleDarkMode, setupSelesai, realTier, teacher, setActivePage } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [licDays, setLicDays] = useState<number | null>(null);
@@ -21,30 +21,6 @@ export function Header() {
       setLicDays(st.aktif && st.daysRemaining !== undefined && st.daysRemaining <= 14 ? st.daysRemaining : null);
     });
   }, [teacher]);
-
-  let subtitle = "| Presensi";
-
-  if (!setupSelesai) {
-    subtitle = "Setup Awal";
-  } else if (activePage === "rekap") {
-    subtitle = "| Rekap";
-  } else if (activePage === "siswa") {
-    subtitle = "| Manajemen";
-  } else if (activePage === "kalender") {
-    subtitle = "| Kalender";
-  } else if (activePage === "petunjuk") {
-    subtitle = "| Petunjuk";
-  } else if (activePage === "tentang") {
-    subtitle = "| Tentang";
-  } else if (activePage === "pengaturan") {
-    subtitle = "| Pengaturan";
-  } else if (activePage === "backup") {
-    subtitle = "| Backup";
-  } else if (activePage === "upgrade") {
-    subtitle = "| Upgrade";
-  } else if (activePage === "cloud-settings") {
-    subtitle = "| Cloud Settings";
-  }
 
   return (
     <header
@@ -61,7 +37,7 @@ export function Header() {
           <LogoUpload />
           <div className="min-w-0">
             <div className="text-[1rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
-              {setupSelesai ? (<><span className="hidden sm:inline">Bantu Guru Yuk </span>{subtitle.replace(/^\| /, "")}</>) : "Setup"}
+              <i>Presensi Yuk</i> <span className="font-semibold opacity-80">| Siswa</span>
             </div>
           </div>
         </div>

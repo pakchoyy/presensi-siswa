@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
-import { Search, UserPlus, Trash2, FileSpreadsheet, RefreshCw, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download, Lock } from "lucide-react";
+import { Search, UserPlus, Trash2, FileSpreadsheet, ArrowLeft, Users, GraduationCap, PenLine, Lightbulb, Link2, Copy, Check, Share2, QrCode, Download, Lock } from "lucide-react";
 import { ImportExcel } from "@/components/import/ImportExcel";
-import { ImportUpdateExcel } from "@/components/import/ImportUpdateExcel";
 import { triggerAutoSync } from "@/hooks/useAutoSync";
 import { studentRepo } from "@/repositories/dexie/student.repo";
 import { classroomRepo } from "@/repositories/dexie/classroom.repo";
@@ -19,7 +18,6 @@ import { Tier, PageName } from "@/types/enums";
 import { LIMITS, canUse } from "@/lib/features";
 import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { getCache, setCache, clearCache } from "@/lib/cache";
-import { generateQrCardsPdf } from "@/lib/qr-card";
 
 function formatKelasLabel(namaKelas: string): string {
   if (namaKelas.toLowerCase().startsWith("kelas")) {
@@ -74,7 +72,6 @@ export function SiswaPage() {
   }, []);
   const [showModal, setShowModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [showImportUpdate, setShowImportUpdate] = useState(false);
   const [modalNama, setModalNama] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [kelasCounts, setKelasCounts] = useState<Record<number, number>>({});
@@ -236,31 +233,16 @@ export function SiswaPage() {
     const targetKelas = selectedKelas || activeClassroom;
     if (!targetKelas) return;
 
-    if (!isFinite(limits.siswaPerKelas)) {
-      // PRO: no cap
-    } else {
-      const totalAfterImport = students.length + result.students.length;
-      if (totalAfterImport > limits.siswaPerKelas) {
-        const canImport = limits.siswaPerKelas - students.length;
-        if (canImport <= 0) {
-          setUpgradePrompt(`Kelas sudah penuh (${limits.siswaPerKelas} siswa untuk tier ${tier}).`);
-          return;
-        }
-        toast(`⚠️ Hanya ${canImport} siswa pertama yang akan diimport (limit ${tier}: ${limits.siswaPerKelas}).`);
-        result.students = result.students.slice(0, canImport);
-      }
-    }
-
     // Get updated classrooms list first
-    let updatedClassrooms = await classroomRepo.getAll();
-    
-    // Auto-create classes from Excel if they exist (PLUS/PRO)
+    const updatedClassrooms = await classroomRepo.getAll();
+
+    // Auto-create classes from Excel if they exist (PLUS/PRO), tetap dalam batas paket
     if (result.classes.length > 0 && canBulkUpdate) {
       const ay = await academicYearRepo.getActive();
       if (ay && teacher) {
         for (const namaKelas of result.classes) {
           const exists = updatedClassrooms.find(c => c.nama.toLowerCase() === namaKelas.toLowerCase());
-          if (!exists) {
+          if (!exists && updatedClassrooms.filter(c => c.statusAktif !== false).length < limits.kelas) {
             const newCls: Classroom = {
               id: generateId(),
               nama: namaKelas,
@@ -271,44 +253,64 @@ export function SiswaPage() {
               diubahPada: timestamp(),
             };
             await classroomRepo.save(newCls);
-            updatedClassrooms.push(newCls); // Update local array immediately
+            updatedClassrooms.push(newCls);
           }
         }
         await refreshClassrooms();
       }
     }
-    
-    // Convert with classroom matching (PRO gets auto-assign, FREE uses current class)
-    const newStudents = siswaToImportResult(result, targetKelas.id, canBulkUpdate ? updatedClassrooms : undefined);
-    
-    // addOrRestore per siswa: siswa yang timbul dari import lama (setelah soft-delete)
-    // dihidupkan lagi, bukan dibuat baris baru yang memutus riwayat absensi.
-    for (const s of newStudents) {
-      await studentRepo.addOrRestore(s);
+
+    // Satu pintu import: siswa yang sudah ada (cocok NISN, atau nama) diperbarui,
+    // siswa baru ditambah selama masih dalam batas paket.
+    const incoming = siswaToImportResult(result, targetKelas.id, canBulkUpdate ? updatedClassrooms : undefined);
+    const norm = (v?: string) => (v || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const perKelas = new Map<number, Student[]>();
+    let diperbarui = 0, ditambah = 0, dilewati = 0;
+
+    for (const s of incoming) {
+      let existing = perKelas.get(s.kelasId);
+      if (!existing) {
+        existing = await studentRepo.getByClass(s.kelasId);
+        perKelas.set(s.kelasId, existing);
+      }
+      const match =
+        (s.nisn && existing.find(e => e.nisn && e.nisn.trim() === s.nisn!.trim())) ||
+        existing.find(e => norm(e.nama) === norm(s.nama));
+      if (match) {
+        const updated: Student = {
+          ...match,
+          nama: s.nama || match.nama,
+          nisn: s.nisn || match.nisn,
+          jenisKelamin: s.jenisKelamin || match.jenisKelamin,
+          diubahPada: timestamp(),
+        };
+        await studentRepo.save(updated);
+        Object.assign(match, updated);
+        diperbarui++;
+        continue;
+      }
+      if (existing.length >= limits.siswaPerKelas) {
+        dilewati++;
+        continue;
+      }
+      // addOrRestore: siswa yang pernah dihapus dihidupkan lagi agar riwayat absensi tetap tersambung.
+      await studentRepo.addOrRestore({ ...s, urutan: existing.length + 1 });
+      existing.push(s);
+      ditambah++;
     }
-    
-    // Reload all classes' student counts
+
     await loadCounts();
     clearCache(`students_${targetKelas.id}`);
     await loadStudents(targetKelas.id, true);
-    
-    // Show success with breakdown
-    const classCounts: Record<string, number> = {};
-    result.students.forEach(s => {
-      const kls = s.kelas || targetKelas.nama;
-      classCounts[kls] = (classCounts[kls] || 0) + 1;
-    });
-    
-    const summary = Object.entries(classCounts)
-      .map(([kelas, count]) => `${kelas}: ${count} siswa`)
-      .join(', ');
-    
-    toast(`✅ Import berhasil! ${summary}`);
-    
-    if (!canBulkUpdate && result.classes.length > 0) {
+
+    toast(`✅ Import selesai: ${diperbarui} diperbarui, ${ditambah} ditambah${dilewati ? `, ${dilewati} dilewati (batas paket)` : ""}`);
+    if (dilewati > 0) {
+      setTimeout(() => setUpgradePrompt(`${dilewati} siswa dilewati karena melebihi batas ${limits.siswaPerKelas} siswa/kelas paket ${tier}.`), 800);
+    } else if (!canBulkUpdate && result.classes.length > 0) {
       setTimeout(() => toast('💡 Upgrade ke PLUS/PRO untuk auto-assign siswa ke kelas yang sesuai'), 1000);
     }
   };
+
 
   const handleEdit = async () => {
     if (!editTarget || !editNama.trim()) {
@@ -570,6 +572,7 @@ export function SiswaPage() {
       }
 
       // 4. Generate PDF kartu QR dengan URL
+      const { generateQrCardsPdf } = await import("@/lib/qr-card");
       const doc = await generateQrCardsPdf(studentsWithToken, {
         namaKelas: formatKelasLabel(targetKelas.nama),
         namaSekolah: school?.nama,
@@ -939,27 +942,6 @@ export function SiswaPage() {
             onImport={handleImport}
             onClose={() => setShowImport(false)}
           />
-        </div>
-      )}
-
-      {canBulkUpdate && showImportUpdate && (selectedKelas || activeClassroom) && (
-        <div className="mb-3">
-          <ImportUpdateExcel
-            kelasId={(selectedKelas || activeClassroom)!.id}
-            existingCount={students.length}
-            onDone={() => { setShowImportUpdate(false); loadStudents((selectedKelas || activeClassroom)!.id); }}
-          />
-        </div>
-      )}
-
-      {canBulkUpdate && !showImportUpdate && (
-        <div className="mb-3">
-          <button
-            onClick={() => setShowImportUpdate(true)}
-            className="w-full flex items-center justify-center gap-[6px] py-[8px] rounded-[10px] border-[1.5px] border-dashed border-[#0ea5a0]/40 text-[#0ea5a0] font-bold text-[0.76rem] cursor-pointer bg-transparent"
-          >
-            <RefreshCw size={14} /> Import Update Excel (PLUS+)
-          </button>
         </div>
       )}
 

@@ -31,6 +31,10 @@ import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
 import { TrialEndedModal } from "@/components/pro/TrialEndedModal";
 import { DemoRibbon } from "@/components/shared/DemoRibbon";
 import { trialDaysRemaining } from "@/lib/features";
+import { captureAktivasiLink, readAktivasiLink } from "@/lib/aktivasi-link";
+
+// Tangkap /aktivasi?email=&kode= sebelum render apa pun
+captureAktivasiLink();
 
 function getAbsenToken(): string | null {
   const m = window.location.pathname.match(/^\/s\/([^/]+)/);
@@ -104,6 +108,11 @@ function AppContent() {
     localStorage.getItem("bgy_trial_end_seen") !== "1";
   // Trigger install_date save on first render
   useEffect(() => { trialDaysRemaining(); }, []);
+
+  // Deep link aktivasi: setelah setup selesai, langsung buka halaman Upgrade
+  useEffect(() => {
+    if (setupSelesai && readAktivasiLink()) setActivePage(PageName.UPGRADE);
+  }, [setupSelesai, setActivePage]);
   
   // Enable auto-sync for cloud-connected users
   useAutoSync();

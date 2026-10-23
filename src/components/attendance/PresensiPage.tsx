@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { attendanceService } from "@/services/attendance.service";
@@ -13,7 +13,7 @@ import { RingkasanBar } from "@/components/layout/RingkasanBar";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
-import { QrScanner } from "./QrScanner";
+const QrScanner = lazy(() => import("./QrScanner").then((m) => ({ default: m.QrScanner })));
 import { isQrActive, isPjjActive, isKelasLocked } from "@/lib/features";
 import { Lock } from "lucide-react";
 import { Tier } from "@/types/enums";
@@ -420,11 +420,11 @@ export function PresensiPage() {
           </div>
         )}
 
-        {/* Scan QR — desktop (navbar handles mobile) */}
+        {/* Scan QR (hanya saat Mode QR aktif) */}
         {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && isQrActive(tier) && (
           <button
             onClick={() => { setLastScanned(null); setShowQrScanner(true); }}
-            className="hidden lg:flex w-full items-center justify-center gap-2 py-[10px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
+            className="flex w-full items-center justify-center gap-2 py-[11px] rounded-[10px] mb-3 text-white font-bold text-[0.82rem] cursor-pointer active:opacity-80"
             style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
           >
             <QrCode size={16} /> Scan QR Presensi
@@ -436,7 +436,7 @@ export function PresensiPage() {
           <div className="bg-[rgba(14,165,160,0.08)] border border-[#0ea5a0]/30 rounded-xl p-3 mb-3 flex items-start gap-2">
             <QrCode size={16} className="text-[#0ea5a0] flex-shrink-0 mt-[2px]" />
             <div className="flex-1 text-[0.72rem] text-[var(--text)] leading-relaxed">
-              <b>Mode QR aktif.</b> Cetak kartu QR di menu <b>Siswa</b>. Siswa scan pakai kamera HP sendiri untuk pilih status, atau guru scan dari tombol <b>Scan</b> di navbar untuk tandai Hadir.
+              <b>Mode QR aktif.</b> Cetak kartu QR di menu <b>Siswa</b>. Siswa scan pakai kamera HP sendiri untuk pilih status, atau guru scan dari tombol <b>Scan QR Presensi</b> di atas untuk tandai Hadir.
             </div>
             <button
               onClick={(e) => {
@@ -700,12 +700,14 @@ export function PresensiPage() {
       </div>
 
       {showQrScanner && (
-        <QrScanner
-          onScan={handleQrScan}
-          onClose={() => setShowQrScanner(false)}
-          lastScanned={lastScanned}
-          pickerMode={localStorage.getItem("bgy_qr_picker") === "1"}
-        />
+        <Suspense fallback={null}>
+          <QrScanner
+            onScan={handleQrScan}
+            onClose={() => setShowQrScanner(false)}
+            lastScanned={lastScanned}
+            pickerMode={localStorage.getItem("bgy_qr_picker") === "1"}
+          />
+        </Suspense>
       )}
     </>
   );

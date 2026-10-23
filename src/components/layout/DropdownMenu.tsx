@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { PLUS_PRICE } from "@/lib/constants";
 import { canUse, isQrActive } from "@/lib/features";
-import { BookOpen, Info, Download, Globe, ArrowUpCircle, Settings, Cloud, QrCode } from "lucide-react";
+import { licenseService } from "@/services/license.service";
+import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -22,12 +23,20 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [qrMode, setQrMode] = useState(isQrActive(appTier));
+  const [lic, setLic] = useState<{ berakhir: string; daysRemaining: number } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !teacher || realTier === Tier.FREE) { setLic(null); return; }
+    licenseService.getStatus(teacher.id).then((st) => {
+      setLic(st.aktif && st.berakhir && st.daysRemaining !== undefined
+        ? { berakhir: st.berakhir, daysRemaining: st.daysRemaining } : null);
+    }).catch(() => setLic(null));
+  }, [isOpen, teacher, realTier]);
 
   if (!isOpen || !setupSelesai) return null;
 
   const tier = appTier;
-  const isPRO = tier === Tier.PRO;
-  const isPaid = isPRO || tier === Tier.PLUS;
+  const isPaid = tier === Tier.PRO || tier === Tier.PLUS;
 
   const canInstall = !!(window as any).__bgy_deferredPrompt;
 
@@ -57,35 +66,11 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         className="absolute top-[calc(100%+8px)] right-0 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl z-[400] min-w-[220px] overflow-hidden"
         style={{ boxShadow: "var(--shadow-lg)" }}
       >
-        {!isPRO && (
-          <button
-            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-[12px] text-[0.85rem] font-bold text-white border-none cursor-pointer text-left"
-            style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
-          >
-            <ArrowUpCircle size={17} /> {tier === Tier.PLUS ? "Upgrade ke PRO" : "Lihat paket"}
-            {tier !== Tier.PLUS && (
-              <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
-                dari {PLUS_PRICE}
-              </span>
-            )}
-          </button>
-        )}
-
         <button
           onClick={() => { setActivePage(PageName.PETUNJUK); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <BookOpen size={16} /> Petunjuk
-        </button>
-
-        <div className="h-px bg-[var(--border)] mx-0" />
-
-        <button
-          onClick={() => { setActivePage(PageName.PENGATURAN); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
-        >
-          <Settings size={16} /> Pengaturan
         </button>
 
         {canUse("qr_mode", tier) && (
@@ -146,6 +131,42 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         >
           <Globe size={16} /> bantuguruyuk.web.id
         </button>
+
+        <div className="h-px bg-[var(--border)] mx-0" />
+
+        {/* Paling bawah: tanda pelanggan / tombol upgrade */}
+        {realTier === Tier.PRO && lic ? (
+          <div className="px-4 py-[11px] bg-[rgba(245,158,11,0.10)]">
+            <div className="text-[0.8rem] font-extrabold text-[#d97706]">Pelanggan PRO ✓</div>
+            <div className="text-[0.68rem] text-[var(--text-light)] mt-[2px]">
+              Aktif sampai {lic.berakhir} ({lic.daysRemaining} hari lagi)
+            </div>
+          </div>
+        ) : realTier === Tier.PLUS && lic ? (
+          <div className="px-4 py-[11px] bg-[rgba(14,165,160,0.08)]">
+            <div className="text-[0.8rem] font-extrabold text-[#0ea5a0]">Pelanggan PLUS ✓</div>
+            <div className="text-[0.68rem] text-[var(--text-light)] mt-[2px]">
+              Aktif sampai {lic.berakhir} ({lic.daysRemaining} hari lagi)
+            </div>
+            <button
+              onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
+              className="mt-[6px] text-[0.7rem] font-bold text-[#d97706] bg-transparent border-none p-0 cursor-pointer"
+            >
+              Upgrade ke PRO →
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-[12px] text-[0.85rem] font-bold text-white border-none cursor-pointer text-left"
+            style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
+          >
+            <ArrowUpCircle size={17} /> Upgrade paket
+            <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
+              dari {PLUS_PRICE}
+            </span>
+          </button>
+        )}
 
       </div>
     </>

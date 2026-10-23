@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import type { Student } from "@/types/entities";
 import { timestamp, generateId } from "@/lib/utils";
 
@@ -9,7 +8,8 @@ export interface ImportResult {
   classes: string[];
 }
 
-export function parseExcel(file: File): Promise<ImportResult> {
+export async function parseExcel(file: File): Promise<ImportResult> {
+  const XLSX = await import("xlsx"); // dimuat saat dipakai saja
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -102,7 +102,8 @@ export function parseExcel(file: File): Promise<ImportResult> {
   });
 }
 
-export function generateTemplateBlob(): Blob {
+export async function generateTemplateBlob(): Promise<Blob> {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
     ["Petunjuk: Nama dan Kelas WAJIB diisi. Jenis Kelamin dan NISN opsional. Download, isi, lalu upload kembali."],
@@ -117,8 +118,8 @@ export function generateTemplateBlob(): Blob {
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
-export function downloadTemplate() {
-  const blob = generateTemplateBlob();
+export async function downloadTemplate() {
+  const blob = await generateTemplateBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
