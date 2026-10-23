@@ -48,13 +48,13 @@ async function markTier(supabase, email, tier) {
   }
 }
 
-// Klaim kode secara atomik: hanya berhasil kalau status masih 'tersedia'.
+// Klaim kode secara atomik: hanya berhasil kalau belum dipakai ('tersedia' atau sudah dikirim ke pembeli).
 async function claimKode(supabase, kode, fields) {
   const { data, error } = await supabase
     .from("licenses")
     .update({ status: "digunakan", ...fields })
     .eq("kode", kode)
-    .eq("status", "tersedia")
+    .in("status", ["tersedia", "terkirim"])
     .select("id")
     .limit(1);
   if (error) throw error;

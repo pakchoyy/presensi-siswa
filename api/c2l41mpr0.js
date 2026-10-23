@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-const ADMIN_EMAILS = ["pulsachoy@gmail.com", "choiruddin2410@gmail.com"];
-
+// Link klaim hanya diberikan toko ke pembeli yang sudah bayar (file_url produk kreacy).
+// ?t=<KLAIM_TOKEN_PLUS|KLAIM_TOKEN_PRO> menentukan paket. Kode yang diberikan langsung
+// ditandai 'terkirim' supaya tidak terlihat pembeli lain; cookie menjaga kode tetap sama saat di-refresh.
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,35 +10,66 @@ function getSupabaseAdmin() {
   return createClient(url, key);
 }
 
+function tierFromToken(t) {
+  if (!t) return null;
+  if (process.env.KLAIM_TOKEN_PLUS && t === process.env.KLAIM_TOKEN_PLUS) return "PLUS";
+  if (process.env.KLAIM_TOKEN_PRO && t === process.env.KLAIM_TOKEN_PRO) return "PRO";
+  return null;
+}
+
+function readCookie(req, name) {
+  const m = String(req.headers.cookie || "").match(new RegExp("(?:^|; )" + name + "=([A-Z0-9-]+)"));
+  return m ? m[1] : null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex");
 
-  const email = req.query.email || "";
-
+  const tier = tierFromToken(String(req.query.t || ""));
   let kode = "";
   let error = "";
 
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-
-    const { data: available, error: queryError } = await supabaseAdmin
-      .from("licenses")
-      .select("id, kode")
-      .eq("status", "tersedia")
-      .limit(1);
-
-    if (queryError) throw queryError;
-
-    if (!available || available.length === 0) {
-      error = "Stok kode habis. Hubungi admin via WhatsApp.";
-    } else {
-      kode = available[0].kode;
+  if (!tier) {
+    error = "Link klaim tidak valid. Buka link dari halaman pesanan di toko, atau hubungi admin.";
+  } else {
+    const cookieName = "bgy_klaim_" + tier;
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const prev = readCookie(req, cookieName);
+      if (prev) {
+        const { data } = await supabaseAdmin.from("licenses").select("kode").eq("kode", prev).maybeSingle();
+        if (data) kode = data.kode;
+      }
+      for (let i = 0; !kode && i < 3; i++) {
+        let q = supabaseAdmin.from("licenses").select("id, kode").eq("status", "tersedia").eq("product", "siswa");
+        // Kode lama BGY-PS-XXXX (tier PRO) ikut dipakai untuk PRO.
+        q = tier === "PLUS" ? q.eq("tier", "PLUS") : q.eq("tier", "PRO");
+        const { data: available, error: queryError } = await q.limit(1);
+        if (queryError) throw queryError;
+        if (!available || available.length === 0) break;
+        const { data: claimed } = await supabaseAdmin
+          .from("licenses")
+          .update({ status: "terkirim" })
+          .eq("id", available[0].id)
+          .eq("status", "tersedia")
+          .select("kode");
+        if (claimed && claimed.length) kode = claimed[0].kode;
+      }
+      if (kode) {
+        res.setHeader("Set-Cookie", `${cookieName}=${kode}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+      } else {
+        error = "Stok kode habis. Hubungi admin via WhatsApp.";
+      }
+    } catch (e) {
+      error = "Gagal menghubungi server. Coba lagi nanti.";
     }
-  } catch (e) {
-    error = "Gagal menghubungi server. Coba lagi nanti.";
   }
+  const paket = tier || "PRO";
+  const aktivasiUrl = kode ? `https://presiswa.bantuguruyuk.web.id/aktivasi?kode=${encodeURIComponent(kode)}` : "";
 
   const html = `<!DOCTYPE html>
 <html lang="id">
@@ -79,19 +111,18 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   ${kode ? `
   <div class="emoji">🎉</div>
   <h1>Pembayaran Berhasil!</h1>
-  <p>Lisensi PRO Presensi Siswa siap diaktivasi.</p>
+  <p>Lisensi ${paket} Presensi Siswa siap diaktivasi.</p>
   <div class="code-box">
     <div class="kode" id="kodeTeks">${kode}</div>
     <button class="btn btn-copy" onclick="copyKode(this)">📋 Salin Kode</button>
   </div>
-  <button class="btn btn-app" onclick="window.location.href='https://presiswa.bantuguruyuk.web.id'">📲 Buka Presensi Siswa</button>
+  <button class="btn btn-app" onclick="window.location.href='${aktivasiUrl}'">📲 Aktifkan di Presensi Siswa</button>
   <div class="steps">
     <b>Cara aktivasi:</b><br/>
-    1. 📋 Copy kode di atas<br/>
-    2. 📲 Buka aplikasi <b>Presensi Siswa</b><br/>
-    3. ⚙️ Buka <b>Pengaturan</b> → <b>Upgrade PRO</b><br/>
-    4. 📧 Masukkan <b>email</b> &amp; <b>kode</b><br/>
-    5. ✅ <b>Aktivasi!</b> Lisensi aktif 1 tahun
+    1. 📲 Ketuk <b>Aktifkan di Presensi Siswa</b> (kode terisi otomatis)<br/>
+    2. 📧 Masukkan <b>email</b> kamu<br/>
+    3. ✅ <b>Aktivasi!</b> Lisensi aktif 1 semester (6 bulan)<br/>
+    Simpan kode ini. Ganti HP cukup masukkan email yang sama.
   </div>
   ` : `
   <div class="emoji">😔</div>
