@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import {
   PRO_PRICE,
@@ -53,6 +53,12 @@ export function UpgradePage() {
   const [checking, setChecking] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showVerify, setShowVerify] = useState(!!link);
+  const verifyRef = useRef<HTMLDivElement>(null);
+  // Datang dari link toko: langsung gulir ke form aktivasi.
+  useEffect(() => {
+    if (link) setTimeout(() => verifyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tier = realTier;
   void appTier;
@@ -338,7 +344,7 @@ export function UpgradePage() {
       </button>
 
       {/* Verify email (collapsible) */}
-      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden mb-3">
+      <div ref={verifyRef} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden mb-3">
         <button
           onClick={() => setShowVerify((v) => !v)}
           className="w-full flex items-center gap-3 px-4 py-[12px] text-left bg-transparent border-none cursor-pointer"

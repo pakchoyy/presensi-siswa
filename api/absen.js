@@ -57,8 +57,8 @@ export default async function handler(req, res) {
   const supabase = getSupabase();
 
   if (req.method === "GET") {
-    const token = (req.query.token || "").trim();
-    if (!token) return res.status(400).json({ error: "Token wajib" });
+    const token = String(req.query.token || "").trim();
+    if (!token || token.length > 128) return res.status(400).json({ error: "Token wajib" });
 
     const student = await findStudentByToken(supabase, token);
     if (!student) return res.status(404).json({ error: "Link tidak valid — token tidak ditemukan. Coba generate ulang link di menu Siswa." });
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     const { token, status } = req.body || {};
-    if (!token || !status) return res.status(400).json({ error: "token & status wajib" });
+    if (typeof token !== "string" || !token || token.length > 128 || !status) return res.status(400).json({ error: "token & status wajib" });
     if (!isAllowedStatus(status)) return res.status(400).json({ error: "Status tidak valid" });
 
     const student = await findStudentByToken(supabase, token);
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
           user_id: userId, local_id: localId, kelas_id: student.kelasId, tanggal: today,
           dibuat_pada: Date.now(), diubah_pada: Date.now(), last_synced_at: Date.now(), version: 1
         });
-        if (insErr) return res.status(500).json({ error: insErr.message });
+        if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
         sesiLocalId = localId;
       }
       // cek record existing dulu (soal unique constraint di cloud bisa beda)
@@ -131,13 +131,13 @@ export default async function handler(req, res) {
       if (existingRec) {
         if (isLockedStatus(existingRec.status)) return res.status(409).json({ error: LOCKED_MSG });
         const { error: updErr } = await supabase.from("cloud_attendance_records").update({ status, diubah_pada: Date.now(), last_synced_at: Date.now() }).eq("id", existingRec.id);
-        if (updErr) return res.status(500).json({ error: updErr.message });
+        if (updErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       } else {
         const { error: insErr } = await supabase.from("cloud_attendance_records").insert({
           user_id: userId, local_id: Date.now() + Math.floor(Math.random() * 1000), sesi_id: sesiLocalId, siswa_id: student.id,
           status, diubah_pada: Date.now(), last_synced_at: Date.now(), version: 1
         });
-        if (insErr) return res.status(500).json({ error: insErr.message });
+        if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       }
     } else {
       let sesiId;
@@ -145,17 +145,17 @@ export default async function handler(req, res) {
       if (sesi) sesiId = sesi.id;
       else {
         const { data: ins, error: insErr } = await supabase.from("attendance_sessions").insert({ kelas_id: kelas.id, tanggal: today, dibuat_pada: Date.now(), diubah_pada: Date.now() }).select("id").single();
-        if (insErr) return res.status(500).json({ error: insErr.message });
+        if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
         sesiId = ins.id;
       }
       const { data: existingPub } = await supabase.from("attendance_records").select("id, status").eq("sesi_id", sesiId).eq("siswa_id", student.id).maybeSingle();
       if (existingPub) {
         if (isLockedStatus(existingPub.status)) return res.status(409).json({ error: LOCKED_MSG });
         const { error: updErr } = await supabase.from("attendance_records").update({ status, diubah_pada: Date.now() }).eq("id", existingPub.id);
-        if (updErr) return res.status(500).json({ error: updErr.message });
+        if (updErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       } else {
         const { error: insErr } = await supabase.from("attendance_records").insert({ sesi_id: sesiId, siswa_id: student.id, status, diubah_pada: Date.now() });
-        if (insErr) return res.status(500).json({ error: insErr.message });
+        if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       }
     }
 

@@ -48,7 +48,7 @@ export function Header() {
           const tier = onTrial ? Tier.PRO : realTier;
           const name = tier === Tier.PRO ? "PRO" : tier === Tier.PLUS ? "PLUS" : "FREE";
           const showLic = !onTrial && licDays !== null && tier !== Tier.FREE;
-          const label = onTrial ? `PRO · Trial ${trialDays}h` : showLic ? `${name} · ${licDays}h` : name;
+          const label = onTrial ? `Trial ${trialDays}h` : showLic ? `${name} · ${licDays}h` : name;
           const warn = (onTrial && trialDays <= 7) || (showLic && (licDays as number) <= 7);
           return (
             <button type="button" onClick={() => setActivePage(realTier === Tier.PRO ? PageName.PENGATURAN : PageName.UPGRADE)} className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 whitespace-nowrap cursor-pointer ${

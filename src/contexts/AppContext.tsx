@@ -114,9 +114,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshClassrooms = useCallback(async () => {
     const classrooms = await classroomRepo.getAll();
-    const t = await teacherRepo.get();
+    const [t, sch] = await Promise.all([teacherRepo.get(), schoolRepo.get()]);
     setState((prev) => ({
       ...prev,
+      school: sch || prev.school,
       classrooms,
       activeClassroom: prev.activeClassroom
         ? classrooms.find((c) => c.id === prev.activeClassroom!.id) || classrooms[0] || null

@@ -711,6 +711,10 @@ export function PengaturanPage() {
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-bold ${tier === Tier.PRO ? "bg-[#f59e0b]/10 text-[#b45309] border border-[#f59e0b]/30" : "bg-[#0ea5a0]/10 text-[#0ea5a0] border border-[#0ea5a0]/20"}`}>
                 <Crown size={11} /> {tierLabel(tier)}
               </span>
+            ) : trialLeft > 0 ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-bold bg-[#f59e0b]/10 text-[#b45309] border border-[#f59e0b]/30">
+                PRO · Trial
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-bold bg-[var(--input-bg)] text-[var(--text-light)] border border-[var(--border)]">
                 FREE
