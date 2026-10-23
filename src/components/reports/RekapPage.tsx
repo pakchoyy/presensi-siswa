@@ -394,7 +394,7 @@ export function RekapPage() {
           { label: "Sakit", value: totalS, key: "S" },
           { label: "Izin", value: totalI, key: "I" },
           { label: "Alpha", value: totalA, key: "A" },
-          { label: "Telat", value: totalT, key: "T" },
+          { label: "Terlambat", value: totalT, key: "T" },
         ].map((item) => (
           <div
             key={item.key}
