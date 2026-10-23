@@ -4,6 +4,7 @@ import type { License } from "@/types/entities";
 import { Tier } from "@/types/enums";
 import { generateId, timestamp } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { readRefCode, clearRefCode } from "@/lib/aktivasi-link";
 
 export interface ActivationResult {
   success: boolean;
@@ -61,7 +62,14 @@ export const licenseService = {
     return { success: true, message: "Kode valid" };
   },
 
-  async activate(email: string, kode: string, guruId: number): Promise<ActivationResult> {
+  /** Kode ajak teman milik pengguna (butuh sesi verifikasi email). */
+  async getReferral(): Promise<{ ok: boolean; code?: string; rewards?: number; max?: number; days?: number; error?: string }> {
+    const { ok, data } = await callLicenseApi({ action: "referral" });
+    if (!ok) return { ok: false, error: data.error || "Gagal memuat kode" };
+    return { ok: true, code: data.code, rewards: data.rewards, max: data.max, days: data.days };
+  },
+
+  async activate(email: string, kode: string, guruId: number, ref?: string): Promise<ActivationResult> {
     if (!email || !email.includes("@")) {
       return { success: false, message: "Email tidak valid" };
     }
@@ -79,10 +87,11 @@ export const licenseService = {
     const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      const { ok, status, data } = await callLicenseApi({ action: "activate", email: normalizedEmail, kode: upperKode, guruId });
+      const { ok, status, data } = await callLicenseApi({ action: "activate", email: normalizedEmail, kode: upperKode, guruId, ref: (ref ?? readRefCode()) || undefined });
       if (!ok) {
         return { success: false, message: status >= 500 ? "Gagal mengaktivasi lisensi" : data.error || "Gagal mengaktivasi lisensi" };
       }
+      if (data.referral) clearRefCode();
       const now = Date.now();
       const tanggalBerakhir: number = data.tanggalBerakhir;
       const tier: Tier = (data.tier as Tier) || tierFromKode(upperKode);

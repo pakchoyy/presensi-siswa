@@ -86,7 +86,70 @@ async function activate(supabase, body) {
   if (!ok) return [409, { error: await kodeError(supabase, kode) }];
 
   await markTier(supabase, email, tier);
-  return [200, { ok: true, tier, tanggalBerakhir }];
+  let referral = null;
+  try { referral = await applyReferral(supabase, body.ref, email); } catch { /* referral tidak boleh menggagalkan aktivasi */ }
+  return [200, { ok: true, tier, tanggalBerakhir, referral }];
+}
+
+// ── Referral: pemilik kode dapat +30 hari saat pembeli BARU aktivasi pakai kodenya ──
+const REF_RE = /^PY-[A-Z0-9]{6}$/;
+const REF_DAYS = 30;
+const REF_MAX_PER_SEMESTER = 6;
+
+async function activeLicense(supabase, email) {
+  const { data } = await supabase
+    .from("licenses")
+    .select("id, tanggal_berakhir")
+    .eq("email", email)
+    .eq("status", "digunakan")
+    .eq("product", "siswa")
+    .order("tanggal_berakhir", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data && (!data.tanggal_berakhir || data.tanggal_berakhir > Date.now()) ? data : null;
+}
+
+async function applyReferral(supabase, rawCode, buyerEmail) {
+  const code = String(rawCode || "").toUpperCase().trim();
+  if (!code) return null;
+  if (!REF_RE.test(code)) return "invalid";
+  const { data: ref } = await supabase.from("referrals").select("owner_email").eq("code", code).maybeSingle();
+  if (!ref) return "invalid";
+  if (ref.owner_email === buyerEmail) return "self";
+  // Hanya pembeli baru: email ini belum pernah punya lisensi lain.
+  const { count } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", buyerEmail).eq("status", "digunakan");
+  if ((count || 0) > 1) return "not_new";
+  const since = new Date(Date.now() - SEMESTER_MS).toISOString();
+  const { count: given } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("owner_email", ref.owner_email).gte("created_at", since);
+  if ((given || 0) >= REF_MAX_PER_SEMESTER) return "cap";
+  const lic = await activeLicense(supabase, ref.owner_email);
+  if (!lic) return "owner_inactive";
+  // buyer_email unik: insert gagal bila pembeli ini sudah pernah dipakai referral.
+  const { error: insErr } = await supabase.from("referral_rewards").insert({ code, owner_email: ref.owner_email, buyer_email: buyerEmail, days: REF_DAYS });
+  if (insErr) return "used";
+  await supabase.from("licenses").update({ tanggal_berakhir: Math.max(Date.now(), lic.tanggal_berakhir || 0) + REF_DAYS * 86400000 }).eq("id", lic.id);
+  return "ok";
+}
+
+// Kode referral milik pengguna yang sudah verifikasi email (token OTP) dan punya lisensi aktif.
+async function referral(supabase, body, req) {
+  const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!token) return [401, { error: "Verifikasi email dulu" }];
+  const { data: u, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !u?.user?.email) return [401, { error: "Sesi tidak valid" }];
+  const email = normEmail(u.user.email);
+  if (!(await activeLicense(supabase, email))) return [403, { error: "Kode ajak teman hanya untuk pelanggan PLUS/PRO aktif" }];
+  let { data: row } = await supabase.from("referrals").select("code").eq("owner_email", email).maybeSingle();
+  for (let i = 0; !row && i < 5; i++) {
+    const code = "PY-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
+    const { data: ins } = await supabase.from("referrals").insert({ code, owner_email: email }).select("code").maybeSingle();
+    if (ins) row = ins;
+    else ({ data: row } = await supabase.from("referrals").select("code").eq("owner_email", email).maybeSingle());
+  }
+  if (!row) return [500, { error: "Gagal membuat kode" }];
+  const since = new Date(Date.now() - SEMESTER_MS).toISOString();
+  const { count } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("owner_email", email).gte("created_at", since);
+  return [200, { code: row.code, rewards: count || 0, max: REF_MAX_PER_SEMESTER, days: REF_DAYS }];
 }
 
 async function renew(supabase, body) {
@@ -157,7 +220,7 @@ async function restore(supabase, body) {
   return [200, { ok: true, tier: data.tier || tierFromKode(kode), tanggalBerakhir: data.tanggal_berakhir }];
 }
 
-const ACTIONS = { activate, renew, status, restore };
+const ACTIONS = { activate, renew, status, restore, referral };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });

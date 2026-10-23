@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ReferralCard } from "@/components/pro/ReferralCard";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
@@ -815,6 +816,8 @@ export function PengaturanPage() {
           </div>
         )}
       </div>
+
+      {isPaid && <ReferralCard />}
 
       {/* Periode Ajaran */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">

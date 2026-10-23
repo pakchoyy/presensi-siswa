@@ -30,9 +30,10 @@ import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
 import { TrialEndedModal, trialEndSeenKey } from "@/components/pro/TrialEndedModal";
 import { DemoRibbon } from "@/components/shared/DemoRibbon";
 import { trialDaysRemaining } from "@/lib/features";
-import { captureAktivasiLink, readAktivasiLink } from "@/lib/aktivasi-link";
+import { captureAktivasiLink, readAktivasiLink, captureRefParam } from "@/lib/aktivasi-link";
 
-// Tangkap /aktivasi?email=&kode= sebelum render apa pun
+// Tangkap ?ref= dan /aktivasi?email=&kode= sebelum render apa pun
+captureRefParam();
 captureAktivasiLink();
 
 function getAbsenToken(): string | null {

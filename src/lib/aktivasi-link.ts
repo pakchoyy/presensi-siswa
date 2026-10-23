@@ -36,3 +36,26 @@ export function readAktivasiLink(): AktivasiLink | null {
 export function clearAktivasiLink() {
   try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
 }
+
+// Kode ajak teman dari link ?ref=PY-XXXXXX (halaman mana pun). Disimpan sampai aktivasi berhasil.
+const REF_KEY = "bgy_ref_code";
+const REF_RE = /^PY-[A-Z0-9]{6}$/;
+
+export function captureRefParam(): void {
+  if (typeof window === "undefined") return;
+  const q = new URLSearchParams(window.location.search);
+  const ref = (q.get("ref") || "").trim().toUpperCase();
+  if (!REF_RE.test(ref)) return;
+  try { localStorage.setItem(REF_KEY, ref); } catch { /* ignore */ }
+  q.delete("ref");
+  const rest = q.toString();
+  window.history.replaceState(null, "", window.location.pathname + (rest ? "?" + rest : ""));
+}
+
+export function readRefCode(): string {
+  try { return localStorage.getItem(REF_KEY) || ""; } catch { return ""; }
+}
+
+export function clearRefCode(): void {
+  try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
+}

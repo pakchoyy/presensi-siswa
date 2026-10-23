@@ -26,7 +26,7 @@ import { useToast } from "@/components/shared/Toast";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { Tier } from "@/types/enums";
 import { generateId } from "@/lib/utils";
-import { readAktivasiLink, clearAktivasiLink } from "@/lib/aktivasi-link";
+import { readAktivasiLink, clearAktivasiLink, readRefCode } from "@/lib/aktivasi-link";
 import Confetti from "react-confetti";
 import { trialDaysRemaining, tierLabel } from "@/lib/features";
 
@@ -49,6 +49,7 @@ export function UpgradePage() {
   const link = readAktivasiLink();
   const [email, setEmail] = useState(link?.email || "");
   const [kode, setKode] = useState(link?.kode || "");
+  const [refCode, setRefCode] = useState(readRefCode());
   const [emailError, setEmailError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [checking, setChecking] = useState(false);
@@ -135,7 +136,7 @@ export function UpgradePage() {
     setChecking(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const res = await licenseService.activate(normalizedEmail, kodeUp, teacher.id);
+      const res = await licenseService.activate(normalizedEmail, kodeUp, teacher.id, refCode.trim().toUpperCase());
       if (res.success && res.tier) {
         await finishActivation(res.tier, res.tanggalBerakhir || Date.now(), normalizedEmail, kodeUp, true);
         return;
@@ -374,6 +375,16 @@ export function UpgradePage() {
               autoCapitalize="characters"
               spellCheck={false}
               className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.85rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
+            />
+            <input
+              type="text"
+              value={refCode}
+              onChange={(e) => setRefCode(e.target.value.toUpperCase())}
+              placeholder="Kode ajak teman (opsional), mis. PY-AB12CD"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={9}
+              className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-dashed border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.8rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
             />
             <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Isi email, kosongkan kode — kami kirim kode verifikasi ke email itu.</p>
             <button
