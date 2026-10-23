@@ -1,0 +1,26 @@
+-- ROLLBACK DARURAT rls-lock.sql: kembalikan akses terbuka lama (TIDAK AMAN; hanya kalau aplikasi rusak total).
+alter policy pol_profiles_select on public.profiles using (true);
+alter policy pol_profiles_update on public.profiles using (true) with check (true);
+alter policy pol_profiles_insert on public.profiles with check (true);
+alter policy pol_devices on public.devices using (true) with check (true);
+alter policy pol_cloud_students on public.cloud_students using (true) with check (true);
+alter policy pol_cloud_classrooms on public.cloud_classrooms using (true) with check (true);
+alter policy pol_cloud_att_sessions on public.cloud_attendance_sessions using (true) with check (true);
+alter policy pol_cloud_att_records on public.cloud_attendance_records using (true) with check (true);
+alter policy pol_cloud_teachers on public.cloud_teachers using (true) with check (true);
+alter policy pol_cloud_schools on public.cloud_schools using (true) with check (true);
+alter policy pol_cloud_backups on public.cloud_backups using (true) with check (true);
+alter policy pol_cloud_calendar on public.cloud_calendar_entries using (true) with check (true);
+alter policy pol_cloud_academic_years on public.cloud_academic_years using (true) with check (true);
+alter policy pol_cloud_tombstones on public.cloud_tombstones using (true) with check (true);
+alter policy pol_academic_years on public.academic_years using (true) with check (true);
+alter policy pol_attendance_records on public.attendance_records using (true) with check (true);
+alter policy pol_attendance_sessions on public.attendance_sessions using (true) with check (true);
+alter policy pol_backups on public.backups using (true) with check (true);
+alter policy pol_calendar_entries on public.calendar_entries using (true) with check (true);
+alter policy pol_classrooms on public.classrooms using (true) with check (true);
+alter policy pol_schools on public.schools using (true) with check (true);
+alter policy pol_students on public.students using (true) with check (true);
+alter policy pol_teachers on public.teachers using (true) with check (true);
+alter policy pol_sync_metadata on public.sync_metadata using (true) with check (true);
+alter policy pol_sync_queue on public.sync_queue using (true) with check (true);
