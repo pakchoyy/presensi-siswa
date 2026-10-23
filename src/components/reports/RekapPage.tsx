@@ -220,7 +220,7 @@ export function RekapPage() {
   const activeColor = activeIdx >= 0 ? CLASS_COLORS[activeIdx % CLASS_COLORS.length] : "#0ea5a0";
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
       {/* Header */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-3 mb-3">
         <div className="text-[0.95rem] font-extrabold text-[var(--text)]">Rekap Kehadiran</div>

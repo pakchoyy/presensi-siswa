@@ -10,7 +10,6 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
-import { Marquee } from "@/components/layout/Marquee";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { WizardSetup } from "@/components/wizard/WizardSetup";
@@ -157,12 +156,7 @@ function AppContent() {
         <Sidebar />
         <PageRouter />
       </div>
-      {setupSelesai && (
-        <div className="sticky bottom-[56px] lg:static z-[95] w-full">
-          <Marquee />
-          <Footer />
-        </div>
-      )}
+      {setupSelesai && <Footer />}
       <BottomNav />
       {setupSelesai && <InstallPrompt />}
       {trialJustEnded && (

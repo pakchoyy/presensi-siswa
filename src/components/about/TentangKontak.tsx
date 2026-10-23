@@ -3,7 +3,7 @@ import { APP_URL, MAIN_SITE_URL, PLUS_PRICE, PRO_PRICE } from "@/lib/constants";
 
 export function TentangKontak() {
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[90px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
       {/* Tentang */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
         <div className="text-[0.85rem] font-bold flex items-center gap-[8px] mb-3">
@@ -11,7 +11,7 @@ export function TentangKontak() {
         </div>
 
         <div className="text-[0.8rem] text-[var(--text)] leading-[1.8] mb-3">
-          <b>Bantu Guru Yuk | Presensi Siswa</b> — v1.0.0
+          <b><i>Presensi Yuk</i> | Siswa</b> — v1.0.0
         </div>
 
         <p className="text-[0.78rem] text-[var(--text-light)] leading-[1.8] mb-3">
@@ -31,7 +31,7 @@ export function TentangKontak() {
           </div>
           <div className="flex gap-2 mb-1">
             <span className="font-semibold text-[#0ea5a0]">PLUS:</span>
-            <span>4 kelas (25 siswa), cloud sync, backup, Mode PJJ — {PLUS_PRICE}</span>
+            <span>4 kelas (25 siswa), cloud sync 1 perangkat, backup, Mode PJJ — {PLUS_PRICE}</span>
           </div>
           <div className="flex gap-2">
             <span className="font-semibold text-[#0ea5a0]">PRO:</span>
@@ -81,7 +81,7 @@ export function TentangKontak() {
           >
             <ExternalLink size={18} />
             <div className="flex-1 text-left">
-              <div className="text-[0.85rem] font-extrabold">Presensi Siswa</div>
+              <div className="text-[0.85rem] font-extrabold">Presensi Yuk</div>
               <div className="text-[0.65rem] opacity-80">presiswa.bantuguruyuk.web.id</div>
             </div>
           </a>

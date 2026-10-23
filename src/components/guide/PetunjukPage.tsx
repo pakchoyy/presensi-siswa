@@ -25,17 +25,17 @@ const GUIDES = [
   {
     icon: Settings,
     title: "Pengaturan",
-    desc: "Atur <b>Hari Aktif</b> (Senin–Jumat atau Senin–Sabtu), Auto Hadir, logo laporan, Mode QR, dan Mode PJJ dari menu <b>Pengaturan</b>.",
+    desc: "Atur <b>Hari Aktif</b> (Senin–Jumat atau Senin–Sabtu), periode ajaran, logo laporan, Mode QR, dan Mode PJJ dari menu <b>Pengaturan</b>. Auto Hadir ada langsung di halaman Presensi.",
   },
   {
     icon: Crown,
     title: "Paket & Masa Coba",
-    desc: `Pengguna baru otomatis <b>coba PRO gratis 30 hari</b>. Setelah itu otomatis menjadi <b>FREE</b> (1 kelas, 10 siswa) — data tetap aman dan bisa dilihat. <b>PLUS</b> ${PLUS_PRICE}: 4 kelas, 25 siswa/kelas. <b>PRO</b> ${PRO_PRICE}: tanpa batas.`,
+    desc: `Pengguna baru otomatis <b>coba PRO gratis 30 hari</b>. Setelah itu otomatis menjadi <b>FREE</b> (1 kelas, 10 siswa) — data tetap aman dan bisa dilihat. <b>PLUS</b> ${PLUS_PRICE}: 4 kelas, 25 siswa/kelas, 1 perangkat. <b>PRO</b> ${PRO_PRICE}: tanpa batas, hingga 3 perangkat.`,
   },
   {
     icon: QrCode,
     title: "Mode QR (PRO)",
-    desc: "Aktifkan di Pengaturan, cetak kartu QR di menu <b>Siswa</b>, lalu tekan tombol <b>Scan QR Presensi</b> di halaman Presensi untuk menandai siswa Hadir.",
+    desc: "Cetak kartu QR di menu <b>Siswa</b>. Nyalakan <b>Mode QR</b> lewat menu ☰ atau <b>Pengaturan</b>. Tombol tengah di menu bawah berubah jadi <b>Scan QR</b>: ketuk, arahkan kamera ke kartu, siswa langsung tercatat Hadir.",
   },
   {
     icon: Link2,
@@ -50,18 +50,18 @@ const GUIDES = [
   {
     icon: Key,
     title: "Aktivasi Lisensi",
-    desc: "Setelah membeli paket, buka <b>Pengaturan</b> &gt; <b>Aktivasi Lisensi</b> dan masukkan kode atau email pembelian.",
+    desc: "Setelah membeli, buka link klaim dari toko lalu ketuk <b>Aktifkan</b>, atau masukkan email dan kode di <b>Pengaturan</b> &gt; <b>Aktivasi Lisensi</b>. Ganti HP atau lupa kode? Isi email saja, lalu masukkan <b>kode verifikasi</b> yang dikirim ke email itu.",
   },
   {
     icon: LogOut,
     title: "Keluar Akun",
-    desc: "Keluar akan <b>menghapus data di HP ini</b>. Paket PLUS/PRO yang tersinkron cloud akan memuat data lagi saat masuk dengan email yang sama. Di FREE, data akan hilang permanen.",
+    desc: "Keluar akan <b>menghapus data di HP ini</b>. Paket PLUS/PRO yang tersinkron cloud akan memuat data lagi saat masuk dengan email yang sama dan <b>kode verifikasi dari email</b>. Keluar juga membebaskan jatah perangkat. Di FREE, data akan hilang permanen.",
   },
 ];
 
 export function PetunjukPage() {
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px]">
         <div className="text-[0.85rem] font-bold flex items-center gap-[8px] mb-4">
           <BookOpen size={18} className="text-[#0ea5a0]" /> Petunjuk Penggunaan
@@ -74,7 +74,7 @@ export function PetunjukPage() {
             borderLeft: "4px solid #0ea5a0",
           }}
         >
-          <b>Bantu Guru Yuk | Presensi Siswa</b> dirancang sesederhana mungkin. Guru bisa mengisi presensi <b>kurang dari 30 detik per kelas</b>, bisa online maupun offline.
+          <b><i>Presensi Yuk</i> | Siswa</b> dirancang sesederhana mungkin. Guru bisa mengisi presensi <b>kurang dari 30 detik per kelas</b>, bisa online maupun offline.
         </div>
 
         <div className="flex flex-col gap-[10px]">

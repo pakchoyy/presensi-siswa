@@ -1,4 +1,4 @@
-// PWA Install — simpan deferred prompt untuk dropdown "Install BGY"
+// PWA Install — simpan deferred prompt untuk dropdown "Install Aplikasi"
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   (window as any).__bgy_deferredPrompt = e;

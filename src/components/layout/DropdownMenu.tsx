@@ -3,7 +3,6 @@ import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
-import { PLUS_PRICE } from "@/lib/constants";
 import { canUse, isQrActive, setQrMode as saveQrMode, QR_MODE_EVENT } from "@/lib/features";
 import { licenseService } from "@/services/license.service";
 import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock } from "lucide-react";
@@ -74,7 +73,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
       >
         <button
           onClick={() => { setActivePage(PageName.PETUNJUK); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <BookOpen size={16} /> Petunjuk
         </button>
@@ -86,9 +85,10 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             onClick={() => {
               const newVal = !qrMode;
               saveQrMode(newVal);
-              toast(newVal ? "✅ Mode QR ON — tombol tengah jadi Scan QR" : "Mode QR OFF");
+              onClose();
+              toast(newVal ? "Mode QR aktif — tombol tengah jadi Scan QR" : "Mode QR mati — tombol tengah kembali ke Presensi");
             }}
-            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+            className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
           >
             <QrCode size={16} /> Mode QR
             <span className={`ml-auto relative w-[36px] h-[20px] rounded-full transition-colors ${qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]"}`}>
@@ -98,7 +98,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         ) : (
           <button
             onClick={() => { setActivePage(PageName.UPGRADE); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text-light)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+            className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text-light)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
           >
             <QrCode size={16} /> Mode QR
             <span className="ml-auto flex items-center gap-1 text-[0.62rem] font-bold px-[7px] py-[2px] rounded-full bg-[#f59e0b]/15 text-[#d97706]"><Lock size={10} /> PRO</span>
@@ -108,7 +108,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
         {isPaid && isAuthenticated && (
           <button
             onClick={() => { setActivePage(PageName.CLOUD_SETTINGS); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+            className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
           >
             <Cloud size={16} /> Cloud Settings
           </button>
@@ -118,7 +118,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <button
           onClick={() => { setActivePage(PageName.TENTANG); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Info size={16} /> Tentang &amp; Kontak
         </button>
@@ -127,7 +127,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <button
           onClick={handleInstall}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Download size={16} /> Install Aplikasi
         </button>
@@ -136,7 +136,7 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             window.open("https://bantuguruyuk.web.id", "_blank", "noopener");
             onClose();
           }}
-          className="w-full flex items-center gap-3 px-4 py-[11px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Globe size={16} /> bantuguruyuk.web.id
         </button>
@@ -171,9 +171,6 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
             style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
           >
             <ArrowUpCircle size={17} /> Upgrade paket
-            <span className="ml-auto text-[0.68rem] font-semibold bg-white/25 px-[7px] py-[2px] rounded-full">
-              dari {PLUS_PRICE}
-            </span>
           </button>
         )}
 

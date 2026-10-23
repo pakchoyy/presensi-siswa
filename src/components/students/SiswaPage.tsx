@@ -601,7 +601,7 @@ export function SiswaPage() {
   // View: Daftar Kelas (Cards)
   if (view === "kelas") {
     return (
-      <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
         <div className="text-[0.8rem] font-bold flex items-center gap-[6px] mb-[10px]">
           <GraduationCap size={16} /> Daftar Kelas
         </div>
@@ -811,7 +811,7 @@ export function SiswaPage() {
 
   // View: Detail Siswa per Kelas
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
       {/* Back button */}
       <button
         onClick={backToKelas}

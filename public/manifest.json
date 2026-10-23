@@ -1,6 +1,6 @@
 {
-  "name": "Bantu Guru Yuk | Presensi Siswa",
-  "short_name": "BGY Presensi",
+  "name": "Presensi Yuk | Siswa",
+  "short_name": "Presensi Yuk",
   "description": "Aplikasi presensi sekolah paling sederhana",
   "start_url": "/",
   "display": "standalone",

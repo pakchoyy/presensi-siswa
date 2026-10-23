@@ -8,6 +8,7 @@ import { SyncIndicator } from "@/components/layout/SyncIndicator";
 import { licenseService } from "@/services/license.service";
 import { PageName } from "@/types/enums";
 import { Moon, Sun, Menu } from "lucide-react";
+import { Marquee } from "@/components/layout/Marquee";
 
 export function Header() {
   const { darkMode, toggleDarkMode, setupSelesai, realTier, teacher, setActivePage } =
@@ -88,6 +89,7 @@ export function Header() {
           )}
         </div>
       </div>
+      {setupSelesai && <Marquee />}
     </header>
   );
 }

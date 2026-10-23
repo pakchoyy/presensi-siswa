@@ -53,7 +53,7 @@ export function BottomNav() {
               onClick={() => {
                 if (qrOn) {
                   // Mode QR: tombol tengah langsung membuka pemindai di halaman Presensi
-                  sessionStorage.setItem("bgy_open_scan", "1");
+                  sessionStorage.setItem("bgy_open_scan", String(Date.now()));
                   window.dispatchEvent(new Event("bgy-open-scan"));
                 }
                 setActivePage(item.page);

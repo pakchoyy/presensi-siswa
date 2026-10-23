@@ -74,7 +74,12 @@ export function PresensiPage() {
     return () => window.removeEventListener("bgy-open-scan", onReq);
   }, []);
   useEffect(() => {
-    if (sessionStorage.getItem("bgy_open_scan") !== "1" || !dataReady || loading || !isQrActive(tier)) return;
+    // Hanya permintaan baru dari tombol navbar (maks. 8 detik) yang membuka kamera,
+    // supaya menyalakan Mode QR di menu tidak ikut membuka pemindai.
+    const at = Number(sessionStorage.getItem("bgy_open_scan") || 0);
+    if (!at) return;
+    if (Date.now() - at > 8000 || !isQrActive(tier)) { sessionStorage.removeItem("bgy_open_scan"); return; }
+    if (!dataReady || loading) return;
     sessionStorage.removeItem("bgy_open_scan");
     if (!activeClassroom || students.length === 0) { toast("Belum ada siswa di kelas ini untuk di-scan"); return; }
     if (isLibur || diLuarPeriode) { toast("Hari ini bukan hari presensi"); return; }
@@ -383,7 +388,7 @@ export function PresensiPage() {
 
   return (
     <>
-      <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+      <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
         <DateNavigator />
 
         {classrooms.length > 1 && (

@@ -76,7 +76,7 @@ export default async function handler(req, res) {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Klaim Kode PRO — Bantu Guru Yuk</title>
+<title>Klaim Kode — Presensi Yuk</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0ea5a0,#0d7a8a,#2d6a7f);min-height:100vh;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
@@ -111,15 +111,15 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   ${kode ? `
   <div class="emoji">🎉</div>
   <h1>Pembayaran Berhasil!</h1>
-  <p>Lisensi ${paket} Presensi Siswa siap diaktivasi.</p>
+  <p>Lisensi ${paket} Presensi Yuk siap diaktivasi.</p>
   <div class="code-box">
     <div class="kode" id="kodeTeks">${kode}</div>
     <button class="btn btn-copy" onclick="copyKode(this)">📋 Salin Kode</button>
   </div>
-  <button class="btn btn-app" onclick="window.location.href='${aktivasiUrl}'">📲 Aktifkan di Presensi Siswa</button>
+  <button class="btn btn-app" onclick="window.location.href='${aktivasiUrl}'">📲 Aktifkan di Presensi Yuk</button>
   <div class="steps">
     <b>Cara aktivasi:</b><br/>
-    1. 📲 Ketuk <b>Aktifkan di Presensi Siswa</b> (kode terisi otomatis)<br/>
+    1. 📲 Ketuk <b>Aktifkan di Presensi Yuk</b> (kode terisi otomatis)<br/>
     2. 📧 Masukkan <b>email</b> kamu<br/>
     3. ✅ <b>Aktivasi!</b> Lisensi aktif 1 semester (6 bulan)<br/>
     Simpan kode ini. Ganti HP cukup masukkan email yang sama.
@@ -135,7 +135,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 </div>
 <div class="footer">
   <a href="https://bantuguruyuk.web.id" target="_blank">Bantu Guru Yuk</a>
-  &bull; <a href="https://presiswa.bantuguruyuk.web.id" target="_blank">Presensi Siswa</a>
+  &bull; <a href="https://presiswa.bantuguruyuk.web.id" target="_blank">Presensi Yuk</a>
 </div>
 <script>
 function copyKode(btn) {

@@ -82,7 +82,7 @@ export function UpgradePage() {
 
   const handleWA = () => {
     const msg = encodeURIComponent(
-      "Halo Pak Choyy, saya mau tanya paket PLUS/PRO Presensi Siswa.\nEmail: " + (teacher?.email || email || "")
+      "Halo Pak Choyy, saya mau tanya paket PLUS/PRO Presensi Yuk.\nEmail: " + (teacher?.email || email || "")
     );
     window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
   };
@@ -173,7 +173,7 @@ export function UpgradePage() {
         : { bg: "rgba(220,38,38,0.25)", border: "rgba(220,38,38,0.5)", text: "#fecaca" };
 
   return (
-    <div className="flex-1 px-[14px] pt-[14px] pb-[130px] lg:pb-4">
+    <div className="flex-1 px-[14px] pt-[14px] pb-[100px] lg:pb-4">
       {/* Hero */}
       <div
         className="rounded-2xl p-5 mb-3 text-white"
