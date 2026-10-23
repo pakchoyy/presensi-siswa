@@ -111,6 +111,24 @@ export function UpgradePage() {
     setErrorMessage("");
     if (!validateEmail(email)) return;
     const kodeUp = kode.trim().toUpperCase();
+    if (!kodeUp && teacher) {
+      // Ganti HP / lupa kode: pulihkan cukup dengan email (dibatasi jumlah perangkat).
+      setChecking(true);
+      try {
+        const normalizedEmail = email.trim().toLowerCase();
+        const lic = await licenseService.lookupByEmail(normalizedEmail);
+        if (lic.found && lic.tier && (!lic.tanggalBerakhir || lic.tanggalBerakhir > Date.now())) {
+          await finishActivation(lic.tier, lic.tanggalBerakhir || Date.now() + LICENSE_DURATION_DAYS * 86400000, normalizedEmail, "EMAIL-RESTORE", false);
+          return;
+        }
+        setErrorMessage("Email ini belum punya paket aktif. Masukkan kode lisensi dari toko.");
+      } catch {
+        setErrorMessage("Gagal cek lisensi. Periksa koneksi internet.");
+      } finally {
+        setChecking(false);
+      }
+      return;
+    }
     if (!/^BGY-[A-Z0-9-]{4,60}$/.test(kodeUp)) {
       setErrorMessage("Masukkan kode lisensi dari toko (format BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX).");
       return;
@@ -362,7 +380,7 @@ export function UpgradePage() {
               spellCheck={false}
               className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.85rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
             />
-            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP? Masukkan email &amp; kode yang sama — lisensi dipulihkan.</p>
+            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Cukup isi email, kosongkan kode.</p>
             <button
               onClick={handleActivate}
               disabled={checking}
