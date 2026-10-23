@@ -402,8 +402,65 @@ async function settingsSet(supabase, body) {
   return [200, { ok: true, settings: await getSettings(supabase) }];
 }
 
+// ── Pengumuman ──
+const cleanText = (v, max) => String(v ?? "").trim().slice(0, max);
+function announcementFields(b) {
+  const title = cleanText(b.title, 120);
+  if (!title) return { error: "Judul wajib diisi" };
+  const target = ["all", "free", "plus", "pro"].includes(b.target) ? b.target : "all";
+  const level = b.level === "penting" ? "penting" : "info";
+  const link = cleanText(b.link_url, 500);
+  if (link && !/^https:\/\//i.test(link)) return { error: "Link harus diawali https://" };
+  const ends = b.ends_at ? new Date(b.ends_at) : null;
+  if (ends && isNaN(ends.getTime())) return { error: "Tanggal berakhir tidak valid" };
+  return {
+    row: {
+      title,
+      body: cleanText(b.body, 1000),
+      target,
+      level,
+      link_url: link || null,
+      link_label: link ? cleanText(b.link_label, 40) || "Buka" : null,
+      ends_at: ends ? ends.toISOString() : null,
+    },
+  };
+}
+
+async function announcementList(supabase) {
+  const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false }).limit(50);
+  if (error) throw error;
+  return [200, { items: data || [] }];
+}
+
+async function announcementSave(supabase, body) {
+  const { row, error: msg } = announcementFields(body);
+  if (msg) return [400, { error: msg }];
+  const q = body.id
+    ? supabase.from("announcements").update(row).eq("id", body.id)
+    : supabase.from("announcements").insert({ ...row, active: true });
+  const { error } = await q;
+  if (error) throw error;
+  return announcementList(supabase);
+}
+
+async function announcementToggle(supabase, body) {
+  const { error } = await supabase.from("announcements").update({ active: !!body.active }).eq("id", body.id);
+  if (error) throw error;
+  return announcementList(supabase);
+}
+
+async function announcementDelete(supabase, body) {
+  const { error } = await supabase.from("announcements").delete().eq("id", body.id);
+  if (error) throw error;
+  return announcementList(supabase);
+}
+
 const ACTIONS = {
   me: async () => [200, { ok: true }],
+  announcements: announcementList,
+  announcement_save: announcementSave,
+  announcement_toggle: announcementToggle,
+  announcement_delete: announcementDelete,
   summary,
   users,
   extend,

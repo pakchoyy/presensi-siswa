@@ -101,7 +101,7 @@ export default function AdminPage() {
             {tab === "users" && <UsersTab flash={flash} />}
             {tab === "codes" && <CodesTab flash={flash} />}
             {tab === "affiliate" && <AffiliateTab flash={flash} />}
-            {tab === "settings" && <SettingsTab flash={flash} />}
+            {tab === "settings" && <><AnnouncementsCard flash={flash} /><SettingsTab flash={flash} /></>}
           </>
         )}
       </main>
@@ -574,6 +574,76 @@ function SettingsTab({ flash }: Flash) {
         </label>
       ))}
       <button disabled={busy} onClick={save} className={`${btnMain} w-full`} style={mainBg}>{busy ? "Menyimpan..." : "Simpan"}</button>
+    </div>
+  );
+}
+
+type Ann = { id: number; title: string; body: string; target: string; level: string; link_url: string | null; link_label: string | null; active: boolean; ends_at: string | null };
+const TARGETS: [string, string][] = [["all", "Semua"], ["free", "FREE/trial"], ["plus", "PLUS"], ["pro", "PRO"]];
+const emptyAnn = { title: "", body: "", target: "all", level: "info", link_url: "", link_label: "", ends_at: "" };
+
+function AnnouncementsCard({ flash }: Flash) {
+  const [items, setItems] = useState<Ann[] | null>(null);
+  const [form, setForm] = useState(emptyAnn);
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: string, body: Record<string, unknown>, ok?: string) => {
+    setBusy(true);
+    const { status, data } = await adminApi<{ items: Ann[] }>(action, body);
+    setBusy(false);
+    if (status === 200) { setItems(data.items); if (ok) flash(ok); return true; }
+    flash(data.error || "Gagal");
+    return false;
+  };
+
+  useEffect(() => { run("announcements", {}); }, []);
+
+  const save = async () => {
+    if (await run("announcement_save", { ...form, ends_at: form.ends_at ? new Date(form.ends_at + "T23:59:59").toISOString() : null }, "Pengumuman diterbitkan")) setForm(emptyAnn);
+  };
+  const set = (k: keyof typeof emptyAnn) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  return (
+    <div className={card}>
+      <div className="font-bold text-[0.85rem] mb-1">Pengumuman</div>
+      <div className="text-[0.68rem] text-[var(--text-light)] mb-3">Tampil di halaman Presensi pengguna. "Penting" muncul sebagai pop-up sekali.</div>
+      <input value={form.title} onChange={set("title")} placeholder="Judul" maxLength={120} className={`${inputCls} mb-2`} />
+      <textarea value={form.body} onChange={set("body")} placeholder="Isi pengumuman" maxLength={1000} rows={3} className={`${inputCls} mb-2`} />
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <select value={form.target} onChange={set("target")} className={inputCls} aria-label="Untuk paket">
+          {TARGETS.map(([v, l]) => <option key={v} value={v}>Untuk: {l}</option>)}
+        </select>
+        <select value={form.level} onChange={set("level")} className={inputCls} aria-label="Tingkat">
+          <option value="info">Info</option>
+          <option value="penting">Penting (pop-up)</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <input value={form.link_url} onChange={set("link_url")} placeholder="Link (opsional) https://" className={inputCls} />
+        <input value={form.link_label} onChange={set("link_label")} placeholder="Teks tombol" maxLength={40} className={inputCls} />
+      </div>
+      <label className="block mb-3">
+        <span className="block text-[0.7rem] text-[var(--text-light)] mb-1">Berakhir (opsional)</span>
+        <input type="date" value={form.ends_at} onChange={set("ends_at")} className={inputCls} />
+      </label>
+      <button disabled={busy || !form.title.trim()} onClick={save} className={`${btnMain} w-full mb-3`} style={mainBg}>Terbitkan</button>
+
+      {!items ? <Center><Loader2 className="animate-spin" /></Center> : items.length === 0 ? (
+        <div className="text-[0.75rem] text-[var(--text-light)] text-center py-2">Belum ada pengumuman.</div>
+      ) : items.map((a) => (
+        <div key={a.id} className={`border-t border-[var(--border)] py-2 ${a.active ? "" : "opacity-50"}`}>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-[0.8rem]">{a.level === "penting" ? "❗ " : ""}{a.title}</div>
+              <div className="text-[0.68rem] text-[var(--text-light)]">
+                {TARGETS.find(([v]) => v === a.target)?.[1]} · {a.ends_at ? `s/d ${tgl(a.ends_at)}` : "tanpa batas"}
+              </div>
+            </div>
+            <button disabled={busy} onClick={() => run("announcement_toggle", { id: a.id, active: !a.active })} className={`${btn} bg-[var(--input-bg)] text-[var(--text)]`}>{a.active ? "Matikan" : "Aktifkan"}</button>
+            <button disabled={busy} onClick={() => confirm("Hapus pengumuman ini?") && run("announcement_delete", { id: a.id }, "Dihapus")} className={`${btn} bg-[#fee2e2] text-[#b91c1c]`}>Hapus</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
