@@ -35,7 +35,7 @@ const GUIDES = [
   {
     icon: QrCode,
     title: "Mode QR (PRO)",
-    desc: "Aktifkan di Pengaturan, cetak kartu QR di menu <b>Siswa</b>, lalu tekan tombol <b>Scan</b> di menu bawah untuk menandai siswa Hadir.",
+    desc: "Aktifkan di Pengaturan, cetak kartu QR di menu <b>Siswa</b>, lalu tekan tombol <b>Scan QR Presensi</b> di halaman Presensi untuk menandai siswa Hadir.",
   },
   {
     icon: Link2,

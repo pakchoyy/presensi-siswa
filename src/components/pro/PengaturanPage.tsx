@@ -1070,7 +1070,7 @@ export function PengaturanPage() {
             <QrCode size={14} className="text-[#0ea5a0] mt-[2px] flex-shrink-0" />
             <div className="min-w-0">
               <div className="text-[0.78rem] font-semibold text-[var(--text)]">Mode QR</div>
-              <div className="text-[0.68rem] text-[var(--text-light)]">Scan kartu QR siswa dari navbar</div>
+              <div className="text-[0.68rem] text-[var(--text-light)]">Scan kartu QR siswa dari halaman Presensi</div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -1232,7 +1232,7 @@ export function PengaturanPage() {
 
         {qrOn && (
           <div className="text-[0.65rem] text-[var(--text-light)] mt-2 pt-2 border-t border-[var(--border)]">
-            💡 Cetak kartu QR di menu Siswa, lalu scan dari navbar bawah
+            💡 Cetak kartu QR di menu Siswa, lalu scan dari tombol di halaman Presensi
           </div>
         )}
         {pjjOn && (
