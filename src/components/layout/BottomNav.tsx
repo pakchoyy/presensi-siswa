@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { isQrActive, QR_MODE_EVENT } from "@/lib/features";
-import { PageName } from "@/types/enums";
+import { PageName, Tier } from "@/types/enums";
 import { Marquee } from "@/components/layout/Marquee";
 import {
   ClipboardCheck,
@@ -29,7 +29,8 @@ const NAV_ITEMS: NavItemData[] = [
 ];
 
 export function BottomNav() {
-  const { activePage, setActivePage, setupSelesai, tier } = useApp();
+  const { activePage, setActivePage, setupSelesai, tier, realTier } = useApp();
+  const adFree = realTier === Tier.PRO; // PRO bebas iklan: strip info disembunyikan
   const [qrOn, setQrOn] = useState(() => isQrActive(tier));
   useEffect(() => {
     const sync = () => setQrOn(isQrActive(tier));
@@ -51,7 +52,7 @@ export function BottomNav() {
       const centerTop = Math.ceil(window.innerHeight - center.getBoundingClientRect().top);
       const fill = Math.max(0, centerTop - navTop + 4);
       setBand({ bottom: navTop, fill });
-      document.documentElement.style.setProperty("--ticker-h", `${34 + fill}px`);
+      document.documentElement.style.setProperty("--ticker-h", adFree ? "0px" : `${34 + fill}px`);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -59,18 +60,18 @@ export function BottomNav() {
       window.removeEventListener("resize", measure);
       document.documentElement.style.setProperty("--ticker-h", "0px");
     };
-  }, [setupSelesai]);
+  }, [setupSelesai, adFree]);
 
   if (!setupSelesai) return null;
 
   return (
     <>
-    <div
+    {!adFree && <div
       className="lg:hidden fixed left-1/2 -translate-x-1/2 w-full max-w-app z-[290]"
       style={{ bottom: band.bottom, paddingBottom: band.fill, background: "linear-gradient(90deg, #fbbf24, #f59e0b)" }}
     >
       <Marquee />
-    </div>
+    </div>}
     <nav
       ref={navRef}
       className="lg:hidden fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-app bg-[var(--card-bg)] border-t border-[var(--border)] flex items-end z-[300] py-[6px] px-1"

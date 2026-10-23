@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ReferralCard } from "@/components/pro/ReferralCard";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
@@ -44,6 +43,8 @@ import {
   QrCode,
   Video,
   Lock,
+  Gift,
+  ChevronRight,
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
@@ -817,7 +818,19 @@ export function PengaturanPage() {
         )}
       </div>
 
-      {isPaid && <ReferralCard />}
+      {realTier === Tier.PRO && (
+        <button
+          onClick={() => setActivePage(PageName.AFFILIATE)}
+          className="w-full flex items-center gap-3 bg-[var(--card-bg)] rounded-xl border border-[#f59e0b]/40 p-[14px] mb-3 text-left cursor-pointer"
+        >
+          <Gift size={18} className="text-[#f59e0b] flex-shrink-0" />
+          <span className="flex-1 min-w-0">
+            <span className="block text-[0.85rem] font-bold text-[var(--text)]">Program Affiliate</span>
+            <span className="block text-[0.7rem] text-[var(--text-light)]">Bagikan kodemu, dapat komisi + bonus masa aktif</span>
+          </span>
+          <ChevronRight size={16} className="text-[var(--text-light)]" />
+        </button>
+      )}
 
       {/* Periode Ajaran */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">

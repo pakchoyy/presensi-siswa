@@ -40,6 +40,8 @@ const COMPARE_ROWS: [string, string, string, string][] = [
   ["Mode QR", "—", "—", "✓"],
   ["Kalender edit", "—", "—", "✓"],
   ["Logo di laporan", "—", "✓", "✓"],
+  ["Program Affiliate (komisi + bonus 1 bulan)", "—", "—", "✓"],
+  ["Bebas iklan", "—", "—", "✓"],
 ];
 
 export function UpgradePage() {
@@ -380,7 +382,7 @@ export function UpgradePage() {
               type="text"
               value={refCode}
               onChange={(e) => setRefCode(e.target.value.toUpperCase())}
-              placeholder="Kode ajak teman (opsional), mis. PY-AB12CD"
+              placeholder="Kode affiliate (opsional), mis. PY-AB12CD"
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={9}

@@ -87,19 +87,33 @@ async function activate(supabase, body) {
 
   await markTier(supabase, email, tier);
   let referral = null;
-  try { referral = await applyReferral(supabase, body.ref, email); } catch { /* referral tidak boleh menggagalkan aktivasi */ }
+  try { referral = await applyReferral(supabase, body.ref, email, tier); } catch { /* referral tidak boleh menggagalkan aktivasi */ }
   return [200, { ok: true, tier, tanggalBerakhir, referral }];
 }
 
-// ── Referral: pemilik kode dapat +30 hari saat pembeli BARU aktivasi pakai kodenya ──
+// ── Program Affiliate (khusus PRO): pemilik kode dapat bonus hari + komisi saat pembeli BARU aktivasi pakai kodenya ──
 const REF_RE = /^PY-[A-Z0-9]{6}$/;
-const REF_DAYS = 30;
-const REF_MAX_PER_SEMESTER = 6;
+const SETTING_DEFAULTS = {
+  affiliate_commission: 2000,
+  affiliate_bonus_days: 30,
+  affiliate_min_withdraw: 20000,
+  affiliate_cap_per_semester: 6,
+};
+
+export async function getSettings(supabase) {
+  const out = { ...SETTING_DEFAULTS };
+  const { data } = await supabase.from("app_settings").select("key, value").in("key", Object.keys(SETTING_DEFAULTS));
+  for (const row of data || []) {
+    const n = Number(row.value);
+    if (Number.isFinite(n) && n >= 0) out[row.key] = n;
+  }
+  return out;
+}
 
 async function activeLicense(supabase, email) {
   const { data } = await supabase
     .from("licenses")
-    .select("id, tanggal_berakhir")
+    .select("id, tier, tanggal_berakhir")
     .eq("email", email)
     .eq("status", "digunakan")
     .eq("product", "siswa")
@@ -109,7 +123,9 @@ async function activeLicense(supabase, email) {
   return data && (!data.tanggal_berakhir || data.tanggal_berakhir > Date.now()) ? data : null;
 }
 
-async function applyReferral(supabase, rawCode, buyerEmail) {
+const isPro = (lic) => !!lic && (lic.tier || "PRO") === "PRO";
+
+async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   const code = String(rawCode || "").toUpperCase().trim();
   if (!code) return null;
   if (!REF_RE.test(code)) return "invalid";
@@ -119,26 +135,74 @@ async function applyReferral(supabase, rawCode, buyerEmail) {
   // Hanya pembeli baru: email ini belum pernah punya lisensi lain.
   const { count } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", buyerEmail).eq("status", "digunakan");
   if ((count || 0) > 1) return "not_new";
+  const cfg = await getSettings(supabase);
   const since = new Date(Date.now() - SEMESTER_MS).toISOString();
   const { count: given } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("owner_email", ref.owner_email).gte("created_at", since);
-  if ((given || 0) >= REF_MAX_PER_SEMESTER) return "cap";
+  if ((given || 0) >= cfg.affiliate_cap_per_semester) return "cap";
+  // Affiliate khusus PRO: kode milik pelanggan PLUS (lama) tidak lagi menghasilkan bonus.
   const lic = await activeLicense(supabase, ref.owner_email);
-  if (!lic) return "owner_inactive";
+  if (!isPro(lic)) return "owner_not_pro";
   // buyer_email unik: insert gagal bila pembeli ini sudah pernah dipakai referral.
-  const { error: insErr } = await supabase.from("referral_rewards").insert({ code, owner_email: ref.owner_email, buyer_email: buyerEmail, days: REF_DAYS });
+  const days = cfg.affiliate_bonus_days;
+  const { error: insErr } = await supabase
+    .from("referral_rewards")
+    .insert({ code, owner_email: ref.owner_email, buyer_email: buyerEmail, days, buyer_tier: buyerTier });
   if (insErr) return "used";
-  await supabase.from("licenses").update({ tanggal_berakhir: Math.max(Date.now(), lic.tanggal_berakhir || 0) + REF_DAYS * 86400000 }).eq("id", lic.id);
+  if (days > 0) {
+    await supabase.from("licenses").update({ tanggal_berakhir: Math.max(Date.now(), lic.tanggal_berakhir || 0) + days * 86400000 }).eq("id", lic.id);
+  }
+  if (cfg.affiliate_commission > 0) {
+    await supabase.from("affiliate_ledger").insert({
+      owner_email: ref.owner_email,
+      type: "earn",
+      amount: cfg.affiliate_commission,
+      status: "ok",
+      buyer_email: buyerEmail,
+      note: `Pembelian ${buyerTier} pakai kode ${code}`,
+    });
+  }
   return "ok";
 }
 
-// Kode referral milik pengguna yang sudah verifikasi email (token OTP) dan punya lisensi aktif.
-async function referral(supabase, body, req) {
+async function sessionEmail(supabase, req) {
   const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!token) return [401, { error: "Verifikasi email dulu" }];
-  const { data: u, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !u?.user?.email) return [401, { error: "Sesi tidak valid" }];
-  const email = normEmail(u.user.email);
-  if (!(await activeLicense(supabase, email))) return [403, { error: "Kode ajak teman hanya untuk pelanggan PLUS/PRO aktif" }];
+  if (!token) return null;
+  const { data: u, error } = await supabase.auth.getUser(token);
+  if (error || !u?.user?.email) return null;
+  return normEmail(u.user.email);
+}
+
+export function balanceOf(rows) {
+  let earned = 0, withdrawn = 0, pending = 0;
+  for (const r of rows || []) {
+    if (r.type === "earn" && r.status === "ok") earned += r.amount;
+    if (r.type === "withdraw" && r.status === "paid") withdrawn += r.amount;
+    if (r.type === "withdraw" && r.status === "pending") pending += r.amount;
+  }
+  return { earned, withdrawn, pending, saldo: earned - withdrawn - pending };
+}
+
+const maskEmail = (e) => {
+  const [u, d] = String(e).split("@");
+  return (u.length <= 2 ? u[0] + "*" : u.slice(0, 2) + "*".repeat(Math.min(u.length - 2, 5))) + "@" + (d || "");
+};
+
+// Info program (publik, tanpa login): angka benefit untuk halaman Program Affiliate.
+async function affiliateInfo(supabase) {
+  const cfg = await getSettings(supabase);
+  return [200, {
+    commission: cfg.affiliate_commission,
+    bonusDays: cfg.affiliate_bonus_days,
+    minWithdraw: cfg.affiliate_min_withdraw,
+    capPerSemester: cfg.affiliate_cap_per_semester,
+  }];
+}
+
+// Dashboard affiliate: hanya pelanggan PRO aktif yang sudah verifikasi email (sesi OTP).
+async function affiliate(supabase, body, req) {
+  const email = await sessionEmail(supabase, req);
+  if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
+  if (!isPro(await activeLicense(supabase, email))) return [403, { error: "Program Affiliate khusus pelanggan PRO aktif", code: "NOT_PRO" }];
   let { data: row } = await supabase.from("referrals").select("code").eq("owner_email", email).maybeSingle();
   for (let i = 0; !row && i < 5; i++) {
     const code = "PY-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
@@ -147,9 +211,46 @@ async function referral(supabase, body, req) {
     else ({ data: row } = await supabase.from("referrals").select("code").eq("owner_email", email).maybeSingle());
   }
   if (!row) return [500, { error: "Gagal membuat kode" }];
+  const cfg = await getSettings(supabase);
   const since = new Date(Date.now() - SEMESTER_MS).toISOString();
-  const { count } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("owner_email", email).gte("created_at", since);
-  return [200, { code: row.code, rewards: count || 0, max: REF_MAX_PER_SEMESTER, days: REF_DAYS }];
+  const [{ data: rewards }, { data: ledger }] = await Promise.all([
+    supabase.from("referral_rewards").select("buyer_email, buyer_tier, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(100),
+    supabase.from("affiliate_ledger").select("type, amount, status, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(500),
+  ]);
+  const bal = balanceOf(ledger);
+  return [200, {
+    code: row.code,
+    email,
+    referrals: (rewards || []).map((r) => ({ email: maskEmail(r.buyer_email), tier: r.buyer_tier || null, at: r.created_at })),
+    rewardsThisSemester: (rewards || []).filter((r) => r.created_at >= since).length,
+    ...bal,
+    hasPending: bal.pending > 0,
+    commission: cfg.affiliate_commission,
+    bonusDays: cfg.affiliate_bonus_days,
+    minWithdraw: cfg.affiliate_min_withdraw,
+    capPerSemester: cfg.affiliate_cap_per_semester,
+  }];
+}
+
+// Ajukan penarikan seluruh saldo; admin menandai dibayar/ditolak di halaman admin.
+async function withdraw(supabase, body, req) {
+  const email = await sessionEmail(supabase, req);
+  if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
+  const nama = String(body.nama || "").trim().slice(0, 80);
+  const tujuan = String(body.tujuan || "").trim().slice(0, 160);
+  if (nama.length < 2 || tujuan.length < 5) return [400, { error: "Isi nama dan tujuan transfer (bank/e-wallet + nomor)" }];
+  const cfg = await getSettings(supabase);
+  const { data: ledger } = await supabase.from("affiliate_ledger").select("type, amount, status").eq("owner_email", email);
+  const bal = balanceOf(ledger);
+  if (bal.pending > 0) return [409, { error: "Masih ada penarikan yang sedang diproses" }];
+  if (bal.saldo < cfg.affiliate_min_withdraw || bal.saldo <= 0) return [400, { error: `Saldo minimal Rp${cfg.affiliate_min_withdraw.toLocaleString("id-ID")} untuk ditarik` }];
+  const { data: ins, error } = await supabase
+    .from("affiliate_ledger")
+    .insert({ owner_email: email, type: "withdraw", amount: bal.saldo, status: "pending", payout_info: `${nama} — ${tujuan}` })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return [200, { ok: true, id: ins.id, amount: bal.saldo }];
 }
 
 async function renew(supabase, body) {
@@ -220,7 +321,7 @@ async function restore(supabase, body) {
   return [200, { ok: true, tier: data.tier || tierFromKode(kode), tanggalBerakhir: data.tanggal_berakhir }];
 }
 
-const ACTIONS = { activate, renew, status, restore, referral };
+const ACTIONS = { activate, renew, status, restore, affiliate, affiliate_info: affiliateInfo, withdraw };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });

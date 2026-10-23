@@ -5,7 +5,7 @@ import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { canUse, isQrActive, setQrMode as saveQrMode, QR_MODE_EVENT } from "@/lib/features";
 import { licenseService } from "@/services/license.service";
-import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock } from "lucide-react";
+import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock, Gift } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -125,6 +125,15 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
 
         <div className="h-px bg-[var(--border)] mx-0" />
 
+        <button
+          onClick={() => { setActivePage(PageName.AFFILIATE); onClose(); }}
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+        >
+          <Gift size={16} /> Program Affiliate
+          {realTier !== Tier.PRO && (
+            <span className="ml-auto flex items-center gap-1 text-[0.62rem] font-bold px-[7px] py-[2px] rounded-full bg-[#f59e0b]/15 text-[#d97706]"><Lock size={10} /> PRO</span>
+          )}
+        </button>
         <button
           onClick={handleInstall}
           className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"

@@ -6,6 +6,25 @@ import { generateId, timestamp } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { readRefCode, clearRefCode } from "@/lib/aktivasi-link";
 
+export interface AffiliateInfo {
+  commission: number;
+  bonusDays: number;
+  minWithdraw: number;
+  capPerSemester: number;
+}
+
+export interface AffiliateDashboard extends AffiliateInfo {
+  code: string;
+  email: string;
+  referrals: { email: string; tier: string | null; at: string }[];
+  rewardsThisSemester: number;
+  earned: number;
+  withdrawn: number;
+  pending: number;
+  saldo: number;
+  hasPending: boolean;
+}
+
 export interface ActivationResult {
   success: boolean;
   message: string;
@@ -62,11 +81,35 @@ export const licenseService = {
     return { success: true, message: "Kode valid" };
   },
 
-  /** Kode ajak teman milik pengguna (butuh sesi verifikasi email). */
-  async getReferral(): Promise<{ ok: boolean; code?: string; rewards?: number; max?: number; days?: number; error?: string }> {
-    const { ok, data } = await callLicenseApi({ action: "referral" });
-    if (!ok) return { ok: false, error: data.error || "Gagal memuat kode" };
-    return { ok: true, code: data.code, rewards: data.rewards, max: data.max, days: data.days };
+  /** Angka program affiliate (publik): komisi, bonus hari, minimal tarik. */
+  async getAffiliateInfo(): Promise<AffiliateInfo | null> {
+    try {
+      const { ok, data } = await callLicenseApi({ action: "affiliate_info" });
+      return ok ? (data as AffiliateInfo) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  /** Dashboard affiliate (khusus PRO, butuh sesi verifikasi email). */
+  async getAffiliate(): Promise<{ ok: true; data: AffiliateDashboard } | { ok: false; code?: string; error: string }> {
+    try {
+      const { ok, data } = await callLicenseApi({ action: "affiliate" });
+      if (!ok) return { ok: false, code: data.code, error: data.error || "Gagal memuat data affiliate" };
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: "Gagal memuat. Periksa koneksi internet." };
+    }
+  },
+
+  /** Ajukan penarikan seluruh saldo komisi. */
+  async requestWithdraw(nama: string, tujuan: string): Promise<{ ok: boolean; amount?: number; error?: string }> {
+    try {
+      const { ok, data } = await callLicenseApi({ action: "withdraw", nama, tujuan });
+      return ok ? { ok: true, amount: data.amount } : { ok: false, error: data.error || "Gagal mengajukan penarikan" };
+    } catch {
+      return { ok: false, error: "Gagal mengajukan. Periksa koneksi internet." };
+    }
   },
 
   async activate(email: string, kode: string, guruId: number, ref?: string): Promise<ActivationResult> {

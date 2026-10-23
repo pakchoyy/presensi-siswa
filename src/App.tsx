@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { AppProvider, useApp } from "@/contexts/AppContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
@@ -24,6 +24,7 @@ import { TentangKontak } from "@/components/about/TentangKontak";
 import { PengaturanPage } from "@/components/pro/PengaturanPage";
 import { UpgradePage } from "@/components/pro/UpgradePage";
 import { CloudSettingsPage } from "@/components/pro/CloudSettingsPage";
+import { AffiliatePage } from "@/components/pro/AffiliatePage";
 
 import { PageName, Tier } from "@/types/enums";
 import { AbsenSiswaPage } from "@/components/attendance/AbsenSiswaPage";
@@ -35,6 +36,10 @@ import { captureAktivasiLink, readAktivasiLink, captureRefParam } from "@/lib/ak
 // Tangkap ?ref= dan /aktivasi?email=&kode= sebelum render apa pun
 captureRefParam();
 captureAktivasiLink();
+
+// Halaman admin dimuat terpisah (tidak membebani aplikasi utama).
+const AdminPage = lazy(() => import("@/components/admin/AdminPage"));
+const isAdminPath = () => /^\/admin\/?$/.test(window.location.pathname);
 
 function getAbsenToken(): string | null {
   const m = window.location.pathname.match(/^\/s\/([^/]+)/);
@@ -93,6 +98,8 @@ function PageContent() {
       return <PengaturanPage />;
     case PageName.CLOUD_SETTINGS:
       return <CloudSettingsPage />;
+    case PageName.AFFILIATE:
+      return <AffiliatePage />;
     default:
       return <PresensiPage />;
   }
@@ -168,6 +175,13 @@ function AppContent() {
 }
 
 export default function App() {
+  if (typeof window !== "undefined" && isAdminPath()) {
+    return (
+      <Suspense fallback={<div className="p-6 text-center text-[var(--text-light)]">Memuat admin...</div>}>
+        <AdminPage />
+      </Suspense>
+    );
+  }
   const token = typeof window !== "undefined" ? getAbsenToken() : null;
   if (token) {
     return (
