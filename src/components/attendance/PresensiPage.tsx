@@ -66,7 +66,18 @@ export function PresensiPage() {
   const diLuarPeriode = isSebelumPeriode || isSesudahPeriode;
   const isAbsenMandiri = !!activeClassroom?.allowSiswaAbsenMandiri;
   // untuk kelas mandiri (siswa absen sendiri) jangan auto-Hadir, biar "belum absen" kelihatan
-  const autoHadir = !isAbsenMandiri && localStorage.getItem("bgy_auto_hadir") !== "0";
+  const [autoHadirPref, setAutoHadirPref] = useState(() => localStorage.getItem("bgy_auto_hadir") !== "0");
+  const [tipSeen, setTipSeen] = useState(() => localStorage.getItem("bgy_tip_klik_seen") === "1");
+  const autoHadir = !isAbsenMandiri && autoHadirPref;
+  const toggleAutoHadir = () => {
+    const next = !autoHadirPref;
+    localStorage.setItem("bgy_auto_hadir", next ? "1" : "0");
+    setAutoHadirPref(next);
+  };
+  const dismissTip = () => {
+    localStorage.setItem("bgy_tip_klik_seen", "1");
+    setTipSeen(true);
+  };
 
   // Cek apakah tanggal aktif ditandai "Hari Libur" di kalender
   const loadLiburKalender = useCallback(async () => {
@@ -462,42 +473,38 @@ export function PresensiPage() {
           </div>
         )}
 
-        {/* Tren kehadiran bulanan */}
-        {activeClassroom && !isLibur && tren && (
-          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-[0.75rem] min-w-0">
-              <TrendingUp size={15} className="text-[#0ea5a0] flex-shrink-0" />
-              <span className="text-[var(--text-light)] truncate">
-                Kehadiran <b className="text-[var(--text)]">{tren.label}</b>:
-              </span>
-              <b className="text-[#0ea5a0]">{tren.p}%</b>
-            </div>
-            {tren.pPrev > 0 && (
-              <span className="text-[0.72rem] font-bold flex-shrink-0" style={{ color: tren.diff > 0 ? "#16a34a" : tren.diff < 0 ? "#dc2626" : "var(--text-light)" }}>
-                {tren.diff > 0 ? "▲" : tren.diff < 0 ? "▼" : "—"} {Math.abs(tren.diff)}% vs {tren.labelPrev} ({tren.pPrev}%)
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Sejak Awal Ajaran */}
+        {/* Tren bulanan + rekap semester dalam satu baris */}
         {activeClassroom && !isLibur && (
           <div className="mb-3">
             <button
               onClick={() => setShowRekapAjaran(!showRekapAjaran)}
-              className="w-full flex items-center gap-2 px-[10px] py-[8px] border border-[var(--border)] rounded-xl text-[0.72rem] font-semibold cursor-pointer"
+              className="w-full flex items-center gap-2 px-[10px] py-[9px] border border-[var(--border)] rounded-xl text-[0.72rem] font-semibold cursor-pointer"
               style={{ background: showRekapAjaran ? "var(--input-bg)" : "var(--card-bg)" }}
             >
-              <CalendarRange size={14} className="text-[#0ea5a0]" />
-              <span className="text-[var(--text)] flex-1 text-left">
-                {semesterOnly && activeAy ? `Semester ${activeAy.semesterAktif}` : "Sejak Awal Ajaran"}
+              {tren ? (
+                <span className="flex items-center gap-[5px] min-w-0">
+                  <TrendingUp size={14} className="text-[#0ea5a0] flex-shrink-0" />
+                  <span className="text-[var(--text-light)]">Kehadiran {tren.label}</span>
+                  <b className="text-[#0ea5a0]">{tren.p}%</b>
+                  {tren.pPrev > 0 && tren.diff !== 0 && (
+                    <span style={{ color: tren.diff > 0 ? "#16a34a" : "#dc2626" }}>
+                      {tren.diff > 0 ? "▲" : "▼"}{Math.abs(tren.diff)}%
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <CalendarRange size={14} className="text-[#0ea5a0]" />
+              )}
+              <span className="flex-1" />
+              <span className="text-[var(--text)] truncate">
+                {semesterOnly && activeAy ? `Semester ${activeAy.semesterAktif}` : "Tahun ajaran"}
               </span>
               {loadingRekap ? (
                 <span className="w-4 h-4 border-2 border-[var(--border)] border-t-[#0ea5a0] rounded-full animate-spin" />
               ) : rekapAjaran ? (
-                <span className="text-[0.68rem] text-[var(--text-light)]">{totalHariAjaran} hari</span>
+                <span className="text-[0.68rem] text-[var(--text-light)]">· {totalHariAjaran} hari</span>
               ) : null}
-              <ChevronDown size={13} className={`text-[var(--text-light)] transition-transform ${showRekapAjaran ? "rotate-180" : ""}`} />
+              <ChevronDown size={13} className={`text-[var(--text-light)] transition-transform flex-shrink-0 ${showRekapAjaran ? "rotate-180" : ""}`} />
             </button>
 
             {showRekapAjaran && rekapAjaran && (
@@ -587,22 +594,30 @@ export function PresensiPage() {
 
         {!isLibur && !loading && students.length > 0 && (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-3 mb-3">
-            <div className="text-[0.7rem] text-[var(--text-light)] mb-2">
-              💡 <b className="text-[var(--text)]">Klik nama siswa</b> untuk edit status kehadiran siswa
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Info size={14} className="text-[var(--text-light)]" />
+            {!tipSeen && (
+              <div className="flex items-start gap-2 text-[0.7rem] text-[var(--text-light)] mb-2 pb-2 border-b border-[var(--border)]">
+                <span className="flex-1">💡 <b className="text-[var(--text)]">Klik nama siswa</b> untuk mengubah status kehadirannya</span>
+                <button onClick={dismissTip} aria-label="Tutup tips" className="bg-transparent border-none cursor-pointer text-[var(--text-light)] text-[1rem] leading-none px-1">×</button>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Info size={14} className="text-[var(--text-light)] flex-shrink-0" />
                 <span className="text-[0.75rem] text-[var(--text)]">
-                  Auto isi hadir semua siswa: <b className={autoHadir ? "text-[#0ea5a0]" : "text-[var(--text-light)]"}>{autoHadir ? "AKTIF" : "NONAKTIF"}</b>
+                  {isAbsenMandiri ? "Isi hadir otomatis tidak berlaku untuk kelas absen mandiri" : "Isi hadir otomatis untuk semua siswa"}
                 </span>
               </div>
-              <button
-                onClick={() => setActivePage(PageName.PENGATURAN)}
-                className="text-[0.7rem] text-[#0ea5a0] font-semibold bg-transparent border-none cursor-pointer hover:underline"
-              >
-                Ubah
-              </button>
+              {!isAbsenMandiri && (
+                <button
+                  role="switch"
+                  aria-checked={autoHadirPref}
+                  aria-label="Isi hadir otomatis"
+                  onClick={toggleAutoHadir}
+                  className={`relative w-10 h-[22px] rounded-full border-none cursor-pointer flex-shrink-0 transition-colors ${autoHadirPref ? "bg-[#0ea5a0]" : "bg-[var(--border)]"}`}
+                >
+                  <span className={`absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-all ${autoHadirPref ? "left-[20px]" : "left-[2px]"}`} />
+                </button>
+              )}
             </div>
           </div>
         )}
