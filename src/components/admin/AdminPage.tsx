@@ -8,6 +8,12 @@ import { useToast } from "@/components/shared/Toast";
 // Halaman super admin (/admin). Semua data & aksi lewat /api/admin yang memeriksa
 // sesi OTP + daftar email admin di server; halaman ini hanya tampilan.
 
+// Produk yang sedang dikelola (Siswa/Guru); ikut dikirim di setiap aksi admin.
+type Product = "siswa" | "guru";
+const PRODUCT_KEY = "py_admin_product";
+let PRODUCT: Product = (() => { try { return localStorage.getItem(PRODUCT_KEY) === "guru" ? "guru" : "siswa"; } catch { return "siswa"; } })();
+const tiersFor = (): ("PLUS" | "PRO")[] => (PRODUCT === "guru" ? ["PRO"] : ["PLUS", "PRO"]);
+
 async function adminApi<T = any>(action: string, body: Record<string, unknown> = {}): Promise<{ status: number; data: T & { error?: string } }> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token;
@@ -15,7 +21,7 @@ async function adminApi<T = any>(action: string, body: Record<string, unknown> =
   const res = await fetch("/api/admin", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ action, ...body }),
+    body: JSON.stringify({ action, product: PRODUCT, ...body }),
   });
   return { status: res.status, data: await res.json().catch(() => ({ error: "Respons tidak valid" })) };
 }
@@ -45,6 +51,12 @@ export default function AdminPage() {
   const [stage, setStage] = useState<"check" | "login" | "denied" | "ok">("check");
   const [me, setMe] = useState("");
   const [tab, setTab] = useState<Tab>("summary");
+  const [product, setProduct] = useState<Product>(PRODUCT);
+  const pickProduct = (p: Product) => {
+    PRODUCT = p;
+    try { localStorage.setItem(PRODUCT_KEY, p); } catch { /* ignore */ }
+    setProduct(p);
+  };
   const { toast } = useToast();
 
   useEffect(() => {
@@ -97,11 +109,22 @@ export default function AdminPage() {
         {stage === "ok" && (
           <>
             <div className="text-[0.72rem] text-[var(--text-light)] mb-2">Masuk sebagai <b>{me}</b></div>
-            {tab === "summary" && <SummaryTab flash={flash} go={setTab} />}
-            {tab === "users" && <UsersTab flash={flash} />}
-            {tab === "codes" && <CodesTab flash={flash} />}
-            {tab === "affiliate" && <AffiliateTab flash={flash} />}
-            {tab === "settings" && <><AnnouncementsCard flash={flash} /><SettingsTab flash={flash} /></>}
+            <div className="grid grid-cols-2 gap-2 mb-3" role="tablist" aria-label="Aplikasi">
+              {(["siswa", "guru"] as const).map((p) => (
+                <button key={p} role="tab" aria-selected={product === p} onClick={() => pickProduct(p)} className={`${btn} ${product === p ? "text-white" : "bg-[var(--input-bg)] text-[var(--text)]"}`} style={product === p ? mainBg : undefined}>
+                  Presensi {p === "siswa" ? "Siswa" : "Guru"}
+                </button>
+              ))}
+            </div>
+            <div key={product}>
+              {tab === "summary" && <SummaryTab flash={flash} go={setTab} />}
+              {tab === "users" && <UsersTab flash={flash} />}
+              {tab === "codes" && <CodesTab flash={flash} />}
+              {tab === "affiliate" && (product === "guru"
+                ? <div className={card}><div className="text-[0.8rem] text-[var(--text-light)]">Program Affiliate saat ini khusus Presensi Siswa.</div></div>
+                : <AffiliateTab flash={flash} />)}
+              {tab === "settings" && <><AnnouncementsCard flash={flash} /><SettingsTab flash={flash} /></>}
+            </div>
           </>
         )}
       </main>
@@ -223,7 +246,7 @@ function SummaryTab({ flash, go }: Flash & { go: (t: Tab) => void }) {
           <Stat label={`Bulan ${bulan}`} value={rp(d.bulanIni.pendapatan)} sub={`${d.bulanIni.PRO} PRO · ${d.bulanIni.PLUS} PLUS`} tone="#16a34a" />
           <Stat label="Semester ini" value={rp(d.semesterIni.pendapatan)} sub={`${d.semesterIni.PRO} PRO · ${d.semesterIni.PLUS} PLUS`} tone="#16a34a" />
         </div>
-        <p className="text-[0.66rem] text-[var(--text-light)] mt-2 mb-0">Estimasi dari kode yang diaktivasi × harga (PLUS Rp17.000, PRO Rp32.000).</p>
+        <p className="text-[0.66rem] text-[var(--text-light)] mt-2 mb-0">Estimasi dari kode yang diaktivasi × harga ({PRODUCT === "guru" ? "PRO Rp15.000" : "PLUS Rp17.000, PRO Rp32.000"}).</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
@@ -344,7 +367,7 @@ function UsersTab({ flash }: Flash) {
                   <button disabled={busy} onClick={() => act("extend", { email: u.email, days: Number(days) }, `Diperpanjang ${days} hari`)} className={`${btnMain} flex-1`} style={mainBg}>Perpanjang +{days || 0} hari</button>
                 </div>
                 <div className="flex gap-2">
-                  {["PLUS", "PRO"].map((t) => (
+                  {tiersFor().map((t) => (
                     <button key={t} disabled={busy || u.tier === t} onClick={() => act("set_tier", { email: u.email, tier: t }, `Paket jadi ${t}`)} className={`${btn} flex-1 bg-[var(--input-bg)] text-[var(--text)]`}>Jadikan {t}</button>
                   ))}
                 </div>
@@ -402,7 +425,7 @@ function CodesTab({ flash }: Flash) {
       <div className={card}>
         <div className="font-bold text-[0.85rem] mb-2">Stok kode belum terpakai</div>
         <div className="grid grid-cols-2 gap-2">
-          {["PLUS", "PRO"].map((t) => (
+          {tiersFor().map((t) => (
             <div key={t} className="rounded-lg bg-[var(--input-bg)] p-3 text-center">
               <div className="text-[0.7rem] text-[var(--text-light)]">{t}</div>
               <div className="text-[1.4rem] font-extrabold">{stock ? stock[t] ?? 0 : "…"}</div>
@@ -414,7 +437,7 @@ function CodesTab({ flash }: Flash) {
 
       <div className={card}>
         <div className="flex gap-2 mb-3">
-          {(["PLUS", "PRO"] as const).map((t) => (
+          {tiersFor().map((t) => (
             <button key={t} onClick={() => setTier(t)} className={`${btn} flex-1 ${tier === t ? "text-white" : "bg-[var(--input-bg)] text-[var(--text)]"}`} style={tier === t ? mainBg : undefined}>{t}</button>
           ))}
         </div>
@@ -578,13 +601,14 @@ function SettingsTab({ flash }: Flash) {
   );
 }
 
-type Ann = { id: number; title: string; body: string; target: string; level: string; link_url: string | null; link_label: string | null; active: boolean; ends_at: string | null };
+type Ann = { id: number; product?: string; title: string; body: string; target: string; level: string; link_url: string | null; link_label: string | null; active: boolean; ends_at: string | null };
 const TARGETS: [string, string][] = [["all", "Semua"], ["free", "FREE/trial"], ["plus", "PLUS"], ["pro", "PRO"]];
-const emptyAnn = { title: "", body: "", target: "all", level: "info", link_url: "", link_label: "", ends_at: "" };
+const emptyAnn = { title: "", body: "", target: "all", level: "info", link_url: "", link_label: "", ends_at: "", product: "siswa" };
+const APPS: [string, string][] = [["siswa", "Presensi Siswa"], ["guru", "Presensi Guru"], ["all", "Siswa & Guru"]];
 
 function AnnouncementsCard({ flash }: Flash) {
   const [items, setItems] = useState<Ann[] | null>(null);
-  const [form, setForm] = useState(emptyAnn);
+  const [form, setForm] = useState({ ...emptyAnn, product: PRODUCT });
   const [busy, setBusy] = useState(false);
 
   const run = async (action: string, body: Record<string, unknown>, ok?: string) => {
@@ -599,7 +623,7 @@ function AnnouncementsCard({ flash }: Flash) {
   useEffect(() => { run("announcements", {}); }, []);
 
   const save = async () => {
-    if (await run("announcement_save", { ...form, ends_at: form.ends_at ? new Date(form.ends_at + "T23:59:59").toISOString() : null }, "Pengumuman diterbitkan")) setForm(emptyAnn);
+    if (await run("announcement_save", { ...form, ends_at: form.ends_at ? new Date(form.ends_at + "T23:59:59").toISOString() : null }, "Pengumuman diterbitkan")) setForm({ ...emptyAnn, product: PRODUCT });
   };
   const set = (k: keyof typeof emptyAnn) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
 
@@ -609,6 +633,9 @@ function AnnouncementsCard({ flash }: Flash) {
       <div className="text-[0.68rem] text-[var(--text-light)] mb-3">Tampil di halaman Presensi pengguna. "Penting" muncul sebagai pop-up sekali.</div>
       <input value={form.title} onChange={set("title")} placeholder="Judul" maxLength={120} className={`${inputCls} mb-2`} />
       <textarea value={form.body} onChange={set("body")} placeholder="Isi pengumuman" maxLength={1000} rows={3} className={`${inputCls} mb-2`} />
+      <select value={form.product} onChange={set("product")} className={`${inputCls} mb-2`} aria-label="Untuk aplikasi">
+        {APPS.map(([v, l]) => <option key={v} value={v}>Aplikasi: {l}</option>)}
+      </select>
       <div className="grid grid-cols-2 gap-2 mb-2">
         <select value={form.target} onChange={set("target")} className={inputCls} aria-label="Untuk paket">
           {TARGETS.map(([v, l]) => <option key={v} value={v}>Untuk: {l}</option>)}
@@ -636,7 +663,7 @@ function AnnouncementsCard({ flash }: Flash) {
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-[0.8rem]">{a.level === "penting" ? "❗ " : ""}{a.title}</div>
               <div className="text-[0.68rem] text-[var(--text-light)]">
-                {TARGETS.find(([v]) => v === a.target)?.[1]} · {a.ends_at ? `s/d ${tgl(a.ends_at)}` : "tanpa batas"}
+                {APPS.find(([v]) => v === a.product)?.[1]} · {TARGETS.find(([v]) => v === a.target)?.[1]} · {a.ends_at ? `s/d ${tgl(a.ends_at)}` : "tanpa batas"}
               </div>
             </div>
             <button disabled={busy} onClick={() => run("announcement_toggle", { id: a.id, active: !a.active })} className={`${btn} bg-[var(--input-bg)] text-[var(--text)]`}>{a.active ? "Matikan" : "Aktifkan"}</button>

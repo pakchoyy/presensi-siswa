@@ -11,7 +11,6 @@ const ADMINS = (process.env.ADMIN_EMAILS || "")
 const adminList = () => ADMINS;
 
 const DAY = 86400000;
-const TIERS = ["PLUS", "PRO"];
 const SETTING_KEYS = ["affiliate_commission_plus", "affiliate_bonus_days_plus", "affiliate_commission_pro", "affiliate_bonus_days_pro", "affiliate_min_withdraw", "affiliate_cap_per_semester"];
 
 function getSupabase() {
@@ -28,18 +27,27 @@ const intIn = (v, min, max) => {
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
 };
 
-function newCode(tier) {
+// Satu admin untuk dua aplikasi; tabel licenses/devices dipakai bersama dan dibedakan per produk.
+const PRODUCTS = {
+  siswa: { prefix: "BGY-PS", tiers: ["PLUS", "PRO"], price: { PLUS: 17000, PRO: 32000 } },
+  guru: { prefix: "BGY-PG", tiers: ["PRO"], price: { PRO: 15000 } },
+};
+const productOf = (body) => (body.product === "guru" ? "guru" : "siswa");
+const GURU_DEV = "guru:%"; // perangkat Guru di tabel devices diberi awalan "guru:"
+const scopeDevices = (q, product) => (product === "guru" ? q.like("device_id", GURU_DEV) : q.not("device_id", "like", GURU_DEV));
+
+function newCode(tier, product = "siswa") {
   const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
-  return `BGY-PS-${tier}-${hex}`;
+  return `${PRODUCTS[product].prefix}-${tier}-${hex}`;
 }
 
-async function latestLicense(supabase, email) {
+async function latestLicense(supabase, email, product = "siswa") {
   const { data } = await supabase
     .from("licenses")
     .select("id, kode, tier, tanggal_aktivasi, tanggal_berakhir")
     .eq("email", email)
     .eq("status", "digunakan")
-    .eq("product", "siswa")
+    .eq("product", product)
     .order("tanggal_berakhir", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -49,12 +57,12 @@ async function latestLicense(supabase, email) {
 // ── Pengguna ──
 const SOON_MS = 14 * DAY;
 
-async function allLicenses(supabase) {
+async function allLicenses(supabase, product = "siswa") {
   const { data, error } = await supabase
     .from("licenses")
     .select("email, kode, tier, tanggal_aktivasi, tanggal_berakhir")
     .eq("status", "digunakan")
-    .eq("product", "siswa")
+    .eq("product", product)
     .not("email", "is", null)
     .order("tanggal_aktivasi", { ascending: false })
     .limit(5000);
@@ -82,8 +90,9 @@ const isActive = (l, now) => !!l.tanggal_berakhir && l.tanggal_berakhir > now;
 async function users(supabase, body) {
   const q = String(body.q || "").toLowerCase().trim().slice(0, 80);
   const filter = String(body.filter || "all");
+  const product = productOf(body);
   const now = Date.now();
-  let rows = [...groupByEmail(await allLicenses(supabase)).values()];
+  let rows = [...groupByEmail(await allLicenses(supabase, product)).values()];
   if (q) rows = rows.filter((l) => l.email.includes(q));
   rows = rows.filter((l) => {
     if (filter === "PRO" || filter === "PLUS") return (l.tier || "PRO") === filter;
@@ -102,7 +111,7 @@ async function users(supabase, body) {
     : { data: [] };
   const profileIds = (profiles || []).map((p) => p.id);
   const { data: devices } = profileIds.length
-    ? await supabase.from("devices").select("user_id").in("user_id", profileIds)
+    ? await scopeDevices(supabase.from("devices").select("user_id").in("user_id", profileIds), product)
     : { data: [] };
   const devCount = new Map();
   for (const d of devices || []) devCount.set(d.user_id, (devCount.get(d.user_id) || 0) + 1);
@@ -122,14 +131,14 @@ async function users(supabase, body) {
 }
 
 // ── Ringkasan ──
-const PRICE = { PLUS: 17000, PRO: 32000 };
-
-async function summary(supabase) {
+async function summary(supabase, body) {
+  const product = productOf(body);
+  const PRICE = PRODUCTS[product].price;
   const now = Date.now();
   const d = new Date();
   const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
   const semStart = new Date(d.getFullYear(), d.getMonth() < 6 ? 0 : 6, 1).getTime();
-  const lics = await allLicenses(supabase);
+  const lics = await allLicenses(supabase, product);
   const users = [...groupByEmail(lics).values()];
   const aktif = { PLUS: 0, PRO: 0 };
   let expired = 0;
@@ -145,10 +154,10 @@ async function summary(supabase) {
   const count = (from) => {
     const c = { PLUS: 0, PRO: 0 };
     for (const l of lics) if ((l.tanggal_aktivasi || 0) >= from && !String(l.kode || "").startsWith("AUTO")) c[l.tier === "PLUS" ? "PLUS" : "PRO"]++;
-    return { ...c, pendapatan: c.PLUS * PRICE.PLUS + c.PRO * PRICE.PRO };
+    return { ...c, pendapatan: c.PLUS * (PRICE.PLUS || 0) + c.PRO * PRICE.PRO };
   };
   const [stockRes, { data: pend }] = await Promise.all([
-    codeStock(supabase),
+    codeStock(supabase, body),
     supabase.from("affiliate_ledger").select("amount").eq("type", "withdraw").eq("status", "pending").limit(1000),
   ]);
   return [200, {
@@ -167,7 +176,7 @@ async function extend(supabase, body) {
   const email = normEmail(body.email);
   const days = intIn(body.days, 1, 400);
   if (!EMAIL_RE.test(email) || !days) return [400, { error: "Email atau jumlah hari tidak valid (1–400)" }];
-  const lic = await latestLicense(supabase, email);
+  const lic = await latestLicense(supabase, email, productOf(body));
   if (!lic) return [404, { error: "Email ini belum punya lisensi. Buat kode cadangan untuknya." }];
   const tanggalBerakhir = Math.max(Date.now(), lic.tanggal_berakhir || 0) + days * DAY;
   await supabase.from("licenses").update({ tanggal_berakhir: tanggalBerakhir }).eq("id", lic.id);
@@ -177,11 +186,13 @@ async function extend(supabase, body) {
 async function setTier(supabase, body) {
   const email = normEmail(body.email);
   const tier = String(body.tier || "").toUpperCase();
-  if (!EMAIL_RE.test(email) || !TIERS.includes(tier)) return [400, { error: "Email atau paket tidak valid" }];
-  const lic = await latestLicense(supabase, email);
+  const product = productOf(body);
+  if (!EMAIL_RE.test(email) || !PRODUCTS[product].tiers.includes(tier)) return [400, { error: "Email atau paket tidak valid" }];
+  const lic = await latestLicense(supabase, email, product);
   if (!lic) return [404, { error: "Email ini belum punya lisensi" }];
   await supabase.from("licenses").update({ tier }).eq("id", lic.id);
-  await supabase.from("profiles").update({ tier, updated_at: new Date().toISOString() }).eq("email", email);
+  // profiles.tier milik Presensi Siswa.
+  if (product === "siswa") await supabase.from("profiles").update({ tier, updated_at: new Date().toISOString() }).eq("email", email);
   return [200, { ok: true, tier }];
 }
 
@@ -190,19 +201,20 @@ async function resetDevices(supabase, body) {
   if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
   const { data: profile } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
   if (!profile) return [200, { ok: true, removed: 0 }];
-  const { data } = await supabase.from("devices").delete().eq("user_id", profile.id).select("id");
+  const { data } = await scopeDevices(supabase.from("devices").delete().eq("user_id", profile.id), productOf(body)).select("id");
   return [200, { ok: true, removed: (data || []).length }];
 }
 
 // ── Kode ──
-async function codeStock(supabase) {
+async function codeStock(supabase, body = {}) {
+  const product = productOf(body);
   const counts = {};
-  for (const tier of TIERS) {
+  for (const tier of PRODUCTS[product].tiers) {
     const { count } = await supabase
       .from("licenses")
       .select("id", { count: "exact", head: true })
       .eq("status", "tersedia")
-      .eq("product", "siswa")
+      .eq("product", product)
       .eq("tier", tier);
     counts[tier] = count || 0;
   }
@@ -215,24 +227,25 @@ async function generateCodes(supabase, body) {
   const tier = String(body.tier || "").toUpperCase();
   const n = intIn(body.n ?? 1, 1, 1000);
   const email = normEmail(body.email);
-  if (!TIERS.includes(tier) || !n) return [400, { error: "Paket atau jumlah tidak valid (1–1000)" }];
+  const product = productOf(body);
+  if (!PRODUCTS[product].tiers.includes(tier) || !n) return [400, { error: "Paket atau jumlah tidak valid (1–1000)" }];
   if (email && !EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
 
   if (email) {
-    const lic = await latestLicense(supabase, email);
+    const lic = await latestLicense(supabase, email, product);
     const active = lic && (!lic.tanggal_berakhir || lic.tanggal_berakhir > Date.now());
-    const kode = newCode(tier);
+    const kode = newCode(tier, product);
     const row = active
-      ? { kode, tier, product: "siswa", status: "digunakan", email, tanggal_aktivasi: Date.now(), tanggal_berakhir: lic.tanggal_berakhir }
-      : { kode, tier, product: "siswa", status: "tersedia" };
+      ? { kode, tier, product, status: "digunakan", email, tanggal_aktivasi: Date.now(), tanggal_berakhir: lic.tanggal_berakhir }
+      : { kode, tier, product, status: "tersedia" };
     const { error } = await supabase.from("licenses").insert(row);
     if (error) throw error;
     return [200, { ok: true, codes: [kode], bound: !!active, tanggalBerakhir: active ? lic.tanggal_berakhir : null }];
   }
 
-  const kodes = [...new Set(Array.from({ length: n }, () => newCode(tier)))];
+  const kodes = [...new Set(Array.from({ length: n }, () => newCode(tier, product)))];
   for (let i = 0; i < kodes.length; i += 200) {
-    const rows = kodes.slice(i, i + 200).map((kode) => ({ kode, tier, product: "siswa", status: "tersedia" }));
+    const rows = kodes.slice(i, i + 200).map((kode) => ({ kode, tier, product, status: "tersedia" }));
     const { error } = await supabase.from("licenses").insert(rows);
     if (error) throw error;
   }
@@ -260,8 +273,16 @@ async function changeEmail(supabase, body) {
   const from = normEmail(body.email);
   const to = normEmail(body.newEmail);
   if (!EMAIL_RE.test(from) || !EMAIL_RE.test(to) || from === to) return [400, { error: "Email lama/baru tidak valid" }];
+  // Guru: hanya lisensi Guru yang dipindah; profil & data Siswa tidak disentuh.
+  if (productOf(body) === "guru") {
+    const { data: t } = await supabase.from("licenses").select("id").eq("email", to).eq("product", "guru").eq("status", "digunakan").limit(1);
+    if (t && t.length) return [409, { error: `${to} sudah punya lisensi Guru. Tidak bisa digabung otomatis.` }];
+    const { data, error } = await supabase.from("licenses").update({ email: to }).eq("email", from).eq("product", "guru").select("id");
+    if (error) throw error;
+    return [200, { ok: true, profile: false, moved: { "licenses.email (guru)": (data || []).length } }];
+  }
 
-  const { data: targetLic } = await supabase.from("licenses").select("id").eq("email", to).eq("status", "digunakan").limit(1);
+  const { data: targetLic } = await supabase.from("licenses").select("id").eq("email", to).eq("product", "siswa").eq("status", "digunakan").limit(1);
   if (targetLic && targetLic.length) return [409, { error: `${to} sudah punya lisensi. Tidak bisa digabung otomatis.` }];
   const { data: target } = await supabase.from("profiles").select("id, tier").eq("email", to).maybeSingle();
   if (target) {
@@ -280,13 +301,15 @@ async function changeEmail(supabase, body) {
   }
   const moved = {};
   for (const [table, col] of [
-    ["licenses", "email"], ["referrals", "owner_email"], ["referral_rewards", "owner_email"], ["referral_rewards", "buyer_email"],
+    ["referrals", "owner_email"], ["referral_rewards", "owner_email"], ["referral_rewards", "buyer_email"],
     ["affiliate_ledger", "owner_email"], ["affiliate_ledger", "buyer_email"], ["teacher_settings", "email"],
   ]) {
     const { data, error } = await supabase.from(table).update({ [col]: to }).eq(col, from).select(col);
     if (error && !/column|relation/i.test(error.message)) throw error;
     if (data && data.length) moved[`${table}.${col}`] = data.length;
   }
+  const { data: movedLic } = await supabase.from("licenses").update({ email: to }).eq("email", from).eq("product", "siswa").select("id");
+  if (movedLic && movedLic.length) moved["licenses.email"] = movedLic.length;
   return [200, { ok: true, profile: !!prof, moved }];
 }
 
@@ -296,6 +319,23 @@ async function deleteUser(supabase, body) {
   if (adminList().includes(email)) return [400, { error: "Akun admin tidak bisa dihapus dari sini" }];
   const { data: prof } = await supabase.from("profiles").select("id, auth_id").eq("email", email).maybeSingle();
   const removed = {};
+  // Guru: hapus data Guru saja (tabel cloud_guru_* memakai auth uid), profil & data Siswa tetap.
+  if (productOf(body) === "guru") {
+    if (prof?.auth_id) {
+      for (const [t, col] of [["cloud_guru_attendance", "user_id"], ["cloud_guru_push", "user_id"], ["cloud_guru_teachers", "user_id"], ["cloud_guru_sekolah", "owner_user_id"]]) {
+        const { data, error } = await supabase.from(t).delete().eq(col, prof.auth_id).select("id");
+        if (error && !/column|relation/i.test(error.message)) throw error;
+        if (data && data.length) removed[t] = data.length;
+      }
+    }
+    if (prof) {
+      const { data } = await supabase.from("devices").delete().eq("user_id", prof.id).like("device_id", GURU_DEV).select("id");
+      removed.devices = (data || []).length;
+    }
+    const { data: gl } = await supabase.from("licenses").delete().eq("email", email).eq("product", "guru").select("id");
+    removed.licenses = (gl || []).length;
+    return [200, { ok: true, removed }];
+  }
   if (prof) {
     for (const t of CLOUD_TABLES) {
       const { data, error } = await supabase.from(t).delete().eq("user_id", prof.id).select("user_id");
@@ -303,7 +343,7 @@ async function deleteUser(supabase, body) {
       if (data && data.length) removed[t] = data.length;
     }
   }
-  const { data: lics } = await supabase.from("licenses").delete().eq("email", email).select("id");
+  const { data: lics } = await supabase.from("licenses").delete().eq("email", email).eq("product", "siswa").select("id");
   removed.licenses = (lics || []).length;
   await supabase.from("teacher_settings").delete().eq("email", email);
   await supabase.from("referrals").delete().eq("owner_email", email);
@@ -313,7 +353,9 @@ async function deleteUser(supabase, body) {
   await supabase.from("referral_rewards").update({ buyer_email: anon }).eq("buyer_email", email);
   await supabase.from("affiliate_ledger").update({ owner_email: anon }).eq("owner_email", email);
   await supabase.from("affiliate_ledger").update({ buyer_email: anon }).eq("buyer_email", email);
-  if (prof) {
+  // Masih pengguna Presensi Guru: akun login & profil dipertahankan.
+  const { count: guruLic } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", email).eq("product", "guru");
+  if (prof && !guruLic) {
     await supabase.from("profiles").delete().eq("id", prof.id);
     for (const uid of new Set([prof.auth_id, prof.id].filter(Boolean))) {
       await supabase.auth.admin.deleteUser(uid).catch(() => {});
