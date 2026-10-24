@@ -129,7 +129,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   <div class="error-box">
     <div class="err">${error}</div>
   </div>
-  <button class="btn btn-copy" onclick="window.open('https://wa.me/6289530713597?text=Halo%20Pak%20Choyy%2C%20stok%20kode%20PRO%20habis.%20Tolong%20diisi%20ulang.','_blank')">💬 Hubungi Admin</button>
+  <p style="font-size:.85rem;opacity:.9;margin-bottom:14px">Sudah pernah aktivasi? Tidak perlu kode baru: buka aplikasi → <b>Pengaturan</b> → <b>Sudah berlangganan di HP lain? Ambil data dari cloud</b> → isi email → masukkan kode dari email.</p>
+  <button class="btn btn-copy" onclick="window.open('https://wa.me/6289530713597?text=Halo%20Pak%20Choyy%2C%20saya%20butuh%20bantuan%20aktivasi%20Presensi%20Yuk.','_blank')">💬 Hubungi Admin</button>
   `}
 </div>
 <div class="footer">

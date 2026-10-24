@@ -165,8 +165,8 @@ export function PengaturanPage() {
         const status = await licenseService.getStatus(teacherId);
         if (cancelled) return;
 
-        // If PRO but no local license record, auto-fetch from Supabase
-        if (!status.aktif && teacherTier && teacherTier !== Tier.FREE && teacherEmail) {
+        // Lisensi lokal hilang (HP baru / update): pulihkan dari server kalau sesi email aktif.
+        if (!status.aktif && teacherEmail) {
           try {
             const lookup = await licenseService.lookupByEmail(teacherEmail.toLowerCase().trim());
             const licenseData = lookup.found ? { tanggal_berakhir: lookup.tanggalBerakhir, tier: lookup.tier } : null;
@@ -184,6 +184,11 @@ export function PengaturanPage() {
                 tier: licenseData.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO,
               };
               await licenseRepo.save(license);
+              const t = await teacherRepo.get();
+              if (t && t.tier !== license.tier) {
+                await teacherRepo.update(t.id, { ...t, tier: license.tier ?? Tier.PRO });
+                await refreshTeacher();
+              }
               if (!cancelled) {
                 const updatedStatus = await licenseService.getStatus(teacherId);
                 setLicenseInfo(updatedStatus);
