@@ -30,7 +30,7 @@ const intIn = (v, min, max) => {
 // Satu admin untuk dua aplikasi; tabel licenses/devices dipakai bersama dan dibedakan per produk.
 const PRODUCTS = {
   siswa: { prefix: "BGY-PS", tiers: ["PLUS", "PRO"], price: { PLUS: 17000, PRO: 32000 } },
-  guru: { prefix: "BGY-PG", tiers: ["PRO"], price: { PRO: 15000 } },
+  guru: { prefix: "BGY-PG", tiers: ["PLUS", "PRO"], price: { PLUS: 27000, PRO: 51000 } },
 };
 const productOf = (body) => (body.product === "guru" ? "guru" : "siswa");
 const GURU_DEV = "guru:%"; // perangkat Guru di tabel devices diberi awalan "guru:"
