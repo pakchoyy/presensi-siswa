@@ -55,6 +55,7 @@ async function listDevices(supabase, profileId) {
     .from("devices")
     .select("id, device_id, device_name, last_active_at")
     .eq("user_id", profileId)
+    .not("device_id", "like", "guru:%") // perangkat Presensi Guru punya jatah sendiri
     .order("last_active_at", { ascending: false });
   return data || [];
 }
