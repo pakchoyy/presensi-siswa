@@ -90,6 +90,10 @@ const SETTING_DEFAULTS = {
   affiliate_bonus_days_plus: 12,
   affiliate_commission_pro: 2500,
   affiliate_bonus_days_pro: 30,
+  affiliate_commission_guru_plus: 1500,
+  affiliate_bonus_days_guru_plus: 12,
+  affiliate_commission_guru_pro: 3000,
+  affiliate_bonus_days_guru_pro: 30,
   affiliate_min_withdraw: 20000,
   affiliate_cap_per_semester: 6,
 };
@@ -104,13 +108,13 @@ export async function getSettings(supabase) {
   return out;
 }
 
-async function activeLicense(supabase, email) {
+async function activeLicense(supabase, email, product = "siswa") {
   const { data } = await supabase
     .from("licenses")
     .select("id, tier, tanggal_berakhir")
     .eq("email", email)
     .eq("status", "digunakan")
-    .eq("product", "siswa")
+    .eq("product", product)
     .order("tanggal_berakhir", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -119,6 +123,22 @@ async function activeLicense(supabase, email) {
 
 const isPro = (lic) => !!lic && (lic.tier || "PRO") === "PRO";
 
+// Affiliate berlaku lintas produk: pemilik kode cukup PRO aktif di Siswa ATAU Guru.
+async function ownerIsPro(supabase, email) {
+  const [s, g] = await Promise.all([activeLicense(supabase, email, "siswa"), activeLicense(supabase, email, "guru")]);
+  return isPro(s) || isPro(g);
+}
+
+/** Nilai bonus per produk & paket pembeli (dipakai juga oleh Presensi Guru). */
+export function rewardTable(cfg) {
+  return {
+    PLUS: { commission: cfg.affiliate_commission_plus, days: cfg.affiliate_bonus_days_plus },
+    PRO: { commission: cfg.affiliate_commission_pro, days: cfg.affiliate_bonus_days_pro },
+    GURU_PLUS: { commission: cfg.affiliate_commission_guru_plus, days: cfg.affiliate_bonus_days_guru_plus },
+    GURU_PRO: { commission: cfg.affiliate_commission_guru_pro, days: cfg.affiliate_bonus_days_guru_pro },
+  };
+}
+
 async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   const code = String(rawCode || "").toUpperCase().trim();
   if (!code) return null;
@@ -126,13 +146,13 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
   const { data: ref } = await supabase.from("referrals").select("owner_email").eq("code", code).maybeSingle();
   if (!ref) return "invalid";
   if (ref.owner_email === buyerEmail) return "self";
-  // Hanya pembeli baru: email ini belum pernah punya lisensi lain.
-  const { count } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", buyerEmail).eq("status", "digunakan");
+  // Hanya pembeli baru di produk ini: email ini belum pernah punya lisensi Siswa lain.
+  const { count } = await supabase.from("licenses").select("id", { count: "exact", head: true }).eq("email", buyerEmail).eq("status", "digunakan").eq("product", "siswa");
   if ((count || 0) > 1) return "not_new";
   const cfg = await getSettings(supabase);
-  // Affiliate khusus PRO: kode milik pelanggan PLUS (lama) tidak lagi menghasilkan bonus.
-  const lic = await activeLicense(supabase, ref.owner_email);
-  if (!isPro(lic)) return "owner_not_pro";
+  // Affiliate khusus PRO (Siswa atau Guru). Bonus hari ke lisensi Siswa pemilik, kalau tidak ada ke lisensi Guru-nya.
+  if (!(await ownerIsPro(supabase, ref.owner_email))) return "owner_not_pro";
+  const lic = (await activeLicense(supabase, ref.owner_email, "siswa")) || (await activeLicense(supabase, ref.owner_email, "guru"));
   // Besar bonus mengikuti paket pembeli. Cap, tambah hari & komisi dikerjakan atomik di DB (affiliate_credit).
   const isProBuy = buyerTier === "PRO";
   const { data, error } = await supabase.rpc("affiliate_credit", {
@@ -143,7 +163,8 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
     p_days: isProBuy ? cfg.affiliate_bonus_days_pro : cfg.affiliate_bonus_days_plus,
     p_commission: isProBuy ? cfg.affiliate_commission_pro : cfg.affiliate_commission_plus,
     p_cap: cfg.affiliate_cap_per_semester,
-    p_license_id: lic.id,
+    p_license_id: lic?.id ?? null,
+    p_product: "siswa",
   });
   if (error) throw error;
   return data;
@@ -176,10 +197,7 @@ const maskEmail = (e) => {
 async function affiliateInfo(supabase) {
   const cfg = await getSettings(supabase);
   return [200, {
-    rewards: {
-      PLUS: { commission: cfg.affiliate_commission_plus, days: cfg.affiliate_bonus_days_plus },
-      PRO: { commission: cfg.affiliate_commission_pro, days: cfg.affiliate_bonus_days_pro },
-    },
+    rewards: rewardTable(cfg),
     minWithdraw: cfg.affiliate_min_withdraw,
     capPerSemester: cfg.affiliate_cap_per_semester,
   }];
@@ -189,7 +207,7 @@ async function affiliateInfo(supabase) {
 async function affiliate(supabase, body, req) {
   const email = await sessionEmail(supabase, req);
   if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
-  if (!isPro(await activeLicense(supabase, email))) return [403, { error: "Program Affiliate khusus pelanggan PRO aktif", code: "NOT_PRO" }];
+  if (!(await ownerIsPro(supabase, email))) return [403, { error: "Program Affiliate khusus pelanggan PRO aktif", code: "NOT_PRO" }];
   let { data: row } = await supabase.from("referrals").select("code").eq("owner_email", email).maybeSingle();
   for (let i = 0; !row && i < 5; i++) {
     const code = "PY-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
@@ -201,24 +219,22 @@ async function affiliate(supabase, body, req) {
   const cfg = await getSettings(supabase);
   const since = new Date(Date.now() - SEMESTER_MS).toISOString();
   const [{ data: rewards }, { data: ledger }] = await Promise.all([
-    supabase.from("referral_rewards").select("buyer_email, buyer_tier, days, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(100),
-    supabase.from("affiliate_ledger").select("type, amount, status, buyer_email, created_at").eq("owner_email", email).order("created_at", { ascending: false }).limit(500),
+    supabase.from("referral_rewards").select("buyer_email, buyer_tier, days, created_at, product").eq("owner_email", email).order("created_at", { ascending: false }).limit(100),
+    supabase.from("affiliate_ledger").select("type, amount, status, buyer_email, created_at, product").eq("owner_email", email).order("created_at", { ascending: false }).limit(500),
   ]);
   const bal = balanceOf(ledger);
   return [200, {
     code: row.code,
     email,
     referrals: (rewards || []).map((r) => {
-      const earn = (ledger || []).find((l) => l.type === "earn" && l.buyer_email === r.buyer_email);
-      return { email: maskEmail(r.buyer_email), tier: r.buyer_tier || null, at: r.created_at, days: r.days || 0, amount: earn?.amount || 0 };
+      const product = r.product || "siswa";
+      const earn = (ledger || []).find((l) => l.type === "earn" && l.buyer_email === r.buyer_email && (l.product || "siswa") === product);
+      return { email: maskEmail(r.buyer_email), tier: r.buyer_tier || null, product, at: r.created_at, days: r.days || 0, amount: earn?.amount || 0 };
     }),
     rewardsThisSemester: (rewards || []).filter((r) => r.created_at >= since).length,
     ...bal,
     hasPending: bal.pending > 0,
-    rewards: {
-      PLUS: { commission: cfg.affiliate_commission_plus, days: cfg.affiliate_bonus_days_plus },
-      PRO: { commission: cfg.affiliate_commission_pro, days: cfg.affiliate_bonus_days_pro },
-    },
+    rewards: rewardTable(cfg),
     minWithdraw: cfg.affiliate_min_withdraw,
     capPerSemester: cfg.affiliate_cap_per_semester,
   }];

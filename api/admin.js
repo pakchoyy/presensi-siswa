@@ -11,7 +11,11 @@ const ADMINS = (process.env.ADMIN_EMAILS || "")
 const adminList = () => ADMINS;
 
 const DAY = 86400000;
-const SETTING_KEYS = ["affiliate_commission_plus", "affiliate_bonus_days_plus", "affiliate_commission_pro", "affiliate_bonus_days_pro", "affiliate_min_withdraw", "affiliate_cap_per_semester"];
+const SETTING_KEYS = [
+  "affiliate_commission_plus", "affiliate_bonus_days_plus", "affiliate_commission_pro", "affiliate_bonus_days_pro",
+  "affiliate_commission_guru_plus", "affiliate_bonus_days_guru_plus", "affiliate_commission_guru_pro", "affiliate_bonus_days_guru_pro",
+  "affiliate_min_withdraw", "affiliate_cap_per_semester",
+];
 
 function getSupabase() {
   const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -427,6 +431,10 @@ async function settingsSet(supabase, body) {
     affiliate_bonus_days_plus: [0, 365],
     affiliate_commission_pro: [0, 1000000],
     affiliate_bonus_days_pro: [0, 365],
+    affiliate_commission_guru_plus: [0, 1000000],
+    affiliate_bonus_days_guru_plus: [0, 365],
+    affiliate_commission_guru_pro: [0, 1000000],
+    affiliate_bonus_days_guru_pro: [0, 365],
     affiliate_min_withdraw: [0, 10000000],
     affiliate_cap_per_semester: [0, 1000],
   };

@@ -9,7 +9,7 @@ import { readRefCode, clearRefCode } from "@/lib/aktivasi-link";
 export interface AffiliateReward { commission: number; days: number }
 
 export interface AffiliateInfo {
-  rewards: { PLUS: AffiliateReward; PRO: AffiliateReward };
+  rewards: { PLUS: AffiliateReward; PRO: AffiliateReward; GURU_PLUS?: AffiliateReward; GURU_PRO?: AffiliateReward };
   minWithdraw: number;
   capPerSemester: number;
 }
@@ -17,7 +17,7 @@ export interface AffiliateInfo {
 export interface AffiliateDashboard extends AffiliateInfo {
   code: string;
   email: string;
-  referrals: { email: string; tier: string | null; at: string; amount: number; days: number }[];
+  referrals: { email: string; tier: string | null; product?: string; at: string; amount: number; days: number }[];
   rewardsThisSemester: number;
   earned: number;
   withdrawn: number;

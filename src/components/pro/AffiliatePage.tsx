@@ -85,6 +85,11 @@ export function AffiliatePage() {
         <Benefit icon={<Wallet size={18} />} title={`Min. ${rp(info.minWithdraw)}`} sub="saldo bisa ditarik" />
         <Benefit icon={<Users size={18} />} title={`${info.capPerSemester}× / semester`} sub="maks. bonus per semester" />
       </div>
+      {info.rewards.GURU_PRO && (
+        <p className="text-[0.74rem] text-[var(--text-light)] -mt-1 mb-3">
+          Kode yang sama juga berlaku di <b>Presensi Yuk | Guru</b>: pembeli Guru PLUS {rp(info.rewards.GURU_PLUS?.commission ?? 0)} + {info.rewards.GURU_PLUS?.days ?? 0} hari · Guru PRO {rp(info.rewards.GURU_PRO.commission)} + {info.rewards.GURU_PRO.days} hari.
+        </p>
+      )}
 
       {/* Cara kerja */}
       <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] p-[14px] mb-3">
@@ -205,7 +210,7 @@ export function AffiliatePage() {
                     <span className="min-w-0">
                       <span className="block text-[var(--text)] font-medium truncate">{r.email}</span>
                       <span className="flex items-center gap-2 text-[var(--text-light)] text-[0.68rem]">
-                        {r.tier && <span className="px-[6px] py-[1px] rounded-full bg-[#0ea5a0]/12 text-[#0ea5a0] font-bold">{r.tier}</span>}
+                        {r.tier && <span className="px-[6px] py-[1px] rounded-full bg-[#0ea5a0]/12 text-[#0ea5a0] font-bold">{r.product === "guru" ? "Guru " : ""}{r.tier}</span>}
                         {tgl(r.at)}
                       </span>
                     </span>

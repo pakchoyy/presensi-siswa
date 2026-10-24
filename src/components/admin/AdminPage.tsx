@@ -120,9 +120,8 @@ export default function AdminPage() {
               {tab === "summary" && <SummaryTab flash={flash} go={setTab} />}
               {tab === "users" && <UsersTab flash={flash} />}
               {tab === "codes" && <CodesTab flash={flash} />}
-              {tab === "affiliate" && (product === "guru"
-                ? <div className={card}><div className="text-[0.8rem] text-[var(--text-light)]">Program Affiliate saat ini khusus Presensi Siswa.</div></div>
-                : <AffiliateTab flash={flash} />)}
+              {/* Satu kode & satu saldo affiliate untuk Siswa + Guru. */}
+              {tab === "affiliate" && <AffiliateTab flash={flash} />}
               {tab === "settings" && <><AnnouncementsCard flash={flash} /><SettingsTab flash={flash} /></>}
             </div>
           </>
@@ -563,6 +562,10 @@ const SETTING_FIELDS: { key: string; label: string; hint: string }[] = [
   { key: "affiliate_bonus_days_plus", label: "Bonus hari pembeli PLUS", hint: "Ditambahkan ke lisensi PRO pemilik kode" },
   { key: "affiliate_commission_pro", label: "Komisi pembeli PRO (Rp)", hint: "Masuk ke saldo affiliate tiap pembeli PRO baru" },
   { key: "affiliate_bonus_days_pro", label: "Bonus hari pembeli PRO", hint: "Ditambahkan ke lisensi PRO pemilik kode" },
+  { key: "affiliate_commission_guru_plus", label: "Komisi pembeli Guru PLUS (Rp)", hint: "Presensi Guru — tiap pembeli PLUS baru" },
+  { key: "affiliate_bonus_days_guru_plus", label: "Bonus hari pembeli Guru PLUS", hint: "Presensi Guru — ditambahkan ke lisensi pemilik kode" },
+  { key: "affiliate_commission_guru_pro", label: "Komisi pembeli Guru PRO (Rp)", hint: "Presensi Guru — tiap pembeli PRO baru" },
+  { key: "affiliate_bonus_days_guru_pro", label: "Bonus hari pembeli Guru PRO", hint: "Presensi Guru — ditambahkan ke lisensi pemilik kode" },
   { key: "affiliate_min_withdraw", label: "Minimal penarikan (Rp)", hint: "Saldo minimal agar tombol Tarik Dana aktif" },
   { key: "affiliate_cap_per_semester", label: "Batas bonus per semester", hint: "Maksimal pembeli yang memberi bonus per 180 hari" },
 ];
