@@ -103,6 +103,26 @@ export const licenseService = {
     }
   },
 
+  /** Pakai kode teman setelah aktivasi (sekali, maks 7 hari). Butuh sesi verifikasi email. */
+  async addRef(ref: string): Promise<{ ok: boolean; message: string; code?: string }> {
+    try {
+      const { ok, data } = await callLicenseApi({ action: "add_ref", ref: ref.toUpperCase().trim() });
+      return { ok: ok && !!data.ok, message: data.message || data.error || "Kode teman tidak bisa dipakai", code: data.code };
+    } catch {
+      return { ok: false, message: "Gagal mengirim. Periksa koneksi internet." };
+    }
+  },
+
+  /** Saldo bonus milik email yang sedang login (pembeli maupun affiliate). */
+  async getSaldo(): Promise<{ saldo: number; pending: number; minWithdraw: number; refUsed: boolean } | null> {
+    try {
+      const { ok, data } = await callLicenseApi({ action: "saldo" });
+      return ok ? data : null;
+    } catch {
+      return null;
+    }
+  },
+
   /** Ajukan penarikan seluruh saldo komisi. */
   async requestWithdraw(nama: string, tujuan: string): Promise<{ ok: boolean; amount?: number; error?: string }> {
     try {

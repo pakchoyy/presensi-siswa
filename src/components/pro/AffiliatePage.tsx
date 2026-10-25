@@ -56,15 +56,15 @@ export function AffiliatePage() {
 
   const link = dash ? `${APP_URL}/?ref=${dash.code}` : "";
   const pesan = dash
-    ? `Saya pakai Presensi Yuk buat absen siswa, praktis banget. Coba gratis 30 hari: ${link}\nKalau upgrade, masukkan kode *${dash.code}* saat aktivasi ya.`
+    ? `Saya pakai Presensi Yuk buat absen siswa, praktis banget. Coba gratis 30 hari: ${link}\nKalau upgrade, masukkan kode *${dash.code}* saat aktivasi, kamu juga dapat saldo bonus.`
     : "";
 
   const steps = [
     "Berlangganan PRO, lalu buka halaman ini dan verifikasi email.",
     "Salin kode affiliate kamu atau bagikan lewat WhatsApp.",
-    "Guru baru membeli PLUS/PRO dan memasukkan kodemu saat aktivasi (atau membuka link ajakanmu).",
+    "Guru baru membeli PLUS/PRO dan memasukkan kodemu saat aktivasi (atau membuka link ajakanmu). Temanmu dapat saldo setengah dari komisimu.",
     `Kamu langsung dapat komisi + bonus masa aktif PRO. Pembeli PLUS: ${rp(info.rewards.PLUS.commission)} + ${info.rewards.PLUS.days} hari · Pembeli PRO: ${rp(info.rewards.PRO.commission)} + ${info.rewards.PRO.days} hari.`,
-    `Saldo minimal ${rp(info.minWithdraw)} bisa ditarik — tekan Tarik Dana, admin transfer lewat WhatsApp.`,
+    `Saldo minimal ${rp(info.minWithdraw)} bisa ditarik. Tekan Tarik Dana, admin transfer lewat WhatsApp.`,
   ];
 
   return (
@@ -312,6 +312,59 @@ function WithdrawSheet({ dash, defaultName, onClose, onDone }: { dash: Affiliate
           {busy ? "Mengajukan..." : "Ajukan & kirim ke WhatsApp admin"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Kartu kecil di Pengaturan: pakai kode teman setelah aktivasi, lihat & tarik saldo bonus pembeli. */
+export function KodeTeman({ email }: { email: string }) {
+  const { toast } = useToast();
+  const [info, setInfo] = useState<{ saldo: number; pending: number; minWithdraw: number; refUsed: boolean } | null>(null);
+  const [ref, setRef] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const load = () => licenseService.getSaldo().then(setInfo);
+  useEffect(() => { load(); }, []);
+
+  const pakai = async () => {
+    if (!/^PY-[A-Z0-9]{6}$/i.test(ref.trim())) { toast("Format kode teman: PY-XXXXXX"); return; }
+    setBusy(true);
+    const r = await licenseService.addRef(ref);
+    setBusy(false);
+    toast(r.code === "NO_SESSION" ? "Verifikasi email dulu lewat Hubungkan ke cloud." : r.message);
+    if (r.ok) { setRef(""); load(); }
+  };
+
+  if (!info) return null; // belum verifikasi email: kartu tidak tampil
+  const rp = (n: number) => "Rp" + n.toLocaleString("id-ID");
+  return (
+    <div className="border-t border-[var(--border)] pt-3 mb-3">
+      {!info.refUsed && (
+        <>
+          <div className="text-[0.72rem] font-bold text-[var(--text)] mb-1">Punya kode teman?</div>
+          <div className="text-[0.66rem] text-[var(--text-light)] mb-2">Bisa dipakai sekali, paling lambat 7 hari setelah aktivasi. Kamu dapat saldo setengah komisi temanmu.</div>
+          <div className="flex gap-2 mb-2">
+            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="PY-XXXXXX" maxLength={9} className="flex-1 min-w-0 px-[10px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[8px] text-[0.82rem] text-[var(--text)] bg-[var(--input-bg)] outline-none uppercase font-[inherit]" />
+            <button onClick={pakai} disabled={busy} className="px-4 rounded-[8px] text-white font-bold text-[0.8rem] border-none cursor-pointer disabled:opacity-60" style={{ background: "#0ea5a0" }}>{busy ? "..." : "Pakai"}</button>
+          </div>
+        </>
+      )}
+      {(info.saldo > 0 || info.pending > 0) && (
+        <div className="text-[0.74rem] text-[var(--text)]">
+          Saldo bonus <b>{rp(info.saldo)}</b>{info.pending > 0 && <> · {rp(info.pending)} sedang diproses</>}
+          {info.saldo >= info.minWithdraw
+            ? <button onClick={() => setShowWithdraw(true)} className="ml-2 text-[#16a34a] font-bold bg-transparent border-none cursor-pointer underline">Tarik</button>
+            : <div className="text-[0.66rem] text-[var(--text-light)] mt-1">Bisa ditarik setelah mencapai {rp(info.minWithdraw)}.</div>}
+        </div>
+      )}
+      {showWithdraw && (
+        <WithdrawSheet
+          dash={{ email, code: "-", saldo: info.saldo } as AffiliateDashboard}
+          defaultName=""
+          onClose={() => setShowWithdraw(false)}
+          onDone={() => { setShowWithdraw(false); load(); }}
+        />
+      )}
     </div>
   );
 }

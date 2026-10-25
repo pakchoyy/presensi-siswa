@@ -16,6 +16,7 @@ import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
 import { generateId, getActiveDays } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { OtpVerify } from "@/components/auth/OtpVerify";
+import { KodeTeman } from "@/components/pro/AffiliatePage";
 import {
   Settings,
   ArrowUpCircle,
@@ -380,7 +381,7 @@ export function PengaturanPage() {
       syncService.resetSyncState();
       const downloaded = await syncService.downloadAll(cloudUser.email);
       if (downloaded > 0) {
-        toast(`✅ ${downloaded} data dimuat — menyegarkan tampilan…`, "success");
+        toast(`✅ ${downloaded} data dimuat, menyegarkan tampilan…`, "success");
         setTimeout(() => window.location.reload(), 1500);
       } else {
         toast("⚠️ Tidak ada data baru di cloud untuk ditarik", "info");
@@ -542,7 +543,7 @@ export function PengaturanPage() {
       try {
         const downloaded = await syncService.downloadAll(emailAddress);
         if (downloaded > 0) {
-          toast(`✅ ${downloaded} data dimuat — menyegarkan tampilan…`);
+          toast(`✅ ${downloaded} data dimuat, menyegarkan tampilan…`);
         } else {
           // Cloud masih kosong: data yang sudah ada di HP ini jadi data awal akun.
           const uploaded = await syncService.initialUpload(emailAddress);
@@ -744,7 +745,7 @@ export function PengaturanPage() {
         ) : (
           <div className="mb-3 text-[0.74rem] text-[var(--text)]">
             {trialLeft > 0
-              ? <>Kamu sedang <b>coba PRO gratis</b> — tersisa <b>{trialLeft} hari</b>. Setelah itu otomatis jadi FREE ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa), data tetap aman.</>
+              ? <>Kamu sedang <b>coba PRO gratis</b>, tersisa <b>{trialLeft} hari</b>. Setelah itu otomatis jadi FREE ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa), data tetap aman.</>
               : <>Kamu memakai <b>FREE</b> ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa). Pilih PLUS atau PRO untuk kelas &amp; siswa lebih banyak.</>}
             {trialLeft === 0 && isCloudConnected && (
               <div className="mt-2 p-2 rounded-lg bg-[#dc2626]/10 text-[#b91c1c] text-[0.72rem] font-semibold">
@@ -754,6 +755,8 @@ export function PengaturanPage() {
           </div>
         )}
 
+        {isPaid && <KodeTeman email={teacher?.email || ""} />}
+
         {realTier !== Tier.PRO && (
           <button
             onClick={() => setActivePage(PageName.UPGRADE)}
@@ -761,7 +764,7 @@ export function PengaturanPage() {
             style={{ background: tier === Tier.PLUS ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #0ea5a0, #0d7a8a, #2d6a7f)" }}
           >
             <ArrowUpCircle size={15} />
-            {tier === Tier.PLUS ? `Upgrade ke PRO — ${PRO_PRICE}` : `Lihat paket — mulai ${PLUS_PRICE}`}
+            {tier === Tier.PLUS ? `Upgrade ke PRO, ${PRO_PRICE}` : `Lihat paket, mulai ${PLUS_PRICE}`}
           </button>
         )}
 
@@ -1058,7 +1061,7 @@ export function PengaturanPage() {
                   }
                 }
                 window.dispatchEvent(new Event("storage"));
-                toast(newVal ? "✅ Mode QR: ON — Auto Hadir dimatikan, bisa dinyalakan lagi" : "Mode QR: OFF");
+                toast(newVal ? "✅ Mode QR aktif. Auto Hadir dimatikan, bisa dinyalakan lagi" : "Mode QR: OFF");
               }}
               className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
                 !canQrMode ? "opacity-40 bg-[var(--border)]" : (qrMode ? "bg-[#0ea5a0]" : "bg-[var(--border)]")
@@ -1140,7 +1143,7 @@ export function PengaturanPage() {
                 }
               }
               window.dispatchEvent(new Event("storage"));
-              toast(newVal ? "✅ Mode PJJ: ON — kirim link ke siswa" : "Mode PJJ: OFF");
+              toast(newVal ? "✅ Mode PJJ aktif. Kirim link ke siswa" : "Mode PJJ: OFF");
             }}
             className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
               !canPjjMode ? "opacity-40 bg-[var(--border)]" : (pjjMode ? "bg-[#8b5cf6]" : "bg-[var(--border)]")
@@ -1208,7 +1211,7 @@ export function PengaturanPage() {
             <div className="flex items-center gap-2">
               <Smartphone size={15} className="text-[#0ea5a0]" />
               <span className="text-[0.8rem] font-bold text-[var(--text)]">
-                Cloud Sync — {devices.length} Device
+                Sinkron cloud: {devices.length} perangkat
               </span>
             </div>
           </div>
@@ -1257,7 +1260,7 @@ export function PengaturanPage() {
             </div>
           ) : (
             <div className="text-[0.68rem] text-[#991b1b] mb-3 p-2 bg-[#fef2f2] border border-[#fecaca] rounded-lg">
-              ⚠️ <b>Belum ada sinkron yang berhasil.</b> Data masih di HP ini — jangan keluar dulu.
+              ⚠️ <b>Belum ada sinkron yang berhasil.</b> Data masih di HP ini, jangan keluar dulu.
             </div>
           )}
 

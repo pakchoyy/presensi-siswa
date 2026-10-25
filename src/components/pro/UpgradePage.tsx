@@ -35,12 +35,12 @@ const WA_NUMBER = "6289530713597";
 const COMPARE_ROWS: [string, string, string, string][] = [
   ["Kelas", "1", "4", "∞"],
   ["Siswa / kelas", "10", "25", "∞"],
-  ["Cloud sync", "—", "1 HP", "3 perangkat"],
+  ["Simpan di cloud", "—", "1 HP", "3 perangkat"],
   ["Mode PJJ", "—", "✓", "✓"],
   ["Mode QR", "—", "—", "✓"],
-  ["Kalender edit", "—", "—", "✓"],
+  ["Atur kalender sendiri", "—", "—", "✓"],
   ["Logo di laporan", "—", "✓", "✓"],
-  ["Program Affiliate (komisi + bonus masa aktif)", "—", "—", "✓"],
+  ["Program ajak teman (komisi + bonus hari)", "—", "—", "✓"],
   ["Bebas iklan", "—", "—", "✓"],
 ];
 
@@ -109,7 +109,7 @@ export function UpgradePage() {
     await refreshTeacher();
     localStorage.setItem("presensi_cloud_email", normalizedEmail);
     clearAktivasiLink();
-    toast(`✅ Lisensi aktif — kamu sekarang ${resolvedTier} 🎉`);
+    toast(`✅ Lisensi aktif. Kamu sekarang ${resolvedTier} 🎉`);
     setShowConfetti(true);
     syncService.initialUpload(normalizedEmail).catch(() => {});
     setTimeout(() => {
@@ -160,12 +160,12 @@ export function UpgradePage() {
 
   // Hero text per tier
   const heroSub = tier === Tier.PRO
-    ? "Semua fitur sudah terbuka. Terima kasih sudah pakai PRO!"
+    ? "Semua fitur PRO sudah aktif. Terima kasih sudah berlangganan."
     : tier === Tier.PLUS
-      ? "Kamu di tier PLUS. Upgrade PRO untuk unlimited + Mode QR."
+      ? "Kamu sedang pakai PLUS. Pindah ke PRO untuk kelas tanpa batas dan scan kartu QR."
       : trialLeft > 0
-        ? `Coba PRO gratis — tersisa ${trialLeft} hari. Setelah itu otomatis jadi FREE.`
-        : "Kamu di FREE (1 kelas, 10 siswa). Pilih paket untuk kelas & siswa lebih banyak.";
+        ? `Coba PRO gratis, tersisa ${trialLeft} hari. Setelah itu otomatis jadi FREE.`
+        : "Kamu sedang pakai FREE: 1 kelas, 10 siswa. Pilih paket kalau butuh lebih.";
 
   const badgeStyle = tier === Tier.PRO
     ? { bg: "rgba(245,158,11,0.18)", border: "#f59e0b", text: "#fbbf24" }
@@ -186,7 +186,7 @@ export function UpgradePage() {
           Pilih paket yang pas buat sekolahmu
         </h2>
         <p className="text-[0.78rem] opacity-85 leading-relaxed mb-3">
-          Bayar per semester (6 bulan). User PRO lama tetap PRO sampai masa berlaku habis.
+          Bayar per semester (6 bulan). Pengguna PRO lama tetap PRO sampai masa berlakunya habis.
         </p>
         <div
           className="inline-flex items-center gap-[6px] px-[10px] py-[5px] rounded-full text-[0.72rem] font-bold border"
@@ -236,12 +236,12 @@ export function UpgradePage() {
       {/* FREE card (muted if not FREE) */}
       <TierCard
         name="FREE"
-        tagline="Gratis selamanya — 30 hari pertama coba PRO"
+        tagline="Gratis selamanya. 30 hari pertama bisa pakai semua fitur PRO."
         price={null}
         bullets={[
           "1 kelas · 10 siswa",
-          "Presensi harian + status",
-          "Export PDF/Excel basic",
+          "Presensi harian dengan status H, S, I, A",
+          "Unduh laporan PDF dan Excel",
         ]}
         accentColor="#64748b"
         isCurrent={tier === Tier.FREE}
@@ -252,15 +252,15 @@ export function UpgradePage() {
       {/* PLUS card */}
       <TierCard
         name="PLUS"
-        tagline="Buat sekolah kecil, cloud + logo laporan"
+        tagline="Untuk sekolah kecil: data di cloud dan logo di laporan"
         price={PLUS_PRICE}
         perMonth="setara Rp2.800/bulan"
         bullets={[
           "4 kelas · 25 siswa per kelas (= 100 siswa total)",
-          "Cloud sync 1 perangkat — data aman di internet",
+          "Data tersimpan di cloud, aman kalau HP hilang",
           "Logo sekolah di laporan PDF/Excel",
-          "Backup otomatis harian",
-          "Mode PJJ (link absen mandiri untuk siswa)",
+          "Backup otomatis tiap hari",
+          "Siswa bisa absen sendiri lewat link (PJJ)",
         ]}
         accentColor="#0ea5a0"
         isCurrent={tier === Tier.PLUS}
@@ -272,18 +272,18 @@ export function UpgradePage() {
         }
       />
 
-      {/* PRO card — highlighted */}
+      {/* PRO card: highlighted */}
       <TierCard
         name="PRO"
         tagline="Semua di PLUS, plus:"
         price={PRO_PRICE}
         perMonth="setara Rp5.300/bulan"
         bullets={[
-          "Unlimited kelas & siswa — buat sekolah besar",
-          "Cloud sync 3 perangkat (HP + laptop + tablet)",
-          "Mode QR — scan kartu siswa untuk absen",
-          "Backup manual kapan saja",
-          "Priority WhatsApp support",
+          "Kelas dan siswa tanpa batas",
+          "Satu data di 3 perangkat: HP, laptop, tablet",
+          "Absen cepat dengan scan kartu QR siswa",
+          "Backup kapan saja",
+          "Dibantu duluan lewat WhatsApp",
         ]}
         accentColor="#f59e0b"
         isCurrent={tier === Tier.PRO}
@@ -297,11 +297,11 @@ export function UpgradePage() {
         showCrown
       />
 
-      {/* Copywriting PRO — jujur, tanpa klaim berlebihan */}
+      {/* Copywriting PRO: jujur, tanpa klaim berlebihan */}
       {tier !== Tier.PRO && (
         <div className="rounded-xl p-4 mb-3 border border-[#f59e0b]/40 bg-[rgba(245,158,11,0.08)]">
           <div className="text-[0.9rem] font-extrabold text-[var(--text)] mb-1">
-            Cuma Rp5.300 sebulan — kurang dari segelas es teh seminggu.
+            Cuma Rp5.300 sebulan, kurang dari segelas es teh seminggu.
           </div>
           <p className="text-[0.74rem] text-[var(--text-light)] leading-relaxed">
             Dengan {PRO_PRICE.replace("/semester", "")} per semester, semua kelas & siswa masuk tanpa batas, data tersimpan di cloud
@@ -315,7 +315,7 @@ export function UpgradePage() {
       <div className="flex items-start gap-2 bg-[var(--input-bg)] rounded-xl p-3 mb-3 text-[0.7rem] text-[var(--text-light)] leading-relaxed">
         <ShieldCheck size={15} className="text-[#0ea5a0] flex-shrink-0 mt-[1px]" />
         <div>
-          Bisa upgrade atau downgrade kapan saja. Pembayaran satu kali per semester, tidak auto-renew.
+          Bayar sekali per semester, tanpa tagihan otomatis.
         </div>
       </div>
 
@@ -382,13 +382,13 @@ export function UpgradePage() {
               type="text"
               value={refCode}
               onChange={(e) => setRefCode(e.target.value.toUpperCase())}
-              placeholder="Kode affiliate (opsional), mis. PY-AB12CD"
+              placeholder="Kode teman (opsional), mis. PY-AB12CD"
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={9}
               className="w-full px-[12px] py-[10px] rounded-lg border-[1.5px] border-dashed border-[var(--border)] focus:border-[#0ea5a0] bg-[var(--input-bg)] text-[0.8rem] mb-2 outline-none text-[var(--text)] font-mono tracking-wide"
             />
-            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Isi email, kosongkan kode — kami kirim kode verifikasi ke email itu.</p>
+            <p className="text-[0.66rem] text-[var(--text-light)] mb-2">Ganti HP atau lupa kode? Isi email, kosongkan kode, lalu kami kirim kode verifikasi ke email itu.</p>
             <button
               onClick={handleActivate}
               disabled={checking}
