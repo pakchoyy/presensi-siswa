@@ -113,6 +113,7 @@ export function PengaturanPage() {
 
   const [editSekolah, setEditSekolah] = useState(false);
   const [editNamaSekolah, setEditNamaSekolah] = useState(school?.nama || "");
+  const [editNamaGuru, setEditNamaGuru] = useState(teacher?.nama || "");
   const [editJenjang, setEditJenjang] = useState<Jenjang>(school?.jenjang || Jenjang.SD);
   const [savingSekolah, setSavingSekolah] = useState(false);
   
@@ -596,6 +597,10 @@ export function PengaturanPage() {
   };
 
   const handleSaveSekolah = async () => {
+    if (!editNamaGuru.trim()) {
+      toast("Nama kamu tidak boleh kosong");
+      return;
+    }
     if (!school || !editNamaSekolah.trim()) {
       toast("Nama sekolah tidak boleh kosong");
       return;
@@ -610,8 +615,11 @@ export function PengaturanPage() {
         jenjang: editJenjang,
         diubahPada: Date.now()
       });
+      if (teacher && editNamaGuru.trim() !== teacher.nama) {
+        await teacherRepo.update(teacher.id, { ...teacher, nama: editNamaGuru.trim(), diubahPada: Date.now() });
+      }
       
-      toast("✅ Nama sekolah diperbarui");
+      toast("✅ Profil diperbarui");
       setEditSekolah(false);
       
       setTimeout(() => window.location.reload(), 500);
@@ -642,7 +650,16 @@ export function PengaturanPage() {
             {teacher?.nama?.charAt(0)?.toUpperCase() || "G"}
           </div>
           <div>
-            <div className="text-[0.85rem] font-bold text-[var(--text)]">{teacher?.nama}</div>
+            <div className="text-[0.85rem] font-bold text-[var(--text)] flex items-center gap-2">
+              {teacher?.nama}
+              <button
+                onClick={() => { setEditSekolah(true); setEditNamaGuru(teacher?.nama || ""); setEditNamaSekolah(school?.nama || ""); setEditJenjang(school?.jenjang || Jenjang.SD); }}
+                className="text-[#0ea5a0] bg-transparent border-none cursor-pointer p-0"
+                aria-label="Ubah nama"
+              >
+                <PenLine size={13} />
+              </button>
+            </div>
             <div className="text-[0.7rem] text-[var(--text-light)]">{teacher?.email}</div>
           </div>
           <div className="ml-auto">
@@ -664,8 +681,9 @@ export function PengaturanPage() {
         <div className="text-[0.72rem] text-[var(--text-light)] flex items-center gap-2">
           Sekolah: {school?.nama || "-"} ({school?.jenjang || "-"})
           <button
-            onClick={() => { setEditSekolah(true); setEditNamaSekolah(school?.nama || ""); setEditJenjang(school?.jenjang || Jenjang.SD); }}
+            onClick={() => { setEditSekolah(true); setEditNamaGuru(teacher?.nama || ""); setEditNamaSekolah(school?.nama || ""); setEditJenjang(school?.jenjang || Jenjang.SD); }}
             className="text-[#0ea5a0] bg-transparent border-none cursor-pointer p-0"
+            aria-label="Ubah sekolah"
           >
             <PenLine size={13} />
           </button>
@@ -675,7 +693,17 @@ export function PengaturanPage() {
       {editSekolah && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#0ea5a0] p-[14px] mb-3">
           <div className="text-[0.78rem] font-bold flex items-center gap-[6px] mb-[10px]">
-            <School size={15} /> Edit Sekolah
+            <School size={15} /> Edit Profil & Sekolah
+          </div>
+          <div className="mb-3">
+            <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">Nama Kamu</label>
+            <input
+              type="text"
+              value={editNamaGuru}
+              onChange={(e) => setEditNamaGuru(e.target.value)}
+              maxLength={80}
+              className="w-full px-[11px] py-[9px] border-[1.5px] border-[var(--border)] rounded-[9px] text-[0.85rem] bg-[var(--input-bg)] outline-none focus:border-[#0ea5a0] font-[inherit]"
+            />
           </div>
           <div className="mb-3">
             <label className="block text-[0.68rem] font-bold text-[var(--text-light)] mb-[5px] uppercase">Nama Sekolah</label>

@@ -319,7 +319,7 @@ function WithdrawSheet({ dash, defaultName, onClose, onDone }: { dash: Affiliate
 /** Kartu kecil di Pengaturan: pakai kode teman setelah aktivasi, lihat & tarik saldo bonus pembeli. */
 export function KodeTeman({ email }: { email: string }) {
   const { toast } = useToast();
-  const [info, setInfo] = useState<{ saldo: number; pending: number; minWithdraw: number; refUsed: boolean } | null>(null);
+  const [info, setInfo] = useState<{ saldo: number; pending: number; minWithdraw: number; refUsed: boolean; refOpen?: boolean } | null>(null);
   const [ref, setRef] = useState("");
   const [busy, setBusy] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -339,7 +339,7 @@ export function KodeTeman({ email }: { email: string }) {
   const rp = (n: number) => "Rp" + n.toLocaleString("id-ID");
   return (
     <div className="border-t border-[var(--border)] pt-3 mb-3">
-      {!info.refUsed && (
+      {!info.refUsed && info.refOpen !== false && (
         <>
           <div className="text-[0.72rem] font-bold text-[var(--text)] mb-1">Punya kode teman?</div>
           <div className="text-[0.66rem] text-[var(--text-light)] mb-2">Bisa dipakai sekali, paling lambat 7 hari setelah aktivasi. Kamu dapat saldo setengah komisi temanmu.</div>

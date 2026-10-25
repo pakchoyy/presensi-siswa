@@ -386,11 +386,15 @@ async function saldo(supabase, body, req) {
   const email = await sessionEmail(supabase, req);
   if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
   const cfg = await getSettings(supabase);
-  const [{ data: ledger }, { count }] = await Promise.all([
+  const [{ data: ledger }, { count }, { data: first }] = await Promise.all([
     supabase.from("affiliate_ledger").select("type, amount, status").eq("owner_email", email),
     supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("buyer_email", email).eq("product", "siswa"),
+    supabase.from("licenses").select("tanggal_aktivasi").eq("email", email).eq("product", "siswa").eq("status", "digunakan")
+      .order("tanggal_aktivasi", { ascending: true }).limit(1).maybeSingle(),
   ]);
-  return [200, { ...balanceOf(ledger), minWithdraw: cfg.affiliate_min_withdraw, refUsed: !!count }];
+  // Kode teman hanya bisa diisi dalam 7 hari setelah aktivasi pertama (aturan sama dengan add_ref).
+  const refOpen = !count && !!first?.tanggal_aktivasi && Date.now() - first.tanggal_aktivasi <= 7 * 86400000;
+  return [200, { ...balanceOf(ledger), minWithdraw: cfg.affiliate_min_withdraw, refUsed: !!count, refOpen }];
 }
 
 const ACTIONS = { activate, renew, status, restore, affiliate, affiliate_info: affiliateInfo, withdraw, add_ref: addRef, saldo };
