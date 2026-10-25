@@ -2,12 +2,17 @@ import { useEffect, useRef } from "react";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { useSyncDebounce } from "./useSyncDebounce";
 import { useCloudRealtime } from "./useCloudRealtime";
+import { useApp } from "@/contexts/AppContext";
+import { canUse } from "@/lib/features";
 
 const LAST_SYNC_KEY = "presensi_last_sync";
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 menit (hemat kuota, cukup untuk kerja aktif)
 
 export function useAutoSync() {
-  const { cloudEmail, cloudUser, isCloudConnected } = useCloudAuth();
+  const { cloudEmail, cloudUser, isCloudConnected: terhubung } = useCloudAuth();
+  // Masa coba habis tanpa berlangganan: berhenti sinkron (data di HP tetap aman).
+  const { tier } = useApp();
+  const isCloudConnected = terhubung && canUse("cloud_sync", tier);
   const { sync, isSyncing, lastSync } = useSyncDebounce(cloudEmail);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout>>();
 

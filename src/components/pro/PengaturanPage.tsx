@@ -9,7 +9,7 @@ import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PRO_PRICE, PLUS_PRICE } from "@/lib/constants";
-import { canUse, LIMITS, tierLabel, trialDaysRemaining } from "@/lib/features";
+import { canUse, cloudHapusDalamHari, LIMITS, setTrialMulai, tierLabel, TRIAL_DAYS, trialDaysRemaining } from "@/lib/features";
 import { saveLogoutBackup } from "@/services/backup.service";
 import { LICENSE_DURATION_DAYS } from "@/lib/constants";
 import { UpgradePrompt } from "@/components/pro/UpgradePrompt";
@@ -529,11 +529,12 @@ export function PengaturanPage() {
   };
 
   // Dipanggil setelah email terverifikasi (OTP) dan perangkat lolos batas di server.
-  const finishDeviceLogin = async (result: { tier: Tier; tanggalBerakhir: number | null }, emailAddress: string) => {
+  const finishDeviceLogin = async (result: { tier: Tier; tanggalBerakhir: number | null; trial?: boolean }, emailAddress: string) => {
     if (!teacher) return;
     setOtpEmail(null);
     setConnecting(true);
     const foundTier = result.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
+    if (result.trial && result.tanggalBerakhir) setTrialMulai(result.tanggalBerakhir - TRIAL_DAYS * 86400000);
     const licenseData = { tanggal_berakhir: result.tanggalBerakhir };
     try {
       localStorage.setItem("presensi_cloud_email", emailAddress);
@@ -560,7 +561,8 @@ export function PengaturanPage() {
         return;
       }
       
-      const existingLicense = await licenseRepo.getActive(teacher.id);
+      // Masa coba: cloud aktif, tapi paket & lisensi di HP tetap FREE.
+      const existingLicense = result.trial ? true : await licenseRepo.getActive(teacher.id);
       if (!existingLicense) {
         const license: License = {
           id: generateId(),
@@ -577,7 +579,7 @@ export function PengaturanPage() {
 
       await teacherRepo.update(teacher.id, {
         ...teacher,
-        tier: foundTier,
+        tier: result.trial ? teacher.tier : foundTier,
         email: emailAddress,
       });
       
@@ -649,7 +651,7 @@ export function PengaturanPage() {
               </span>
             ) : trialLeft > 0 ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-bold bg-[#f59e0b]/10 text-[#b45309] border border-[#f59e0b]/30">
-                PRO · Trial
+                PRO Trial · sisa {trialLeft} hari
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-bold bg-[var(--input-bg)] text-[var(--text-light)] border border-[var(--border)]">
@@ -744,6 +746,11 @@ export function PengaturanPage() {
             {trialLeft > 0
               ? <>Kamu sedang <b>coba PRO gratis</b> — tersisa <b>{trialLeft} hari</b>. Setelah itu otomatis jadi FREE ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa), data tetap aman.</>
               : <>Kamu memakai <b>FREE</b> ({LIMITS[Tier.FREE].kelas} kelas, {LIMITS[Tier.FREE].siswaPerKelas} siswa). Pilih PLUS atau PRO untuk kelas &amp; siswa lebih banyak.</>}
+            {trialLeft === 0 && isCloudConnected && (
+              <div className="mt-2 p-2 rounded-lg bg-[#dc2626]/10 text-[#b91c1c] text-[0.72rem] font-semibold">
+                Masa coba selesai. Data di cloud akan dihapus dalam {cloudHapusDalamHari()} hari kalau tidak berlangganan. Data di HP tetap aman.
+              </div>
+            )}
           </div>
         )}
 
@@ -799,7 +806,7 @@ export function PengaturanPage() {
               onClick={() => setShowConnect(!showConnect)}
               className="w-full flex items-center justify-between text-[0.72rem] font-bold text-[var(--text)] bg-transparent border-none cursor-pointer p-0"
             >
-              <span className="flex items-center gap-[4px]"><Upload size={13} /> Sudah berlangganan di HP lain? Ambil data dari cloud</span>
+              <span className="flex items-center gap-[4px]"><Upload size={13} /> {trialLeft > 0 ? "Simpan data ke cloud (gratis selama masa coba)" : "Sudah berlangganan di HP lain? Ambil data dari cloud"}</span>
               <span className="text-[var(--text-light)]">{showConnect ? "▲" : "▼"}</span>
             </button>
             {showConnect && (
@@ -1191,11 +1198,11 @@ export function PengaturanPage() {
         )}
       </div>
 
-      {canUse("cloud_sync", realTier) && isCloudConnected && (
+      {canUse("cloud_sync", appTier) && isCloudConnected && (
         <div className="text-[0.66rem] font-extrabold tracking-[0.08em] uppercase text-[var(--text-light)] mt-5 mb-2 px-1">Data & Cloud</div>
       )}
       {/* Cloud Sync (PLUS & PRO) */}
-      {canUse("cloud_sync", realTier) && isCloudConnected && (
+      {canUse("cloud_sync", appTier) && isCloudConnected && (
         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] border-l-4 border-l-[#22c55e] p-[14px] mb-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">

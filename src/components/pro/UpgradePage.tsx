@@ -419,6 +419,7 @@ export function UpgradePage() {
           title="Pulihkan lisensi"
           onConnected={(r, e) => {
             setOtpEmail(null);
+            if (r.trial) { toast("Email ini belum punya lisensi PLUS/PRO. Masukkan kode lisensi untuk aktivasi."); return; }
             return finishActivation(r.tier, r.tanggalBerakhir || Date.now() + LICENSE_DURATION_DAYS * 86400000, e, "EMAIL-RESTORE", false);
           }}
           onClose={() => setOtpEmail(null)}

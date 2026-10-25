@@ -115,6 +115,19 @@ export function isPjjActive(tier: Tier | undefined | null): boolean {
 }
 
 export const TRIAL_DAYS = 30;
+// Data cloud akun masa coba yang tidak berlangganan dihapus server 14 hari setelah masa coba habis.
+export const CLOUD_TENGGANG_HARI = 14;
+
+/** Sisa hari sebelum data cloud masa coba dihapus server (dihitung dari tanggal mulai masa coba). */
+export function cloudHapusDalamHari(): number {
+  const mulai = parseInt(localStorage.getItem(INSTALL_DATE_KEY) || "0", 10) || Date.now();
+  return Math.max(0, Math.ceil((mulai + (TRIAL_DAYS + CLOUD_TENGGANG_HARI) * 86400000 - Date.now()) / 86400000));
+}
+
+/** Samakan tanggal mulai masa coba dengan catatan server (dipakai semua perangkat akun ini). */
+export function setTrialMulai(ms: number): void {
+  if (ms > 0 && ms <= Date.now()) localStorage.setItem(INSTALL_DATE_KEY, String(ms));
+}
 
 /** PRO selama masa coba 30 hari untuk akun FREE; setelah itu tier asli. */
 export function effectiveTier(realTier: Tier | undefined | null): Tier {

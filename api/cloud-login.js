@@ -50,12 +50,17 @@ async function linkProfile(supabase, authId, email, tier) {
   return profile.id;
 }
 
-// Catat awal trial (dari HP) sekali saja, agar admin bisa melihat pengguna trial.
+const TRIAL_MS = 30 * 86400000;
+
+// Catat awal masa coba (dari HP) sekali saja; yang menentukan masa coba adalah nilai di server.
 async function recordTrial(supabase, authId, email, trialMulai) {
-  const ts = Number(trialMulai);
-  if (!Number.isFinite(ts) || ts <= 0 || ts > Date.now()) return;
   const profileId = await linkProfile(supabase, authId, email, "FREE");
-  await supabase.from("profiles").update({ trial_mulai: ts }).eq("id", profileId).is("trial_mulai", null);
+  const ts = Number(trialMulai);
+  if (Number.isFinite(ts) && ts > 0 && ts <= Date.now()) {
+    await supabase.from("profiles").update({ trial_mulai: ts }).eq("id", profileId).is("trial_mulai", null);
+  }
+  const { data } = await supabase.from("profiles").select("trial_mulai").eq("id", profileId).single();
+  return data?.trial_mulai || null;
 }
 
 async function listDevices(supabase, profileId) {
@@ -91,13 +96,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const lic = await activeLicense(supabase, email);
+    let lic = await activeLicense(supabase, email);
     if (!lic) {
-      await recordTrial(supabase, authId, email, body.trialMulai);
-      return res.status(403).json({ error: "Email ini belum punya paket PLUS/PRO yang aktif.", code: "NO_LICENSE" });
+      // Masa coba PRO 30 hari: boleh simpan ke cloud seperti PRO, tanpa mengubah paket akun.
+      const mulai = await recordTrial(supabase, authId, email, body.trialMulai);
+      if (!mulai || mulai + TRIAL_MS <= Date.now()) {
+        return res.status(403).json({ error: "Email ini belum punya paket PLUS/PRO yang aktif.", code: "NO_LICENSE" });
+      }
+      lic = { tier: "PRO", tanggalBerakhir: mulai + TRIAL_MS, trial: true };
     }
 
-    const profileId = await linkProfile(supabase, authId, email, lic.tier);
+    const profileId = await linkProfile(supabase, authId, email, lic.trial ? "FREE" : lic.tier);
     const limit = DEVICE_LIMIT[lic.tier];
 
     // Hapus perangkat lama (pemilik sudah terbukti lewat OTP).
@@ -134,7 +143,7 @@ export default async function handler(req, res) {
       });
     }
     devices = await listDevices(supabase, profileId);
-    return res.status(200).json({ ok: true, profileId, tier: lic.tier, tanggalBerakhir: lic.tanggalBerakhir, limit, deviceCount: devices.length });
+    return res.status(200).json({ ok: true, profileId, tier: lic.tier, tanggalBerakhir: lic.tanggalBerakhir, trial: !!lic.trial, limit, deviceCount: devices.length });
   } catch (e) {
     console.error("cloud-login error:", e);
     return res.status(500).json({ error: "Gagal menghubungkan ke cloud. Coba lagi." });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { bonusTrialUsed, startBonusTrial, BONUS_TRIAL_DAYS } from "@/lib/features";
+import { bonusTrialUsed, startBonusTrial, BONUS_TRIAL_DAYS, cloudHapusDalamHari } from "@/lib/features";
 
 interface Props {
   onLihatPaket: () => void;
@@ -34,6 +34,11 @@ export function TrialEndedModal({ onLihatPaket }: Props) {
         <p className="text-[0.85rem] text-[var(--text-light)] mb-4">
           Sekarang akun Anda FREE (1 kelas, 10 siswa). Data Anda tetap aman dan bisa dilihat.
         </p>
+        {localStorage.getItem("presensi_cloud_email") && (
+          <p className="text-[0.78rem] text-[#b91c1c] font-semibold mb-4">
+            Masa coba selesai. Data di cloud akan dihapus dalam {cloudHapusDalamHari()} hari kalau tidak berlangganan. Data di HP tetap aman.
+          </p>
+        )}
         {bisaBonus && (
           <button
             onClick={ambilBonus}

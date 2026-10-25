@@ -353,7 +353,7 @@ function UsersTab({ flash }: Flash) {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[0.85rem] truncate flex-1">{u.email}</span>
                 <span className={`text-[0.65rem] font-bold px-2 py-[2px] rounded-full ${u.tier === "PRO" ? "bg-[#f59e0b]/15 text-[#d97706]" : "bg-[#0ea5a0]/15 text-[#0ea5a0]"}`}>{u.tier}</span>
-                <span className={`text-[0.65rem] font-bold px-2 py-[2px] rounded-full ${u.aktif ? "bg-[#16a34a]/15 text-[#16a34a]" : "bg-[#dc2626]/15 text-[#dc2626]"}`}>{u.aktif ? "Aktif" : "Expired"}</span>
+                <span className={`text-[0.65rem] font-bold px-2 py-[2px] rounded-full whitespace-nowrap ${u.aktif ? "bg-[#16a34a]/15 text-[#16a34a]" : "bg-[#dc2626]/15 text-[#dc2626]"}`}>{u.tier === "FREE" && u.tanggalBerakhir ? `Trial · sisa ${Math.max(0, Math.ceil((u.tanggalBerakhir - Date.now()) / 86400000))} hari` : u.aktif ? "Aktif" : "Expired"}</span>
               </div>
               <div className="text-[0.72rem] text-[var(--text-light)] mt-1">
                 Aktivasi {tgl(u.tanggalAktivasi)} · Berakhir <b className="text-[var(--text)]">{tgl(u.tanggalBerakhir)}</b> · {u.perangkat} perangkat · {u.jumlahKode} kode

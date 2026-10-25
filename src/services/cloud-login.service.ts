@@ -9,7 +9,7 @@ export interface CloudDevice {
 }
 
 export type ConnectResult =
-  | { ok: true; profileId: string; tier: Tier; tanggalBerakhir: number | null; limit: number; deviceCount: number }
+  | { ok: true; profileId: string; tier: Tier; tanggalBerakhir: number | null; trial?: boolean; limit: number; deviceCount: number }
   | { ok: false; code?: "DEVICE_LIMIT" | "NO_LICENSE" | string; error: string; devices?: CloudDevice[]; limit?: number };
 
 function otpError(message: string): string {

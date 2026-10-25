@@ -12,11 +12,11 @@ import { canUse } from "@/lib/features";
 import { Database, Download, Upload, RotateCcw, AlertTriangle, Cloud, Lock } from "lucide-react";
 
 export function BackupRestorePage() {
-  const { refreshClassrooms, teacher, tier: appTier, realTier } = useApp();
+  const { refreshClassrooms, teacher, tier: appTier } = useApp();
   const { cloudEmail } = useCloudAuth();
   const { toast } = useToast();
   const tier = appTier;
-  const canCloud = canUse("cloud_sync", realTier);
+  const canCloud = canUse("cloud_sync", appTier);
   const canLocal = canUse("backup_local", tier);
   const canManualBackup = canUse("backup_manual", tier);
   const isPRO = canManualBackup; // backward compat
