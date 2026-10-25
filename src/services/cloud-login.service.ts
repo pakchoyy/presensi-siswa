@@ -70,7 +70,12 @@ export const cloudLoginService = {
       deviceName: getDeviceName(),
       trialMulai: Number(localStorage.getItem("bgy_install_date")) || undefined,
     });
-XX, devices: data.devices, limit: data.limit };
+    if (status === 200 && data.ok) {
+      // Sinkron penuh sesudah tersambung: data cloud bisa saja kosong (mis. dihapus setelah masa coba).
+      syncService.resetSyncState();
+      return { ok: true, ...data };
+    }
+    return { ok: false, code: data.code, error: data.error || "Gagal menghubungkan ke cloud.", devices: data.devices, limit: data.limit };
   },
 
   /** Lepas jatah perangkat ini (saat Keluar). */
