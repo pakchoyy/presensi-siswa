@@ -3,6 +3,8 @@ import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
 import { db } from "@/repositories/dexie/db";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
+import { tombstoneRepo } from "@/repositories/dexie/tombstone.repo";
+import { triggerAutoSync } from "@/hooks/useAutoSync";
 import type { AcademicCalendarEntry } from "@/types/entities";
 import { CalendarEntryType, CalendarSource, Tier } from "@/types/enums";
 import { isDayActive } from "@/lib/utils";
@@ -80,6 +82,7 @@ export function KalenderPage() {
       jenis: entryType,
       keterangan: nama,
       sumber: CalendarSource.KUSTOM,
+      diubahPada: Date.now(),
     };
 
     if (editTarget?.id) {
@@ -89,6 +92,7 @@ export function KalenderPage() {
       await db.calendarEntries.put(entry);
       toast("Entry ditambahkan");
     }
+    triggerAutoSync();
     setAddForm(false);
     setEditTarget(null);
     setNewLiburName("");
@@ -106,6 +110,8 @@ export function KalenderPage() {
       return;
     }
     await db.calendarEntries.delete(entry.id);
+    await tombstoneRepo.add("calendarEntries", entry.id);
+    triggerAutoSync();
     toast("Entry dihapus");
     setEditTarget(null);
     await loadEntries();

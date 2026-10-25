@@ -117,6 +117,10 @@ async function cloudDataExists(cloudTable: string, userId: string, localId: numb
   }
 }
 
+// Tarik ulang 10 menit ke belakang: cap waktu ditulis jam HP pengunggah, jadi selisih jam
+// atau sinkron yang tumpang tindih tidak membuat baris terlewat. Baris yang sama dilewati lewat diubah_pada.
+const PULL_OVERLAP_MS = 10 * 60_000;
+
 async function getLocalChanges(since: number): Promise<Record<string, any[]>> {
   const changes: Record<string, any[]> = {};
   for (const table of SYNC_TABLES) {
@@ -188,10 +192,7 @@ export const syncService = {
             });
           } else if (localTimestamp >= existing.timestamp) {
             // Lokal lebih baru → update
-            toUpdate.push({
-              cloudId: existing.cloudId,
-              data: buildCloudRow(table, row, now),
-            });
+            toUpdate.push({ user_id: userId, local_id: row.id, ...buildCloudRow(table, row, now) });
           }
           // else: cloud lebih baru, skip (biarkan cloud data menang)
         }
@@ -209,14 +210,12 @@ export const syncService = {
           }
         }
 
-        for (const item of toUpdate) {
-          const { error } = await supabase
-            .from(cloudTable)
-            .update(item.data)
-            .eq("id", item.cloudId);
+        if (toUpdate.length > 0) {
+          // Satu request untuk semua baris yang berubah (bukan satu per baris).
+          const { error } = await supabase.from(cloudTable).upsert(toUpdate, { onConflict: "user_id,local_id" });
           if (!error) {
-            totalUploaded++;
-            detail[table] = (detail[table] || 0) + 1;
+            totalUploaded += toUpdate.length;
+            detail[table] = (detail[table] || 0) + toUpdate.length;
           } else {
             lastError = `${cloudTable} update: ${error.message}`;
           }
@@ -329,7 +328,7 @@ export const syncService = {
           .from(cloudTable)
           .select("*", { count: "exact", head: true })
           .eq("user_id", userId)
-          .gt("last_synced_at", lastSync);
+          .gt("last_synced_at", lastSync - PULL_OVERLAP_MS);
 
         if (count && count > 0) return true;
       }
@@ -338,7 +337,7 @@ export const syncService = {
         .from("cloud_tombstones")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
-        .gt("deleted_at", lastSync);
+        .gt("deleted_at", lastSync - PULL_OVERLAP_MS);
 
       return (tombCount || 0) > 0;
     } catch {
@@ -394,7 +393,7 @@ export const syncService = {
             const existing = existingMap.get(row.id);
             if (existing) {
               if ((row.diubahPada || 0) >= (existing.diubah_pada || 0)) {
-                toUpdate.push({ ...buildCloudRow(table, row, now), version: existing.version + 1, _eq_id: existing.id });
+                toUpdate.push({ ...buildCloudRow(table, row, now), version: existing.version + 1, user_id: userId, local_id: row.id });
               }
             } else {
               toInsert.push({ ...buildCloudRow(table, row, now), user_id: userId, local_id: row.id });
@@ -410,10 +409,9 @@ export const syncService = {
             else lastError = `insert ${cloudTable}: ${error.message}`;
           }
 
-          for (const item of toUpdate) {
-            const { _eq_id, ...updateData } = item;
-            const { error } = await supabase.from(cloudTable).update(updateData).eq("id", _eq_id);
-            if (!error) uploaded++;
+          if (toUpdate.length > 0) {
+            const { error } = await supabase.from(cloudTable).upsert(toUpdate, { onConflict: "user_id,local_id" });
+            if (!error) uploaded += toUpdate.length;
             else lastError = `update ${cloudTable}: ${error.message}`;
           }
         }
@@ -452,7 +450,7 @@ export const syncService = {
         for (const table of SYNC_TABLES) {
           const cloudTable = CLOUD_TABLE_MAP[table];
           const { data: cloudRows, error: pullErr } = await selectAll(() =>
-            supabase.from(cloudTable).select("*").eq("user_id", userId).gt("last_synced_at", lastSync));
+            supabase.from(cloudTable).select("*").eq("user_id", userId).gt("last_synced_at", lastSync - PULL_OVERLAP_MS));
           if (pullErr) lastError = `pull ${cloudTable}: ${pullErr.message}`;
 
           if (cloudRows && cloudRows.length > 0) {
@@ -462,7 +460,7 @@ export const syncService = {
 
               const existing = await db.table(table).get(localId);
               if (existing) {
-                if ((cloudRow.diubah_pada || 0) >= ((existing as any).diubahPada || 0)) {
+                if ((cloudRow.diubah_pada || 0) > ((existing as any).diubahPada || 0)) {
                   const localData = convertCloudToLocal(cloudRow);
                   await db.table(table).put(localData);
                   downloaded++;
@@ -477,7 +475,7 @@ export const syncService = {
         }
 
         const { data: cloudTombstones, error: tombErr } = await selectAll(() =>
-          supabase.from("cloud_tombstones").select("id, entity_type, local_id, deleted_at").eq("user_id", userId).gt("deleted_at", lastSync));
+          supabase.from("cloud_tombstones").select("id, entity_type, local_id, deleted_at").eq("user_id", userId).gt("deleted_at", lastSync - PULL_OVERLAP_MS));
         if (tombErr) lastError = `pull tombstones: ${tombErr.message}`;
 
         if (cloudTombstones && cloudTombstones.length > 0) {
@@ -573,6 +571,7 @@ function buildCloudRow(table: string, row: any, now: number): Record<string, any
         tanggal_mulai: row.tanggalMulai,
         tanggal_selesai: row.tanggalSelesai,
         semester_aktif: row.semesterAktif,
+        diubah_pada: row.diubahPada || now,
         last_synced_at: now,
         version: 1,
       };
@@ -628,6 +627,7 @@ function buildCloudRow(table: string, row: any, now: number): Record<string, any
         jenis: row.jenis,
         keterangan: row.keterangan || null,
         sumber: row.sumber,
+        diubah_pada: row.diubahPada || now,
         last_synced_at: now,
         version: 1,
       };
@@ -636,7 +636,7 @@ function buildCloudRow(table: string, row: any, now: number): Record<string, any
   }
 }
 
-function convertCloudToLocal(cloudRow: any): any {
+export function convertCloudToLocal(cloudRow: any): any {
   const localData: any = { id: cloudRow.local_id };
   for (const [key, value] of Object.entries(cloudRow)) {
     const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());

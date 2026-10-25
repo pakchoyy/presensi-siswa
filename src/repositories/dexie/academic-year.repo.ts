@@ -8,7 +8,7 @@ export const academicYearRepo = {
   },
 
   async save(ay: AcademicYear): Promise<number> {
-    const result = await db.academicYears.put(ay);
+    const result = await db.academicYears.put({ ...ay, diubahPada: Date.now() });
     triggerAutoSync();
     return result;
   },

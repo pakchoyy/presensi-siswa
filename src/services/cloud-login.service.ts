@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getDeviceId, getDeviceName } from "@/lib/device";
+import { syncService } from "@/services/sync.service";
 import type { Tier } from "@/types/enums";
 
 export interface CloudDevice {
@@ -69,8 +70,7 @@ export const cloudLoginService = {
       deviceName: getDeviceName(),
       trialMulai: Number(localStorage.getItem("bgy_install_date")) || undefined,
     });
-    if (status === 200 && data.ok) return { ok: true, ...data };
-    return { ok: false, code: data.code, error: data.error || "Gagal menghubungkan ke cloud.", devices: data.devices, limit: data.limit };
+XX, devices: data.devices, limit: data.limit };
   },
 
   /** Lepas jatah perangkat ini (saat Keluar). */

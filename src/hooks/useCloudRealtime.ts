@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { db } from "@/repositories/dexie/db";
+import { convertCloudToLocal } from "@/services/sync.service";
 
 const CLOUD_TO_LOCAL: Record<string, string> = {
   cloud_schools: "schools",
@@ -14,18 +15,6 @@ const CLOUD_TO_LOCAL: Record<string, string> = {
 };
 
 const CLOUD_TABLES = Object.keys(CLOUD_TO_LOCAL);
-
-function convertCloudToLocal(cloudRow: Record<string, any>): Record<string, any> {
-  const local: Record<string, any> = { id: cloudRow.local_id };
-  for (const [key, value] of Object.entries(cloudRow)) {
-    if (["id", "user_id", "local_id", "last_synced_at", "version"].includes(key)) continue;
-    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    if (value !== null && value !== undefined) {
-      local[camelKey] = value;
-    }
-  }
-  return local;
-}
 
 export function useCloudRealtime(userId: string | null, enabled: boolean) {
   const [connected, setConnected] = useState(false);
@@ -84,37 +73,6 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
     }
   }, []);
 
-  const handleTombstone = useCallback(async (payload: any) => {
-    try {
-      if (payload.eventType === "INSERT") {
-        const row = payload.new;
-        if (!row || !row.local_id || isNaN(row.local_id)) return;
-        const localTable = row.entity_type;
-        const cloudTable = localTable ? `cloud_${localTable}` : null;
-        if (cloudTable && CLOUD_TO_LOCAL[cloudTable]) {
-          // Guard: kalau baris data masih ada di cloud berarti data dibuat ulang
-          // (tombstone basi) → jangan hapus data lokal.
-          const uid = userIdRef.current;
-          if (uid) {
-            try {
-              const { count } = await supabase
-                .from(cloudTable)
-                .select("*", { count: "exact", head: true })
-                .eq("user_id", uid)
-                .eq("local_id", row.local_id);
-              if (count && count > 0) return;
-            } catch {
-              return;
-            }
-          }
-          await db.table(localTable).delete(row.local_id);
-        }
-      }
-    } catch (err) {
-      console.error("[Realtime] Error handling tombstone:", err);
-    }
-  }, []);
-
   useEffect(() => {
     if (!userId || !enabled) return;
 
@@ -134,17 +92,6 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
         (payload: any) => handleChange(tableName, payload)
       );
     }
-
-    channel.on(
-      "postgres_changes" as any,
-      {
-        event: "*",
-        schema: "public",
-        table: "cloud_tombstones",
-        filter: `user_id=eq.${userId}`,
-      },
-      handleTombstone
-    );
 
     channel.subscribe((status) => {
       const connected = status === "SUBSCRIBED";
@@ -171,7 +118,7 @@ export function useCloudRealtime(userId: string | null, enabled: boolean) {
       channelRef.current = null;
       setConnected(false);
     };
-  }, [userId, enabled, handleChange, handleTombstone]);
+  }, [userId, enabled, handleChange]);
 
   return { connected };
 }

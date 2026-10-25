@@ -29,6 +29,7 @@ export interface AcademicYear {
   tanggalSelesai: string;
   semesterAktif: Semester;
   guruId: number;
+  diubahPada?: number;
 }
 
 export interface Classroom {
@@ -79,6 +80,7 @@ export interface AcademicCalendarEntry {
   jenis: CalendarEntryType;
   keterangan?: string;
   sumber: CalendarSource;
+  diubahPada?: number;
 }
 
 export interface License {
