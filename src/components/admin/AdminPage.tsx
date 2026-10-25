@@ -528,7 +528,8 @@ function AffiliateTab({ flash }: Flash) {
       </div>
 
       <div className={card}>
-        <div className="font-bold text-[0.85rem] mb-2">Daftar affiliate</div>
+        <div className="font-bold text-[0.85rem] mb-1">Daftar affiliate</div>
+        <div className="text-[0.7rem] text-[var(--text-light)] mb-2">Pembeli yang memakai kode teman dapat saldo setengah komisi pengajak (baris "Bonus pembeli").</div>
         {!affs ? <Center><Loader2 className="animate-spin" /></Center> : affs.length === 0 ? (
           <p className="text-[0.78rem] text-[var(--text-light)] text-center py-3 m-0">Belum ada.</p>
         ) : (
@@ -541,7 +542,7 @@ function AffiliateTab({ flash }: Flash) {
               </thead>
               <tbody>
                 {affs.map((a) => (
-                  <tr key={a.code} className="border-t border-[var(--border)]">
+                  <tr key={a.code + a.email} className="border-t border-[var(--border)]">
                     <td className="py-[6px] pr-2"><div className="font-mono font-bold">{a.code}</div><div className="text-[var(--text-light)] truncate max-w-[160px]">{a.email}</div></td>
                     <td className="py-[6px] pr-2 text-right font-bold">{a.referrals}</td>
                     <td className="py-[6px] pr-2 text-right">{rp(a.saldo)}{a.pending > 0 && <div className="text-[#d97706]">+{rp(a.pending)} proses</div>}</td>

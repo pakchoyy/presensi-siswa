@@ -22,7 +22,8 @@ function getSupabase() {
 const normEmail = (e) => String(e || "").toLowerCase().trim().slice(0, 254);
 const normKode = (k) => String(k || "").toUpperCase().trim().slice(0, 64);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const KODE_RE = /^BGY-[A-Z0-9-]{4,60}$/;
+// Hanya kode Presensi Siswa; kode Guru (BGY-PG-) dipakai di aplikasi Guru.
+const KODE_RE = /^BGY-PS-[A-Z0-9-]{4,60}$/;
 
 // Rate limit bersama semua instance (tabel rate_hits lewat fungsi rate_hit). Gagal cek = tidak membatasi.
 async function rateLimited(supabase, key, max, windowS) {
@@ -30,7 +31,7 @@ async function rateLimited(supabase, key, max, windowS) {
   return !error && data === true;
 }
 // Hanya aksi yang mengubah/menebak lisensi yang dibatasi; status, info & affiliate bebas.
-const LIMITED_ACTIONS = new Set(["activate", "renew", "restore", "withdraw"]);
+const LIMITED_ACTIONS = new Set(["activate", "renew", "restore", "withdraw", "add_ref"]);
 
 async function markTier(supabase, email, tier) {
   if (!VALID_TIERS.includes(tier)) tier = "PRO";
@@ -46,6 +47,7 @@ async function claimKode(supabase, kode, fields) {
     .from("licenses")
     .update({ status: "digunakan", ...fields })
     .eq("kode", kode)
+    .eq("product", "siswa")
     .in("status", ["tersedia", "terkirim"])
     .select("id")
     .limit(1);
@@ -65,6 +67,9 @@ async function activate(supabase, body) {
   if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
   if (!KODE_RE.test(kode)) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
 
+  // Sudah punya lisensi aktif: perlakukan sebagai perpanjangan (hari ditumpuk, PRO tidak turun ke PLUS).
+  if (await activeLicense(supabase, email)) return renew(supabase, body);
+
   const tier = tierFromKode(kode);
   const now = Date.now();
   const tanggalBerakhir = now + SEMESTER_MS;
@@ -83,7 +88,8 @@ async function activate(supabase, body) {
   return [200, { ok: true, tier, tanggalBerakhir, referral }];
 }
 
-// ── Program Affiliate (khusus PRO): pemilik kode dapat bonus hari + komisi saat pembeli BARU aktivasi pakai kodenya ──
+// ── Program Affiliate (khusus PRO): pemilik kode dapat bonus hari + komisi saat pembeli BARU aktivasi pakai kodenya;
+//    pembeli dapat setengah komisi itu sebagai saldo ──
 const REF_RE = /^PY-[A-Z0-9]{6}$/;
 const SETTING_DEFAULTS = {
   affiliate_commission_plus: 1000,
@@ -167,7 +173,22 @@ async function applyReferral(supabase, rawCode, buyerEmail, buyerTier) {
     p_product: "siswa",
   });
   if (error) throw error;
+  if (data === "ok") await creditBuyer(supabase, buyerEmail, code, buyerTier, isProBuy ? cfg.affiliate_commission_pro : cfg.affiliate_commission_plus, "siswa");
   return data;
+}
+
+/** Bonus uang untuk pembeli yang memakai kode teman: setengah komisi pengajak, dibulatkan ke bawah ke Rp100. */
+export const buyerShare = (commission) => Math.floor(Math.max(0, Number(commission) || 0) / 2 / 100) * 100;
+
+// Dipanggil hanya setelah affiliate_credit = 'ok' (sekali per pembeli per produk), jadi tidak dobel.
+// shortcut: bukan satu transaksi dengan affiliate_credit; kalau insert ini gagal, bonus pembeli dicatat manual oleh admin.
+export async function creditBuyer(supabase, buyerEmail, code, tier, commission, product) {
+  const amount = buyerShare(commission);
+  if (amount <= 0) return;
+  await supabase.from("affiliate_ledger").insert({
+    owner_email: buyerEmail, type: "earn", amount, status: "ok", buyer_email: buyerEmail, product,
+    note: `Bonus pembeli ${tier} ${product} pakai kode ${code}`,
+  });
 }
 
 async function sessionEmail(supabase, req) {
@@ -336,7 +357,43 @@ async function restore(supabase, body) {
   return [200, { ok: true, tier: data.tier || tierFromKode(kode), tanggalBerakhir: data.tanggal_berakhir }];
 }
 
-const ACTIONS = { activate, renew, status, restore, affiliate, affiliate_info: affiliateInfo, withdraw };
+const REF_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Masukkan kode teman setelah aktivasi: sekali, paling lambat 7 hari setelah lisensi Siswa pertama.
+async function addRef(supabase, body, req) {
+  const email = await sessionEmail(supabase, req);
+  if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
+  const { data: first } = await supabase.from("licenses").select("tier, tanggal_aktivasi").eq("email", email).eq("status", "digunakan").eq("product", "siswa").order("tanggal_aktivasi", { ascending: true }).limit(1).maybeSingle();
+  if (!first) return [403, { error: "Kode teman bisa dipakai setelah aktivasi PLUS/PRO", code: "NO_LICENSE" }];
+  if (Date.now() - (first.tanggal_aktivasi || 0) > REF_WINDOW_MS) return [409, { error: "Batas memasukkan kode teman 7 hari setelah aktivasi", code: "TOO_LATE" }];
+  const { count } = await supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("buyer_email", email).eq("product", "siswa");
+  if (count) return [409, { error: "Kode teman sudah pernah dipakai", code: "USED" }];
+  const result = await applyReferral(supabase, body.ref, email, first.tier || "PRO");
+  const MSG = {
+    ok: "Kode teman berhasil dipakai",
+    invalid: "Kode teman tidak ditemukan",
+    self: "Tidak bisa memakai kode sendiri",
+    not_new: "Kode teman hanya untuk pembelian pertama",
+    owner_not_pro: "Pemilik kode belum PRO aktif",
+    cap: "Kode teman ini sudah mencapai batas semester ini",
+    used: "Kode teman sudah pernah dipakai",
+  };
+  return [result === "ok" ? 200 : 409, { ok: result === "ok", result, message: MSG[result] || "Kode teman tidak bisa dipakai" }];
+}
+
+// Saldo bonus untuk siapa saja yang sudah verifikasi email (termasuk pembeli yang bukan PRO).
+async function saldo(supabase, body, req) {
+  const email = await sessionEmail(supabase, req);
+  if (!email) return [401, { error: "Verifikasi email dulu", code: "NO_SESSION" }];
+  const cfg = await getSettings(supabase);
+  const [{ data: ledger }, { count }] = await Promise.all([
+    supabase.from("affiliate_ledger").select("type, amount, status").eq("owner_email", email),
+    supabase.from("referral_rewards").select("id", { count: "exact", head: true }).eq("buyer_email", email).eq("product", "siswa"),
+  ]);
+  return [200, { ...balanceOf(ledger), minWithdraw: cfg.affiliate_min_withdraw, refUsed: !!count }];
+}
+
+const ACTIONS = { activate, renew, status, restore, affiliate, affiliate_info: affiliateInfo, withdraw, add_ref: addRef, saldo };
 
 // Pengumuman aktif untuk semua pengguna (tanpa login). Di-cache CDN 5 menit.
 async function announcements(res) {

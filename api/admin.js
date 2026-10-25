@@ -394,11 +394,20 @@ async function affiliates(supabase) {
     if (!ledgerBy.has(l.owner_email)) ledgerBy.set(l.owner_email, []);
     ledgerBy.get(l.owner_email).push(l);
   }
+  const withCode = new Set((refs || []).map((r) => r.owner_email));
+  // Pembeli yang dapat bonus (setengah komisi pengajak) tapi tidak punya kode affiliate sendiri.
+  const buyers = [...ledgerBy.keys()].filter((e) => !withCode.has(e)).map((email) => {
+    const b = balanceOf(ledgerBy.get(email));
+    return { code: "Bonus pembeli", email, referrals: 0, saldo: b.saldo, pending: b.pending, dicairkan: b.withdrawn };
+  });
   return [200, {
-    affiliates: (refs || []).map((r) => {
-      const b = balanceOf(ledgerBy.get(r.owner_email));
-      return { code: r.code, email: r.owner_email, referrals: refCount.get(r.owner_email) || 0, saldo: b.saldo, pending: b.pending, dicairkan: b.withdrawn };
-    }),
+    affiliates: [
+      ...(refs || []).map((r) => {
+        const b = balanceOf(ledgerBy.get(r.owner_email));
+        return { code: r.code, email: r.owner_email, referrals: refCount.get(r.owner_email) || 0, saldo: b.saldo, pending: b.pending, dicairkan: b.withdrawn };
+      }),
+      ...buyers,
+    ],
   }];
 }
 
