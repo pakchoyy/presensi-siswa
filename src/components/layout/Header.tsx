@@ -48,10 +48,10 @@ export function Header() {
       }}
     >
       <div className="flex items-center justify-between h-[54px]">
-        <div className="flex items-center gap-[8px] flex-1 min-w-0">
+        <div className="flex items-center gap-[6px] sm:gap-[8px] flex-1 min-w-0">
           <LogoUpload />
           <div className="flex-1 min-w-0 h-[54px] flex items-center cursor-default" style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} onClick={tapTitle}>
-            <div className="text-[1rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight select-none">
+            <div className="text-[0.88rem] sm:text-[1rem] font-extrabold text-white whitespace-nowrap overflow-hidden text-ellipsis leading-tight select-none">
               <i>Presensi Yuk</i> <span className="font-semibold opacity-80">| Siswa</span>
             </div>
           </div>
@@ -68,7 +68,7 @@ export function Header() {
             : showLic ? `${name} · ${licDays}h` : name;
           const warn = (onTrial && trialDays <= 7) || (showLic && (licDays as number) <= 7);
           return (
-            <button type="button" onClick={() => setActivePage(realTier === Tier.PRO ? PageName.PENGATURAN : PageName.UPGRADE)} className={`text-[0.65rem] px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 mr-1 whitespace-nowrap cursor-pointer ${
+            <button type="button" onClick={() => setActivePage(realTier === Tier.PRO ? PageName.PENGATURAN : PageName.UPGRADE)} className={`text-[0.65rem] px-[6px] sm:px-[8px] py-[3px] rounded-full font-bold flex-shrink-0 sm:mr-1 whitespace-nowrap cursor-pointer ${
               warn
                 ? "bg-[#dc2626]/25 text-[#fecaca] border border-[#dc2626]/40"
                 : tier === Tier.PRO
