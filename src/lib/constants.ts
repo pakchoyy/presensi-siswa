@@ -50,3 +50,4 @@ export const resolveLogo = (url?: string | null) =>
   !url || url === LEGACY_DEFAULT_LOGO || /^\/icons\/py-\d+-v\d+\.png$/.test(url) ? DEFAULT_LOGO : url;
 
 export const MAIN_SITE_URL = "https://bantuguruyuk.web.id";
+export const WA_ADMIN = "6289530713597";

@@ -4,6 +4,7 @@ import { Tier } from "@/types/enums";
 import { trialDaysRemaining } from "@/lib/features";
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { DropdownMenu } from "@/components/layout/DropdownMenu";
+import { LaporBug } from "@/components/shared/LaporBug";
 import { SyncIndicator } from "@/components/layout/SyncIndicator";
 import { licenseService } from "@/services/license.service";
 import { PageName } from "@/types/enums";
@@ -26,6 +27,7 @@ export function Header() {
   const { darkMode, toggleDarkMode, setupSelesai, realTier, teacher, setActivePage } =
     useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
   const [licDays, setLicDays] = useState<number | null>(null);
 
   useEffect(() => {
@@ -98,7 +100,8 @@ export function Header() {
               >
                 <Menu size={16} />
               </button>
-              <DropdownMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+              <DropdownMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLaporBug={() => setBugOpen(true)} />
+              {bugOpen && <LaporBug onClose={() => setBugOpen(false)} />}
             </>
           )}
         </div>

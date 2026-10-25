@@ -8,7 +8,7 @@ import { APP_URL } from "@/lib/constants";
 import { PageName, Tier } from "@/types/enums";
 import { Gift, Copy, Share2, Lock, Wallet, Users, CalendarPlus, Coins, ShieldCheck, Mail, Loader2, X } from "lucide-react";
 
-const WA_ADMIN = "6289530713597";
+import { WA_ADMIN } from "@/lib/constants";
 const DEFAULT_INFO: AffiliateInfo = {
   rewards: { PLUS: { commission: 1000, days: 12 }, PRO: { commission: 2500, days: 30 } },
   minWithdraw: 20000,

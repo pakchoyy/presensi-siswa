@@ -5,11 +5,12 @@ import { useToast } from "@/components/shared/Toast";
 import { PageName, Tier } from "@/types/enums";
 import { canUse, isQrActive, setQrMode as saveQrMode, QR_MODE_EVENT } from "@/lib/features";
 import { licenseService } from "@/services/license.service";
-import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock, Gift } from "lucide-react";
+import { BookOpen, Info, Download, Globe, ArrowUpCircle, Cloud, QrCode, Lock, Gift, Bug } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onLaporBug: () => void;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -17,7 +18,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-export function DropdownMenu({ isOpen, onClose }: Props) {
+export function DropdownMenu({ isOpen, onClose, onLaporBug }: Props) {
   const { setActivePage, setupSelesai, teacher, tier: appTier, realTier } = useApp();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -121,6 +122,12 @@ export function DropdownMenu({ isOpen, onClose }: Props) {
           className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
         >
           <Info size={16} /> Tentang &amp; Kontak
+        </button>
+        <button
+          onClick={() => { onLaporBug(); onClose(); }}
+          className="w-full min-h-[46px] flex items-center gap-3 px-4 py-[12px] text-[0.83rem] font-semibold text-[var(--text)] hover:bg-[var(--input-bg)] transition-colors border-none bg-transparent cursor-pointer text-left"
+        >
+          <Bug size={16} /> Laporkan Bug
         </button>
 
         <div className="h-px bg-[var(--border)] mx-0" />
