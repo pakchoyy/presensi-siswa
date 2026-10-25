@@ -397,6 +397,8 @@ function CodesTab({ flash }: Flash) {
   const [codes, setCodes] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [buyer, setBuyer] = useState("");
+  const [pesan, setPesan] = useState("");
 
   const load = useCallback(async () => {
     const { status, data } = await adminApi<{ stock: Record<string, number> }>("code_stock");
@@ -419,8 +421,47 @@ function CodesTab({ flash }: Flash) {
     load();
   };
 
+  // Penjualan manual lewat WA: satu kode baru + link yang sudah berisi email & kode pembeli.
+  const jual = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer)) return flash("Email pembeli tidak valid", "error");
+    setBusy(true);
+    const { status, data } = await adminApi<{ codes: string[] }>("generate_codes", { tier, n: 1 });
+    setBusy(false);
+    if (status !== 200 || !data.codes?.[0]) return flash(data.error || "Gagal membuat kode", "error");
+    const kode = data.codes[0];
+    const host = PRODUCT === "guru" ? "https://preguru.bantuguruyuk.web.id" : "https://presiswa.bantuguruyuk.web.id";
+    const app = PRODUCT === "guru" ? "Presensi Yuk | Guru" : "Presensi Yuk | Siswa";
+    const link = `${host}/aktivasi?email=${encodeURIComponent(buyer)}&kode=${kode}`;
+    setPesan(`Terima kasih sudah membeli ${app} paket ${tier}.\n\nBuka link ini lalu tekan Aktivasi:\n${link}\n\nEmail: ${buyer}\nKode: ${kode}`);
+    flash("Link aktivasi dibuat", "success");
+    load();
+  };
+
   return (
     <>
+      <div className={card}>
+        <div className="font-bold text-[0.85rem] mb-1">Jual lewat WA</div>
+        <p className="text-[0.68rem] text-[var(--text-light)] mt-0 mb-2">Isi email pembeli, pilih paket, lalu kirim pesannya. Pembeli cukup buka link dan tekan Aktivasi. Kalau lisensinya masih aktif, otomatis jadi perpanjangan.</p>
+        <div className="flex gap-2 mb-2">
+          {tiersFor().map((t) => (
+            <button key={t} onClick={() => setTier(t)} className={`${btn} flex-1 ${tier === t ? "text-white" : "bg-[var(--input-bg)] text-[var(--text)]"}`} style={tier === t ? mainBg : undefined}>{t}</button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input type="email" value={buyer} onChange={(e) => setBuyer(e.target.value.trim().toLowerCase())} placeholder="email pembeli" className={inputCls} />
+          <button disabled={busy || !buyer} onClick={jual} className={`${btnMain} flex-shrink-0`} style={mainBg}>Buat link</button>
+        </div>
+        {pesan && (
+          <>
+            <pre className="mt-2 mb-2 text-[0.74rem] whitespace-pre-wrap break-all bg-[var(--input-bg)] rounded-lg p-2">{pesan}</pre>
+            <div className="flex gap-2">
+              <button onClick={() => navigator.clipboard?.writeText(pesan).then(() => flash("Pesan disalin"))} className={`${btn} flex-1 flex items-center justify-center gap-1 bg-[var(--input-bg)] text-[var(--text)]`}><Copy size={14} /> Salin</button>
+              <a href={`https://wa.me/?text=${encodeURIComponent(pesan)}`} target="_blank" rel="noreferrer" className={`${btnMain} flex-1 flex items-center justify-center no-underline`} style={{ background: "#25D366" }}>Kirim via WA</a>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className={card}>
         <div className="font-bold text-[0.85rem] mb-2">Stok kode belum terpakai</div>
         <div className="grid grid-cols-2 gap-2">
