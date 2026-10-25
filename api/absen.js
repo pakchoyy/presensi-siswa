@@ -29,13 +29,16 @@ function todayStr() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// Siswa hanya boleh memilih Hadir/Terlambat/Sakit/Izin; Alfa hanya dari guru.
 function isAllowedStatus(s) {
-  return ["H", "S", "I", "A", "T"].includes(s);
+  return ["H", "S", "I", "T"].includes(s);
 }
 
-// status yang diisi guru (izin/sakit/alfa) tidak boleh ditimpa lewat link siswa
-function isLockedStatus(s) {
-  return ["S", "I", "A"].includes(s);
+// Status S/I/A yang diisi guru tidak boleh ditimpa lewat link siswa.
+// Isian siswa sendiri ditandai catatan "mandiri", jadi siswa yang salah ketuk masih bisa mengganti.
+const MANDIRI = "mandiri";
+function isLockedStatus(s, catatan) {
+  return ["S", "I", "A"].includes(s) && catatan !== MANDIRI;
 }
 
 const LOCKED_MSG = "Status presensi hari ini sudah diisi dan tidak bisa diubah. Hubungi wali kelas.";
@@ -145,17 +148,17 @@ export default async function handler(req, res) {
         }, { onConflict: "user_id,local_id", ignoreDuplicates: true });
         if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       }
-      const { data: recList } = await supabase.from("cloud_attendance_records").select("id, status").eq("user_id", userId).eq("sesi_id", sesiLocalId).eq("siswa_id", student.id).order("diubah_pada", { ascending: false }).limit(1);
+      const { data: recList } = await supabase.from("cloud_attendance_records").select("id, status, catatan").eq("user_id", userId).eq("sesi_id", sesiLocalId).eq("siswa_id", student.id).order("diubah_pada", { ascending: false }).limit(1);
       const existingRec = recList?.[0];
       if (existingRec) {
-        if (isLockedStatus(existingRec.status)) return res.status(409).json({ error: LOCKED_MSG });
-        const { error: updErr } = await supabase.from("cloud_attendance_records").update({ status, diubah_pada: Date.now(), last_synced_at: Date.now() }).eq("id", existingRec.id);
+        if (isLockedStatus(existingRec.status, existingRec.catatan)) return res.status(409).json({ error: LOCKED_MSG });
+        const { error: updErr } = await supabase.from("cloud_attendance_records").update({ status, catatan: MANDIRI, diubah_pada: Date.now(), last_synced_at: Date.now() }).eq("id", existingRec.id);
         if (updErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       } else {
         const now = Date.now();
         const { error: insErr } = await supabase.from("cloud_attendance_records").upsert({
           user_id: userId, local_id: recordIdFrom(sesiLocalId, student.id), sesi_id: sesiLocalId, siswa_id: student.id,
-          status, diubah_pada: now, last_synced_at: now, version: 1
+          status, catatan: MANDIRI, diubah_pada: now, last_synced_at: now, version: 1
         }, { onConflict: "user_id,local_id" });
         if (insErr) return res.status(500).json({ error: "Gagal menyimpan presensi. Coba lagi." });
       }

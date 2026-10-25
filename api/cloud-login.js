@@ -143,6 +143,16 @@ export default async function handler(req, res) {
       });
     }
     devices = await listDevices(supabase, profileId);
+    // Dua HP menyambung di detik yang sama bisa sama-sama lolos cek di atas; yang baru masuk mundur.
+    if (!mine && devices.length > limit) {
+      await supabase.from("devices").delete().eq("user_id", profileId).eq("device_id", deviceId);
+      const others = devices.filter((d) => d.device_id !== deviceId);
+      return res.status(409).json({
+        code: "DEVICE_LIMIT", tier: lic.tier, limit,
+        error: `Email ini sudah dipakai di ${others.length} perangkat lain. Keluar dulu dari salah satu perangkat lama.`,
+        devices: others.map((d) => ({ id: d.id, name: d.device_name, lastActiveAt: d.last_active_at })),
+      });
+    }
     return res.status(200).json({ ok: true, profileId, tier: lic.tier, tanggalBerakhir: lic.tanggalBerakhir, trial: !!lic.trial, limit, deviceCount: devices.length });
   } catch (e) {
     console.error("cloud-login error:", e);
