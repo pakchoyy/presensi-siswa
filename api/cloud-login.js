@@ -50,6 +50,14 @@ async function linkProfile(supabase, authId, email, tier) {
   return profile.id;
 }
 
+// Catat awal trial (dari HP) sekali saja, agar admin bisa melihat pengguna trial.
+async function recordTrial(supabase, authId, email, trialMulai) {
+  const ts = Number(trialMulai);
+  if (!Number.isFinite(ts) || ts <= 0 || ts > Date.now()) return;
+  const profileId = await linkProfile(supabase, authId, email, "FREE");
+  await supabase.from("profiles").update({ trial_mulai: ts }).eq("id", profileId).is("trial_mulai", null);
+}
+
 async function listDevices(supabase, profileId) {
   const { data } = await supabase
     .from("devices")
@@ -84,7 +92,10 @@ export default async function handler(req, res) {
     }
 
     const lic = await activeLicense(supabase, email);
-    if (!lic) return res.status(403).json({ error: "Email ini belum punya paket PLUS/PRO yang aktif.", code: "NO_LICENSE" });
+    if (!lic) {
+      await recordTrial(supabase, authId, email, body.trialMulai);
+      return res.status(403).json({ error: "Email ini belum punya paket PLUS/PRO yang aktif.", code: "NO_LICENSE" });
+    }
 
     const profileId = await linkProfile(supabase, authId, email, lic.tier);
     const limit = DEVICE_LIMIT[lic.tier];

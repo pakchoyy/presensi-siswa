@@ -91,12 +91,24 @@ function groupByEmail(lics) {
 
 const isActive = (l, now) => !!l.tanggal_berakhir && l.tanggal_berakhir > now;
 
+// Pengguna trial: profil yang tercatat trial_mulai dan belum punya lisensi PLUS/PRO.
+async function trialRows(supabase, licRows, now) {
+  const licensed = new Set(licRows.map((l) => l.email));
+  const { data } = await supabase.from("profiles").select("email, trial_mulai").not("trial_mulai", "is", null).limit(1000);
+  return (data || [])
+    .filter((p) => p.email && !licensed.has(p.email))
+    .map((p) => ({ email: p.email, tier: "FREE", tanggal_aktivasi: p.trial_mulai, tanggal_berakhir: p.trial_mulai + 30 * 86400000 }))
+    .filter((l) => isActive(l, now))
+    .sort((a, b) => b.tanggal_aktivasi - a.tanggal_aktivasi);
+}
+
 async function users(supabase, body) {
   const q = String(body.q || "").toLowerCase().trim().slice(0, 80);
   const filter = String(body.filter || "all");
   const product = productOf(body);
   const now = Date.now();
   let rows = [...groupByEmail(await allLicenses(supabase, product)).values()];
+  if (filter === "trial") rows = await trialRows(supabase, rows, now);
   if (q) rows = rows.filter((l) => l.email.includes(q));
   rows = rows.filter((l) => {
     if (filter === "PRO" || filter === "PLUS") return (l.tier || "PRO") === filter;

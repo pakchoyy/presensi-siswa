@@ -281,7 +281,7 @@ interface AdminUser {
 }
 
 const FILTERS = [
-  ["all", "Semua"], ["PRO", "PRO"], ["PLUS", "PLUS"], ["aktif", "Aktif"], ["expired", "Expired"], ["soon", "Akan habis"],
+  ["all", "Semua"], ["PRO", "PRO"], ["PLUS", "PLUS"], ["trial", "Trial"], ["aktif", "Aktif"], ["expired", "Expired"], ["soon", "Akan habis"],
 ] as const;
 
 function UsersTab({ flash }: Flash) {

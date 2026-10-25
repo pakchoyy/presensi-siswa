@@ -67,6 +67,7 @@ export const cloudLoginService = {
       rowId: removeRowId,
       deviceId: getDeviceId(),
       deviceName: getDeviceName(),
+      trialMulai: Number(localStorage.getItem("bgy_install_date")) || undefined,
     });
     if (status === 200 && data.ok) return { ok: true, ...data };
     return { ok: false, code: data.code, error: data.error || "Gagal menghubungkan ke cloud.", devices: data.devices, limit: data.limit };
