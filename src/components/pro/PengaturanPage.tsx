@@ -4,7 +4,7 @@ import { useToast } from "@/components/shared/Toast";
 import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
 import type { License } from "@/types/entities";
-import { syncService } from "@/services/sync.service";
+import { syncService, pullHariAktif } from "@/services/sync.service";
 import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -239,24 +239,10 @@ export function PengaturanPage() {
       setHariAktif(teacher.hariAktifMode);
       if (teacher.hariAktifCustom) setCustomDays(teacher.hariAktifCustom);
     }
-    if (isPaid && teacher?.email) {
-      (async () => {
-        try {
-          const { data } = await supabase
-            .from("teacher_settings")
-            .select("hari_aktif_mode, hari_aktif_custom")
-            .eq("email", teacher.email.toLowerCase().trim())
-            .maybeSingle();
-          if (data) {
-            setHariAktif(data.hari_aktif_mode);
-            if (data.hari_aktif_custom) setCustomDays(data.hari_aktif_custom);
-            localStorage.setItem("bgy_hari_aktif", data.hari_aktif_mode);
-            if (data.hari_aktif_custom) localStorage.setItem("bgy_hari_aktif_custom", data.hari_aktif_custom);
-          }
-        } catch {}
-      })();
+    if (teacher?.email) {
+      pullHariAktif(teacher.email).then(refreshTeacher).catch(() => {});
     }
-  }, [teacher?.id, isPaid]);
+  }, [teacher?.id, teacher?.hariAktifMode, teacher?.hariAktifCustom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!cloudUser?.id) return;
@@ -291,7 +277,7 @@ export function PengaturanPage() {
       await teacherRepo.update(teacher.id, { ...teacher, hariAktifMode: mode, hariAktifCustom: days });
       await refreshTeacher();
     }
-    if (isPaid && teacher?.email) {
+    if (teacher?.email) {
       await supabase.from("teacher_settings").upsert(
         { email: teacher.email.toLowerCase().trim(), hari_aktif_mode: mode, hari_aktif_custom: days, updated_at: Date.now() },
         { onConflict: "email" }

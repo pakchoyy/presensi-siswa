@@ -520,6 +520,7 @@ export const syncService = {
   },
 
   async syncAll(email: string): Promise<{ uploaded: number; downloaded: number }> {
+    await pullHariAktif(email).catch(() => {});
     const lastSync = getLastSyncTimestamp();
     if (lastSync === 0) {
       return await this.fullSync(email);
@@ -539,6 +540,24 @@ export const syncService = {
     _userIdCache = null;
   },
 };
+
+/** Hari aktif disimpan per akun di teacher_settings (tabel guru tidak ikut sinkron); terapkan ke HP ini. */
+export async function pullHariAktif(email: string): Promise<void> {
+  const { data } = await supabase
+    .from("teacher_settings")
+    .select("hari_aktif_mode, hari_aktif_custom")
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+  if (!data?.hari_aktif_mode) return;
+  const custom = data.hari_aktif_custom || "";
+  localStorage.setItem("bgy_hari_aktif", data.hari_aktif_mode);
+  localStorage.setItem("bgy_hari_aktif_custom", custom);
+  const t = await db.teachers.orderBy("id").first();
+  if (t && (t.hariAktifMode !== data.hari_aktif_mode || (t.hariAktifCustom || "") !== custom)) {
+    await db.teachers.update(t.id, { hariAktifMode: data.hari_aktif_mode, hariAktifCustom: custom });
+    window.dispatchEvent(new Event("data-changed"));
+  }
+}
 
 function buildCloudRow(table: string, row: any, now: number): Record<string, any> {
   switch (table) {
