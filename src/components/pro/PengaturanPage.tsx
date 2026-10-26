@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { schoolRepo } from "@/repositories/dexie/school.repo";
 import { teacherRepo } from "@/repositories/dexie/teacher.repo";
+import { connectDevice, type ConnectInfo } from "@/services/device-connect.service";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import type { AcademicYear } from "@/types/entities";
 import { Semester } from "@/types/enums";
@@ -531,67 +532,18 @@ export function PengaturanPage() {
   };
 
   // Dipanggil setelah email terverifikasi (OTP) dan perangkat lolos batas di server.
-  const finishDeviceLogin = async (result: { tier: Tier; tanggalBerakhir: number | null; trial?: boolean }, emailAddress: string) => {
-    if (!teacher) return;
+  const finishDeviceLogin = async (result: ConnectInfo, emailAddress: string) => {
+    if (!teacher?.id) return;
     setOtpEmail(null);
     setConnecting(true);
-    const foundTier = result.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
-    if (result.trial && result.tanggalBerakhir) setTrialMulai(result.tanggalBerakhir - TRIAL_DAYS * 86400000);
-    const licenseData = { tanggal_berakhir: result.tanggalBerakhir };
     try {
-      localStorage.setItem("presensi_cloud_email", emailAddress);
-      
-      try {
-        const downloaded = await syncService.downloadAll(emailAddress);
-        if (downloaded > 0) {
-          toast(`✅ ${downloaded} data dimuat, menyegarkan tampilan…`);
-        } else {
-          // Cloud masih kosong: data yang sudah ada di HP ini jadi data awal akun.
-          const uploaded = await syncService.initialUpload(emailAddress);
-          toast(uploaded > 0 ? `✅ ${uploaded} data di HP ini disimpan ke cloud` : "⚠️ Terhubung, tapi belum ada data terkirim ke cloud");
-        }
-      } catch (error) {
-        console.error("Download error:", error);
-        toast("⚠️ Gagal mengambil data cloud, coba lagi");
-      }
-      
-      const now = Date.now();
-      const expiry = licenseData?.tanggal_berakhir || (now + LICENSE_DURATION_DAYS * 24 * 60 * 60 * 1000);
-      
-      if (!teacher?.id) {
-        toast("⚠️ Error: Invalid teacher data");
-        return;
-      }
-      
-      // Masa coba: cloud aktif, tapi paket & lisensi di HP tetap FREE.
-      const existingLicense = result.trial ? true : await licenseRepo.getActive(teacher.id);
-      if (!existingLicense) {
-        const license: License = {
-          id: generateId(),
-          guruId: teacher.id,
-          emailAktivasi: emailAddress,
-          kodeLisensi: "DEVICE-CONNECTED",
-          tanggalAktivasi: now,
-          tanggalBerakhir: expiry,
-          statusLisensi: "Aktif",
-          tier: foundTier,
-        };
-        await licenseRepo.save(license);
-      }
-
-      await teacherRepo.update(teacher.id, {
-        ...teacher,
-        tier: result.trial ? teacher.tier : foundTier,
-        email: emailAddress,
-      });
-      
+      toast(await connectDevice(teacher, result, emailAddress));
       await refreshTeacher();
-      
-      setConnecting(false);
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error("Device login error:", error);
       toast("❌ Gagal menghubungkan. Coba lagi.");
+    } finally {
       setConnecting(false);
     }
   };

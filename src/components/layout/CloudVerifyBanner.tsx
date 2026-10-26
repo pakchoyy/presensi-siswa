@@ -2,10 +2,15 @@ import { useState } from "react";
 import { CloudOff } from "lucide-react";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
 import { OtpVerify } from "@/components/auth/OtpVerify";
+import { useApp } from "@/contexts/AppContext";
+import { useToast } from "@/components/shared/Toast";
+import { connectDevice } from "@/services/device-connect.service";
 
 /** Muncul kalau perangkat punya email cloud tapi belum verifikasi kode email (sync dijeda). */
 export function CloudVerifyBanner() {
   const { cloudEmail, needsVerify, refreshCloudUser } = useCloudAuth();
+  const { teacher } = useApp();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   if (!needsVerify || !cloudEmail || localStorage.getItem("bgy_demo_mode") === "1") return null;
 
@@ -24,7 +29,18 @@ export function CloudVerifyBanner() {
         <OtpVerify
           email={cloudEmail}
           title="Verifikasi email"
-          onConnected={() => { setOpen(false); refreshCloudUser(); }}
+          onConnected={async (r, email) => {
+            setOpen(false);
+            // Email sama: cukup lanjutkan sinkron. Email diganti: pindahkan perangkat ke akun itu & ambil datanya.
+            if (email === cloudEmail?.toLowerCase().trim() || !teacher) { refreshCloudUser(); return; }
+            toast("Menghubungkan ke akun " + email + "…");
+            try {
+              toast(await connectDevice(teacher, r, email));
+              setTimeout(() => window.location.reload(), 1500);
+            } catch {
+              toast("❌ Gagal menghubungkan. Coba lagi dari Pengaturan.");
+            }
+          }}
           onClose={() => setOpen(false)}
         />
       )}
