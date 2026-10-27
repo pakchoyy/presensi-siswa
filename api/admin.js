@@ -98,13 +98,10 @@ async function trialRows(supabase, licRows, now, product = "siswa") {
   if (product === "guru") {
     // Guru: masa coba per sekolah, 30 hari sejak sekolah pertama terdaftar di cloud (lihat migrasi Guru 00312).
     const { data: sekolah } = await supabase.from("cloud_guru_sekolah").select("owner_user_id, created_at").limit(1000);
-    const owners = (sekolah || []).map((s) => s.owner_user_id).filter(Boolean);
-    const { data: profs } = owners.length
-      ? await supabase.from("profiles").select("id, auth_id, email").or(`auth_id.in.(${owners.join(",")}),id.in.(${owners.join(",")})`)
-      : { data: [] };
-    const emailOf = new Map();
-    for (const p of profs || []) { if (p.auth_id) emailOf.set(String(p.auth_id), p.email); emailOf.set(String(p.id), p.email); }
-    data = (sekolah || []).map((s) => ({ email: emailOf.get(String(s.owner_user_id)), trial_mulai: new Date(s.created_at).getTime() }));
+    // owner_user_id = akun Auth admin sekolah; email diambil dari Auth (tidak semua punya baris profiles).
+    const emails = await Promise.all((sekolah || []).map((s) =>
+      supabase.auth.admin.getUserById(s.owner_user_id).then((r) => r.data?.user?.email?.toLowerCase() || null).catch(() => null)));
+    data = (sekolah || []).map((s, i) => ({ email: emails[i], trial_mulai: new Date(s.created_at).getTime() }));
   } else {
     ({ data } = await supabase.from("profiles").select("email, trial_mulai").not("trial_mulai", "is", null).limit(1000));
   }

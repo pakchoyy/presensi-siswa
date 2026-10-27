@@ -11,7 +11,14 @@ import { useToast } from "@/components/shared/Toast";
 // Produk yang sedang dikelola (Siswa/Guru); ikut dikirim di setiap aksi admin.
 type Product = "siswa" | "guru";
 const PRODUCT_KEY = "py_admin_product";
-let PRODUCT: Product = (() => { try { return localStorage.getItem(PRODUCT_KEY) === "guru" ? "guru" : "siswa"; } catch { return "siswa"; } })();
+// ?product=guru dari pintu admin Presensi Guru langsung membuka produk Guru.
+let PRODUCT: Product = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("product");
+    if (q === "guru" || q === "siswa") localStorage.setItem(PRODUCT_KEY, q);
+    return localStorage.getItem(PRODUCT_KEY) === "guru" ? "guru" : "siswa";
+  } catch { return "siswa"; }
+})();
 const tiersFor = (): ("PLUS" | "PRO")[] => ["PLUS", "PRO"];
 
 async function adminApi<T = any>(action: string, body: Record<string, unknown> = {}): Promise<{ status: number; data: T & { error?: string } }> {
@@ -89,7 +96,7 @@ export default function AdminPage() {
         <img src={DEFAULT_LOGO} alt="" className="w-8 h-8 rounded-lg" />
         <div className="font-extrabold"><i>Presensi Yuk</i> <span className="opacity-80 font-semibold">| Admin</span></div>
         <div className="ml-auto flex items-center gap-1">
-          <a href="/" className="text-white/90 text-[0.75rem] font-semibold no-underline px-2">Ke aplikasi</a>
+          <a href={product === "guru" ? "https://preguru.bantuguruyuk.web.id/" : "/"} className="text-white/90 text-[0.75rem] font-semibold no-underline px-2">Ke aplikasi</a>
           {me && (
             <button onClick={logout} aria-label="Keluar" className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/10 text-white border-none cursor-pointer"><LogOut size={16} /></button>
           )}
