@@ -92,9 +92,22 @@ function groupByEmail(lics) {
 const isActive = (l, now) => !!l.tanggal_berakhir && l.tanggal_berakhir > now;
 
 // Pengguna trial: profil yang tercatat trial_mulai dan belum punya lisensi PLUS/PRO.
-async function trialRows(supabase, licRows, now) {
+async function trialRows(supabase, licRows, now, product = "siswa") {
   const licensed = new Set(licRows.map((l) => l.email));
-  const { data } = await supabase.from("profiles").select("email, trial_mulai").not("trial_mulai", "is", null).limit(1000);
+  let data;
+  if (product === "guru") {
+    // Guru: masa coba per sekolah, 30 hari sejak sekolah pertama terdaftar di cloud (lihat migrasi Guru 00312).
+    const { data: sekolah } = await supabase.from("cloud_guru_sekolah").select("owner_user_id, created_at").limit(1000);
+    const owners = (sekolah || []).map((s) => s.owner_user_id).filter(Boolean);
+    const { data: profs } = owners.length
+      ? await supabase.from("profiles").select("id, auth_id, email").or(`auth_id.in.(${owners.join(",")}),id.in.(${owners.join(",")})`)
+      : { data: [] };
+    const emailOf = new Map();
+    for (const p of profs || []) { if (p.auth_id) emailOf.set(String(p.auth_id), p.email); emailOf.set(String(p.id), p.email); }
+    data = (sekolah || []).map((s) => ({ email: emailOf.get(String(s.owner_user_id)), trial_mulai: new Date(s.created_at).getTime() }));
+  } else {
+    ({ data } = await supabase.from("profiles").select("email, trial_mulai").not("trial_mulai", "is", null).limit(1000));
+  }
   return (data || [])
     .filter((p) => p.email && !licensed.has(p.email))
     .map((p) => ({ email: p.email, tier: "FREE", tanggal_aktivasi: p.trial_mulai, tanggal_berakhir: p.trial_mulai + 30 * 86400000 }))
@@ -108,7 +121,7 @@ async function users(supabase, body) {
   const product = productOf(body);
   const now = Date.now();
   let rows = [...groupByEmail(await allLicenses(supabase, product)).values()];
-  if (filter === "trial") rows = await trialRows(supabase, rows, now);
+  if (filter === "trial") rows = await trialRows(supabase, rows, now, product);
   if (q) rows = rows.filter((l) => l.email.includes(q));
   rows = rows.filter((l) => {
     if (filter === "PRO" || filter === "PLUS") return (l.tier || "PRO") === filter;
