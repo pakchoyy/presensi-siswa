@@ -1,3 +1,4 @@
+import { CLOUD_PROMPT_KEY } from "@/components/layout/CloudVerifyBanner";
 import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
@@ -127,8 +128,10 @@ export function WizardSetup() {
     };
 
     await setupService.executeSetup(data);
+    // Setelah wizard: tawarkan simpan ke cloud sekali (dialog dibuka oleh CloudVerifyBanner).
+    try { localStorage.setItem(CLOUD_PROMPT_KEY, "1"); } catch { /* abaikan */ }
     await refreshClassrooms();
-    toast("Setup selesai! Buka Pengaturan untuk aktivasi PRO");
+    toast("Setup selesai!");
   };
 
   return (
