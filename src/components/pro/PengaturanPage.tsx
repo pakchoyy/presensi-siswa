@@ -775,7 +775,7 @@ export function PengaturanPage() {
               onClick={() => setShowConnect(!showConnect)}
               className="w-full flex items-center justify-between text-[0.72rem] font-bold text-[var(--text)] bg-transparent border-none cursor-pointer p-0"
             >
-              <span className="flex items-center gap-[4px]"><Upload size={13} /> {trialLeft > 0 ? "Simpan data ke cloud (gratis selama masa coba)" : "Sudah berlangganan di HP lain? Ambil data dari cloud"}</span>
+              <span className="flex items-center gap-[4px]"><Upload size={13} /> {trialLeft > 0 ? "Sudah PRO/PLUS di HP lain, atau simpan data ke cloud" : "Sudah PRO/PLUS di HP lain? Ambil data dari cloud"}</span>
               <span className="text-[var(--text-light)]">{showConnect ? "▲" : "▼"}</span>
             </button>
             {showConnect && (
