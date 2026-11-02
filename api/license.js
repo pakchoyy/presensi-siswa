@@ -67,6 +67,10 @@ async function activate(supabase, body) {
   if (!EMAIL_RE.test(email)) return [400, { error: "Email tidak valid" }];
   if (!KODE_RE.test(kode)) return [400, { error: "Format kode: BGY-PS-PLUS-XXXX atau BGY-PS-PRO-XXXX" }];
 
+  // Kode ini sudah dipakai email yang sama (HP/laptop baru): pulihkan, jangan dianggap perpanjangan.
+  const { data: milikSendiri } = await supabase.from("licenses").select("id").eq("kode", kode).eq("email", email).eq("status", "digunakan").maybeSingle();
+  if (milikSendiri) return restore(supabase, body);
+
   // Sudah punya lisensi aktif: perlakukan sebagai perpanjangan (hari ditumpuk, PRO tidak turun ke PLUS).
   if (await activeLicense(supabase, email)) return renew(supabase, body);
 
