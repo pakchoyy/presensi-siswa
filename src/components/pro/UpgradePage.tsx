@@ -254,7 +254,7 @@ export function UpgradePage() {
         name="PLUS"
         tagline="Untuk sekolah kecil: data di cloud dan logo di laporan"
         price={PLUS_PRICE}
-        perMonth="setara Rp2.800/bulan"
+        perMonth="setara Rp2.500/bulan"
         bullets={[
           "4 kelas · 25 siswa per kelas (= 100 siswa total)",
           "Data tersimpan di cloud, aman kalau HP hilang",
@@ -277,7 +277,7 @@ export function UpgradePage() {
         name="PRO"
         tagline="Semua di PLUS, plus:"
         price={PRO_PRICE}
-        perMonth="setara Rp5.300/bulan"
+        perMonth="setara Rp4.500/bulan"
         bullets={[
           "Kelas dan siswa tanpa batas",
           "Satu data di 3 perangkat: HP, laptop, tablet",
@@ -301,7 +301,7 @@ export function UpgradePage() {
       {tier !== Tier.PRO && (
         <div className="rounded-xl p-4 mb-3 border border-[#f59e0b]/40 bg-[rgba(245,158,11,0.08)]">
           <div className="text-[0.9rem] font-extrabold text-[var(--text)] mb-1">
-            Cuma Rp5.300 sebulan, kurang dari segelas es teh seminggu.
+            Cuma Rp4.500 sebulan, kurang dari segelas es teh seminggu.
           </div>
           <p className="text-[0.74rem] text-[var(--text-light)] leading-relaxed">
             Dengan {PRO_PRICE.replace("/semester", "")} per semester, semua kelas & siswa masuk tanpa batas, data tersimpan di cloud

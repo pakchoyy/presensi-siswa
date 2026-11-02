@@ -252,7 +252,7 @@ function SummaryTab({ flash, go }: Flash & { go: (t: Tab) => void }) {
           <Stat label={`Bulan ${bulan}`} value={rp(d.bulanIni.pendapatan)} sub={`${d.bulanIni.PRO} PRO · ${d.bulanIni.PLUS} PLUS`} tone="#16a34a" />
           <Stat label="Semester ini" value={rp(d.semesterIni.pendapatan)} sub={`${d.semesterIni.PRO} PRO · ${d.semesterIni.PLUS} PLUS`} tone="#16a34a" />
         </div>
-        <p className="text-[0.66rem] text-[var(--text-light)] mt-2 mb-0">Estimasi dari kode yang diaktivasi × harga ({PRODUCT === "guru" ? "PLUS Rp27.000, PRO Rp51.000" : "PLUS Rp17.000, PRO Rp32.000"}).</p>
+        <p className="text-[0.66rem] text-[var(--text-light)] mt-2 mb-0">Estimasi dari kode yang diaktivasi × harga ({PRODUCT === "guru" ? "PLUS Rp21.000, PRO Rp38.000" : "PLUS Rp15.000, PRO Rp27.000"}).</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">

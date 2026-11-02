@@ -10,9 +10,9 @@ Teknologi dasar: Vite + React + TypeScript (PWA), data lokal di Dexie (IndexedDB
 
 ## 1. Paket langganan FREE / PLUS / PRO + masa coba
 
-- **Apa:** FREE (1 kelas × 10 siswa), PLUS Rp17.000/semester (4 kelas × 25 siswa, 1 perangkat), PRO Rp32.000/semester (tanpa batas, 3 perangkat). Pengguna baru dapat **coba PRO 30 hari**, lalu otomatis FREE (tidak terkunci). Sekali ditawari "Coba PRO lagi 7 hari".
+- **Apa:** FREE (1 kelas × 10 siswa), PLUS Rp15.000/semester (4 kelas × 25 siswa, 1 perangkat), PRO Rp27.000/semester (tanpa batas, 3 perangkat). Pengguna baru dapat **coba PRO 30 hari**, lalu otomatis FREE (tidak terkunci). Sekali ditawari "Coba PRO lagi 7 hari".
 - **Cara kerja:** satu daftar fitur per paket, dicek dengan `canUse("nama_fitur", tier)`. `realTier` = paket asli dari lisensi; `tier` = paket efektif (termasuk masa coba). Fitur cloud selalu pakai `realTier`.
-- **File kunci:** `src/lib/features.ts`, `src/contexts/AppContext.tsx`, `src/components/pro/UpgradePage.tsx` (tabel pembanding + copy "cuma Rp5.300 sebulan").
+- **File kunci:** `src/lib/features.ts`, `src/contexts/AppContext.tsx`, `src/components/pro/UpgradePage.tsx` (tabel pembanding + copy "cuma Rp4.500 sebulan").
 - **Cocok untuk:** semua web yang ingin versi gratis + berbayar.
 - **Jebakan:** jangan cek `tier === "PRO"` tersebar di banyak file — selalu lewat `canUse`. Data di atas batas FREE tetap terlihat, hanya kelas pertama yang bisa diubah (lebih ramah daripada mengunci total).
 

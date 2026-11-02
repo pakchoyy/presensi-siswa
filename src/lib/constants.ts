@@ -29,8 +29,8 @@ export const APP_BRAND = "Presensi Yuk";
 
 export const WIZARD_TOTAL_STEPS = 6;
 
-export const PLUS_PRICE = "Rp17.000/semester";
-export const PRO_PRICE = "Rp32.000/semester";
+export const PLUS_PRICE = "Rp15.000/semester";
+export const PRO_PRICE = "Rp27.000/semester";
 
 export const LICENSE_DURATION_DAYS = 180;
 
