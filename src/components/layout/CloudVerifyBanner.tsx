@@ -66,7 +66,11 @@ export function CloudVerifyBanner() {
           onConnected={async (r, email) => {
             setOpen(false);
             // Email sama: cukup lanjutkan sinkron. Data baru / email diganti: jadikan akun cloud perangkat ini & ambil datanya.
-            if ((cloudEmail && email === cloudEmail.toLowerCase().trim()) || !teacher) { refreshCloudUser(); return; }
+            if (!teacher) { refreshCloudUser(); return; }
+            // Email sama & paket di HP sudah cocok dengan server: cukup lanjutkan sinkron.
+            // Kalau server bilang PLUS/PRO tapi HP masih FREE/trial, jalankan alur penuh supaya paket ikut diperbarui.
+            const samaEmail = !!cloudEmail && email === cloudEmail.toLowerCase().trim();
+            if (samaEmail && (r.trial || teacher.tier === r.tier)) { refreshCloudUser(); return; }
             toast("Menyimpan ke akun " + email + "…");
             try {
               toast(await connectDevice(teacher, r, email));
