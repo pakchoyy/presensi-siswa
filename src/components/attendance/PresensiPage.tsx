@@ -745,6 +745,7 @@ export function PresensiPage() {
             onScan={handleQrScan}
             onClose={() => setShowQrScanner(false)}
             lastScanned={lastScanned}
+            siswa={students.map((x) => ({ id: x.id, nama: x.nama }))}
             pickerMode={localStorage.getItem("bgy_qr_picker") === "1"}
           />
         </Suspense>

@@ -47,7 +47,7 @@ export async function generateQrCardsPdf(
   const cardH = 72;
   const marginX = (210 - cols * cardW) / (cols + 1);
   const marginY = (297 - rows * cardH) / (rows + 1);
-  const qrSize = 36;
+  const qrSize = 42; // lebih besar = lebih mudah terbaca kamera
 
   let logoDataUrl: string | null = null;
   if (options.logoUrl) {
@@ -84,9 +84,9 @@ export async function generateQrCardsPdf(
     // QR
     const qrData = qrPayload(students[i], options.baseUrl);
     const qrDataUrl = await QRCode.toDataURL(qrData, {
-      width: 300,
-      margin: 1,
-      errorCorrectionLevel: logoDataUrl ? "H" : "M",
+      width: 600,
+      margin: 4, // batas putih standar QR; terlalu tipis membuat kartu sulit dipindai
+      errorCorrectionLevel: logoDataUrl ? "H" : "Q",
     });
     const qrX = x + (cardW - qrSize) / 2;
     const qrY = y + 8;

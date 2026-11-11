@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { X, Camera, Volume2, VolumeX, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { X, Camera, Volume2, VolumeX, CheckCircle2, Clock, AlertTriangle, Flashlight, Search } from "lucide-react";
 
 type ScanPayload = { studentId?: number; token?: string };
 
@@ -9,6 +9,8 @@ interface QrScannerProps {
   onClose: () => void;
   lastScanned?: { nama: string; status: string } | null;
   pickerMode?: boolean;
+  /** Daftar siswa kelas ini, untuk tombol "Cari nama" kalau kartu tidak terbaca. */
+  siswa?: { id: number; nama: string }[];
 }
 
 const PREFIX = "PRESENSI:";
@@ -31,11 +33,14 @@ const STATUS_OPTIONS = [
   { code: "A", label: "Alpha", color: "#dc2626", icon: AlertTriangle },
 ];
 
-export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: QrScannerProps) {
+export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, siswa = [] }: QrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [pendingScan, setPendingScan] = useState<ScanPayload | null>(null);
+  const [torchOk, setTorchOk] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [cari, setCari] = useState<string | null>(null); // null = daftar nama tertutup
   const cooldownRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const soundOnRef = useRef(soundOn);
@@ -104,6 +109,14 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
           },
           () => {}
         );
+        // Fokus otomatis berkelanjutan + resolusi lebih tinggi membantu QR kecil/kurang tajam; tidak semua HP mendukung.
+        try {
+          await scanner.applyVideoConstraints({ width: { ideal: 1280 }, advanced: [{ focusMode: "continuous" } as any] });
+        } catch { /* abaikan */ }
+        try {
+          const caps: any = scanner.getRunningTrackCapabilities();
+          if (caps?.torch) setTorchOk(true);
+        } catch { /* abaikan */ }
       } catch (err: any) {
         if (stopped) return;
         const msg = err?.toString() || "";
@@ -127,6 +140,19 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
     };
   }, [playBeep]);
 
+  const toggleTorch = async () => {
+    try {
+      await scannerRef.current?.applyVideoConstraints({ advanced: [{ torch: !torchOn } as any] });
+      setTorchOn(!torchOn);
+    } catch { setTorchOk(false); }
+  };
+
+  const pilihNama = (id: number) => {
+    setCari(null);
+    if (pickerModeRef.current) { cooldownRef.current = true; setPendingScan({ studentId: id }); }
+    else onScanRef.current({ studentId: id });
+  };
+
   const pickStatus = (code: string) => {
     if (!pendingScan) return;
     onScanRef.current(pendingScan, code);
@@ -149,6 +175,15 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
         >
           {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
         </button>
+        {torchOk && (
+          <button
+            onClick={toggleTorch}
+            aria-label={torchOn ? "Matikan senter" : "Nyalakan senter"}
+            className={`w-11 h-11 rounded-full flex items-center justify-center text-white ${torchOn ? "bg-amber-500" : "bg-white/20"}`}
+          >
+            <Flashlight size={18} />
+          </button>
+        )}
         <button
           onClick={onClose}
           aria-label="Tutup pemindai"
@@ -168,6 +203,45 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false }: 
         </div>
       ) : (
         <div id="qr-reader" className={`w-[min(90vw,440px)] h-[min(90vw,440px)] rounded-xl overflow-hidden ${pendingScan ? "opacity-30" : ""}`} />
+      )}
+
+      {!pendingScan && !error && siswa.length > 0 && (
+        <button
+          onClick={() => setCari("")}
+          className="mt-3 flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-[0.8rem] font-bold border-none cursor-pointer"
+        >
+          <Search size={15} /> Kartu tidak terbaca? Cari nama
+        </button>
+      )}
+
+      {cari !== null && (
+        <div className="absolute inset-0 bg-[var(--card-bg)] z-20 flex flex-col p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              autoFocus
+              value={cari}
+              onChange={(e) => setCari(e.target.value)}
+              placeholder="Ketik nama siswa"
+              className="flex-1 px-3 py-[10px] rounded-[10px] border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] text-[0.9rem]"
+            />
+            <button onClick={() => setCari(null)} aria-label="Tutup daftar nama" className="w-10 h-10 rounded-full bg-[var(--input-bg)] text-[var(--text)] flex items-center justify-center border-none cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {siswa
+              .filter((x) => x.nama.toLowerCase().includes(cari.trim().toLowerCase()))
+              .map((x) => (
+                <button
+                  key={x.id}
+                  onClick={() => pilihNama(x.id)}
+                  className="w-full text-left px-3 py-3 border-0 border-b border-[var(--border)] bg-transparent text-[var(--text)] text-[0.9rem] cursor-pointer"
+                >
+                  {x.nama}
+                </button>
+              ))}
+          </div>
+        </div>
       )}
 
       {pendingScan && (
