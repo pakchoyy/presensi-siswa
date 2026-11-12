@@ -47,7 +47,7 @@ export async function generateQrCardsPdf(
   const cardH = 72;
   const marginX = (210 - cols * cardW) / (cols + 1);
   const marginY = (297 - rows * cardH) / (rows + 1);
-  const qrSize = 42; // lebih besar = lebih mudah terbaca kamera
+  const qrSize = 46; // lebih besar = lebih mudah terbaca kamera
 
   let logoDataUrl: string | null = null;
   if (options.logoUrl) {
@@ -86,7 +86,9 @@ export async function generateQrCardsPdf(
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 600,
       margin: 4, // batas putih standar QR; terlalu tipis membuat kartu sulit dipindai
-      errorCorrectionLevel: logoDataUrl ? "H" : "Q",
+      // Level Q (bukan H): QR lebih sedikit kotaknya (41 vs 49) sehingga tiap kotak lebih besar di kertas.
+      // Logo tengah hanya ±7% luas, masih dalam batas koreksi Q.
+      errorCorrectionLevel: "Q",
     });
     const qrX = x + (cardW - qrSize) / 2;
     const qrY = y + 8;
