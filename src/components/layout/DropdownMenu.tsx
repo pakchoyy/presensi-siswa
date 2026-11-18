@@ -54,7 +54,11 @@ export function DropdownMenu({ isOpen, onClose, onLaporBug }: Props) {
         (window as any).__bgy_deferredPrompt = null;
       });
     } else {
-      toast("Buka di Chrome/Edge Android, lalu menu > Tambahkan ke Layar Utama");
+      toast(
+        /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.userAgent.includes("Macintosh") && "ontouchend" in document)
+          ? "iPhone: buka lewat Safari, ketuk tombol Bagikan (kotak panah ke atas), lalu pilih Tambahkan ke Layar Utama"
+          : "Buka di Chrome/Edge Android, lalu menu > Tambahkan ke Layar Utama"
+      );
     }
     onClose();
   };

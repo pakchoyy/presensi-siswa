@@ -6,6 +6,7 @@ import {
   KREACY_PLUS_URL,
   KREACY_PRO_URL,
   LICENSE_DURATION_DAYS,
+  WA_ADMIN,
 } from "@/lib/constants";
 import { licenseService } from "@/services/license.service";
 import { licenseRepo } from "@/repositories/dexie/license.repo";
@@ -30,7 +31,6 @@ import { readAktivasiLink, clearAktivasiLink, readRefCode } from "@/lib/aktivasi
 import Confetti from "react-confetti";
 import { trialDaysRemaining, tierLabel } from "@/lib/features";
 
-const WA_NUMBER = "6289530713597";
 
 const COMPARE_ROWS: [string, string, string, string][] = [
   ["Kelas", "1", "4", "∞"],
@@ -87,7 +87,7 @@ export function UpgradePage() {
     const msg = encodeURIComponent(
       "Halo Pak Choyy, saya mau tanya paket PLUS/PRO Presensi Yuk.\nEmail: " + (teacher?.email || email || "")
     );
-    window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${WA_ADMIN}?text=${msg}`, "_blank");
   };
 
   const finishActivation = async (resolvedTier: Tier, expiry: number, normalizedEmail: string, kodeLisensi: string, alreadySaved: boolean) => {

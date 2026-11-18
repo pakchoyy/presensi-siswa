@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "crypto";
 
+// Nomor WhatsApp admin (samakan dengan WA_ADMIN di src/lib/constants.ts).
+const WA_ADMIN = "6285600410357";
+
 // Link klaim dibuat toko Kreacy untuk pesanan yang sudah dibayar:
 // ?t=<KLAIM_TOKEN_PLUS|KLAIM_TOKEN_PRO>&order=<id pesanan>&sig=<HMAC(id pesanan)>&sig2=<HMAC("v2:" + t + ":" + id pesanan)>.
 // sig2 mengikat paket ke pesanan, jadi t tidak bisa ditukar ke token PRO. Link lama (hanya sig) diterima untuk PLUS saja:
@@ -139,7 +142,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     <div class="err">${error}</div>
   </div>
   <p style="font-size:.85rem;opacity:.9;margin-bottom:14px">Sudah pernah aktivasi? Tidak perlu kode baru: buka aplikasi → <b>Pengaturan</b> → <b>Sudah berlangganan di HP lain? Ambil data dari cloud</b> → isi email → masukkan kode dari email.</p>
-  <button class="btn btn-copy" onclick="window.open('https://wa.me/6289530713597?text=Halo%20Pak%20Choyy%2C%20saya%20butuh%20bantuan%20aktivasi%20Presensi%20Yuk.','_blank')">💬 Hubungi Admin</button>
+  <button class="btn btn-copy" onclick="window.open('https://wa.me/${WA_ADMIN}?text=Halo%20Pak%20Choyy%2C%20saya%20butuh%20bantuan%20aktivasi%20Presensi%20Yuk.','_blank')">💬 Hubungi Admin</button>
   `}
 </div>
 <div class="footer">

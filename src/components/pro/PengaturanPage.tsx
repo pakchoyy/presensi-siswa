@@ -8,7 +8,7 @@ import { syncService, pullHariAktif } from "@/services/sync.service";
 import { getSyncLog, type SyncLogEntry } from "@/services/sync.service";
 import { Tier, Jenjang, PageName } from "@/types/enums";
 import { showConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { PRO_PRICE, PLUS_PRICE } from "@/lib/constants";
+import { PRO_PRICE, PLUS_PRICE, WA_ADMIN } from "@/lib/constants";
 import { canUse, cloudHapusDalamHari, LIMITS, setTrialMulai, tierLabel, TRIAL_DAYS, trialDaysRemaining } from "@/lib/features";
 import { saveLogoutBackup } from "@/services/backup.service";
 import { LICENSE_DURATION_DAYS } from "@/lib/constants";
@@ -330,7 +330,7 @@ export function PengaturanPage() {
     const msg = encodeURIComponent(
       "Halo Pak Choyy, saya mau tanya paket Presensi Yuk\nEmail: " + (teacher?.email || "")
     );
-    window.open(`https://wa.me/6289530713597?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${WA_ADMIN}?text=${msg}`, "_blank");
   };
 
   const handleRenew = async () => {

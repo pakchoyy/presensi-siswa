@@ -1,5 +1,5 @@
 import { Info, MessageCircle, ExternalLink } from "lucide-react";
-import { APP_URL, MAIN_SITE_URL, PLUS_PRICE, PRO_PRICE } from "@/lib/constants";
+import { APP_URL, MAIN_SITE_URL, PLUS_PRICE, PRO_PRICE, WA_ADMIN, WA_ADMIN_TAMPIL } from "@/lib/constants";
 
 export function TentangKontak() {
   return (
@@ -52,13 +52,13 @@ export function TentangKontak() {
 
         <div className="flex flex-col gap-[10px]">
           <a
-            href="https://wa.me/6289530713597?text=saya%20mau%20konsultasi%20seputar%20aplikasi%20bantu%20guru%20yuk%20%7C%20presensi%20siswa"
+            href={`https://wa.me/${WA_ADMIN}?text=saya%20mau%20konsultasi%20seputar%20aplikasi%20bantu%20guru%20yuk%20%7C%20presensi%20siswa`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-[11px] rounded-[10px] bg-[#25D366] text-white font-bold text-[0.82rem] no-underline hover:opacity-90 transition-opacity"
           >
             <MessageCircle size={18} /> WhatsApp Pak Choyy
-            <span className="ml-auto text-[0.7rem] opacity-80">0895 3071 3597</span>
+            <span className="ml-auto text-[0.7rem] opacity-80">{WA_ADMIN_TAMPIL}</span>
           </a>
 
           <a
