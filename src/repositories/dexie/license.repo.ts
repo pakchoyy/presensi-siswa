@@ -20,6 +20,10 @@ export const licenseRepo = {
     return db.licenses.put(license);
   },
 
+  async update(id: number, fields: Partial<License>): Promise<void> {
+    await db.licenses.update(id, fields);
+  },
+
   async expire(id: number): Promise<void> {
     if (!id || typeof id !== 'number') {
       console.warn('expire: invalid id', { id });

@@ -65,6 +65,38 @@ export const licenseService = {
     return { found: !!data.found, tier: (data.tier as Tier) ?? null, tanggalBerakhir: data.tanggalBerakhir ?? null };
   },
 
+  /**
+   * Samakan paket & masa berlaku di HP dengan server (mis. admin menaikkan PLUS ke PRO atau menambah hari).
+   * Hanya jalan bila sesi email terverifikasi (server meminta sesi). Mengembalikan true bila ada yang berubah.
+   * Dibatasi sekali per 30 menit supaya tidak membebani server.
+   */
+  async refreshFromServer(guruId: number, email: string, force = false): Promise<boolean> {
+    try {
+      const last = Number(localStorage.getItem("bgy_lic_check") || 0);
+      if (!force && Date.now() - last < 30 * 60_000) return false;
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) return false;
+      const srv = await this.lookupByEmail(email.toLowerCase().trim());
+      localStorage.setItem("bgy_lic_check", String(Date.now()));
+      if (!srv.found || !srv.tanggalBerakhir || srv.tanggalBerakhir < Date.now()) return false;
+      const tier = srv.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
+      const local = await licenseRepo.getActive(guruId);
+      let changed = false;
+      if (local && ((local.tier || Tier.PRO) !== tier || local.tanggalBerakhir !== srv.tanggalBerakhir)) {
+        await licenseRepo.update(local.id, { tier, tanggalBerakhir: srv.tanggalBerakhir });
+        changed = true;
+      }
+      const t = await teacherRepo.get();
+      if (local && t && t.tier !== tier) {
+        await teacherRepo.updateTier(t.id, tier);
+        changed = true;
+      }
+      return changed;
+    } catch {
+      return false; // offline atau sesi habis: coba lagi nanti
+    }
+  },
+
   /** Pasang ulang lisensi yang sudah pernah diaktivasi (email + kode harus cocok). */
   async restore(email: string, kode: string): Promise<{ ok: boolean; tier?: Tier; tanggalBerakhir?: number; error?: string }> {
     const { ok, data } = await callLicenseApi({ action: "restore", email: email.toLowerCase().trim(), kode: kode.toUpperCase().trim() });

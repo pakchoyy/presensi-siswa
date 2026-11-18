@@ -1,5 +1,7 @@
 import { useEffect, lazy, Suspense } from "react";
 import { AppProvider, useApp } from "@/contexts/AppContext";
+import { licenseService } from "@/services/license.service";
+import { teacherRepo } from "@/repositories/dexie/teacher.repo";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
 import { ToastProvider } from "@/components/shared/Toast";
@@ -123,6 +125,19 @@ function AppContent() {
   
   // Enable auto-sync for cloud-connected users
   useAutoSync();
+
+  // Paket/masa berlaku mengikuti server (mis. dinaikkan admin) setiap aplikasi dibuka atau kembali ke layar.
+  useEffect(() => {
+    if (!setupSelesai) return;
+    const cek = async (force = false) => {
+      const t = await teacherRepo.get();
+      if (t?.id && t.email && (await licenseService.refreshFromServer(t.id, t.email, force))) window.location.reload();
+    };
+    cek();
+    const onVisible = () => { if (document.visibilityState === "visible") cek(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [setupSelesai]);
 
   // Sekali jalan: gabungkan siswa "hantu" (nonaktif) ke siswa aktif yang
   // senama, agar riwayat absensi lama tidak hilang setelah soft-delete lalu
