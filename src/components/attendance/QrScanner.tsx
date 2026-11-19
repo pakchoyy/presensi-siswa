@@ -84,13 +84,10 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
         const scanner = new Html5Qrcode(elementId);
         scannerRef.current = scanner;
 
-        const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
-        const boxSize = Math.min(viewport * 0.75, 320);
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 25,
-            qrbox: { width: boxSize, height: boxSize },
             aspectRatio: 1,
             disableFlip: true,
           },
@@ -202,7 +199,11 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
           {error}
         </div>
       ) : (
-        <div id="qr-reader" className={`w-[min(90vw,440px)] h-[min(90vw,440px)] rounded-xl overflow-hidden ${pendingScan ? "opacity-30" : ""}`} />
+        <div className={`relative w-[min(90vw,440px)] h-[min(90vw,440px)] ${pendingScan ? "opacity-30" : ""}`}>
+          {/* Seluruh gambar dipindai (tanpa qrbox); bingkai ini hanya panduan arah, karena kotak bawaan pustaka salah ukur di Safari iPhone. */}
+          <div id="qr-reader" className="w-full h-full rounded-xl overflow-hidden [&_video]:!w-full [&_video]:!h-full [&_video]:object-cover" />
+          <div className="pointer-events-none absolute inset-[12%] rounded-2xl border-[3px] border-white/85" />
+        </div>
       )}
 
       {!pendingScan && !error && siswa.length > 0 && (
