@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { X, Camera, Volume2, VolumeX, CheckCircle2, Clock, AlertTriangle, Flashlight, Search } from "lucide-react";
 
 type ScanPayload = { studentId?: number; token?: string };
@@ -81,23 +81,16 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
 
     const startScanner = async () => {
       try {
-        // Pakai pembaca QR bawaan Chrome/Android (BarcodeDetector) bila ada: jauh lebih tahan terhadap QR rapat/kecil/buram
-        // dibanding pembaca JavaScript; otomatis kembali ke pembaca biasa di browser yang tidak mendukung.
-        const scanner = new Html5Qrcode(elementId, {
-          verbose: false,
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        });
+        const scanner = new Html5Qrcode(elementId);
         scannerRef.current = scanner;
 
+        const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
+        const boxSize = Math.min(viewport * 0.75, 320);
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 25,
-            qrbox: (w: number, h: number) => {
-              const side = Math.floor(Math.min(w, h) * 0.9);
-              return { width: side, height: side };
-            },
+            qrbox: { width: boxSize, height: boxSize },
             aspectRatio: 1,
             disableFlip: true,
           },
@@ -116,9 +109,9 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
           },
           () => {}
         );
-        // Fokus otomatis berkelanjutan membantu QR kecil/kurang tajam; tidak semua HP mendukung.
+        // Fokus otomatis berkelanjutan + resolusi lebih tinggi membantu QR kecil/kurang tajam; tidak semua HP mendukung.
         try {
-          await scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" } as any] });
+          await scanner.applyVideoConstraints({ width: { ideal: 1280 }, advanced: [{ focusMode: "continuous" } as any] });
         } catch { /* abaikan */ }
         try {
           const caps: any = scanner.getRunningTrackCapabilities();
