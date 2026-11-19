@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { X, Camera, Volume2, VolumeX, CheckCircle2, Clock, AlertTriangle, Flashlight, Search } from "lucide-react";
+import { X, Camera, Volume2, VolumeX, CheckCircle2, Clock, AlertTriangle, Flashlight, Search, ImageIcon } from "lucide-react";
 
 type ScanPayload = { studentId?: number; token?: string };
 
@@ -84,10 +84,13 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
         const scanner = new Html5Qrcode(elementId);
         scannerRef.current = scanner;
 
+        const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
+        const boxSize = Math.min(viewport * 0.75, 320);
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 25,
+            qrbox: { width: boxSize, height: boxSize },
             aspectRatio: 1,
             disableFlip: true,
           },
@@ -142,6 +145,24 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
       await scannerRef.current?.applyVideoConstraints({ advanced: [{ torch: !torchOn } as any] });
       setTorchOn(!torchOn);
     } catch { setTorchOk(false); }
+  };
+
+  // Foto kartu pakai kamera bawaan HP (fokus & resolusi penuh), lalu baca QR dari fotonya.
+  // Paling andal di iPhone, yang pemindai langsungnya sering gagal fokus pada QR kecil.
+  const fotoKartu = async (file?: File) => {
+    if (!file) return;
+    const el = document.getElementById("qr-file") || Object.assign(document.createElement("div"), { id: "qr-file", hidden: true });
+    if (!el.isConnected) document.body.appendChild(el);
+    try {
+      const text = await new Html5Qrcode("qr-file", { verbose: false } as any).scanFile(file, false);
+      const parsed = parseQr(text);
+      if (!parsed) { alert("QR di foto bukan kartu presensi siswa."); return; }
+      playBeep();
+      if (pickerModeRef.current) { cooldownRef.current = true; setPendingScan(parsed); }
+      else onScanRef.current(parsed);
+    } catch {
+      alert("QR tidak terbaca dari foto. Foto lebih dekat (sekitar 20–30 cm), pastikan terang dan tidak buram, atau pakai Cari nama.");
+    }
   };
 
   const pilihNama = (id: number) => {
@@ -199,11 +220,7 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
           {error}
         </div>
       ) : (
-        <div className={`relative w-[min(90vw,440px)] h-[min(90vw,440px)] ${pendingScan ? "opacity-30" : ""}`}>
-          {/* Seluruh gambar dipindai (tanpa qrbox); bingkai ini hanya panduan arah, karena kotak bawaan pustaka salah ukur di Safari iPhone. */}
-          <div id="qr-reader" className="w-full h-full rounded-xl overflow-hidden [&_video]:!w-full [&_video]:!h-full [&_video]:object-cover" />
-          <div className="pointer-events-none absolute inset-[12%] rounded-2xl border-[3px] border-white/85" />
-        </div>
+        <div id="qr-reader" className={`w-[min(90vw,440px)] h-[min(90vw,440px)] rounded-xl overflow-hidden ${pendingScan ? "opacity-30" : ""}`} />
       )}
 
       {!pendingScan && !error && siswa.length > 0 && (
@@ -213,6 +230,12 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
         >
           <Search size={15} /> Kartu tidak terbaca? Cari nama
         </button>
+      )}
+      {!pendingScan && (
+        <label className="mt-2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-[0.8rem] font-bold cursor-pointer">
+          <ImageIcon size={15} /> Foto kartu (lebih jelas di iPhone)
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { fotoKartu(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
       )}
 
       {cari !== null && (
