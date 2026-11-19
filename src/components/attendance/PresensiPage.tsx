@@ -10,6 +10,7 @@ import { DateNavigator } from "./DateNavigator";
 import { StudentRow } from "./StudentRow";
 import { StatusSheet } from "./StatusSheet";
 import { RingkasanBar } from "@/components/layout/RingkasanBar";
+import { LaporWali } from "./LaporWali";
 import { academicYearRepo } from "@/repositories/dexie/academic-year.repo";
 import { todayStr, isDayActive, recordIdFrom } from "@/lib/utils";
 import { Info, ChevronDown, Plus, CalendarRange, Search, X, TrendingUp, QrCode } from "lucide-react";
@@ -30,7 +31,7 @@ function isWeekend(dateStr: string): boolean {
 }
 
 export function PresensiPage() {
-  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom, teacher, tier } = useApp();
+  const { activeClassroom, tanggalAktif, setActivePage, classrooms, setActiveClassroom, teacher, tier, school } = useApp();
   const { toast } = useToast();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -450,6 +451,17 @@ export function PresensiPage() {
         <div className="mb-3">
           <RingkasanBar counts={counts} />
         </div>
+
+        {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && (
+          <LaporWali
+            kelasId={activeClassroom.id}
+            namaKelas={/^kelas/i.test(activeClassroom.nama) ? activeClassroom.nama : `Kelas ${activeClassroom.nama}`}
+            namaSekolah={school?.nama}
+            tanggal={tanggalAktif}
+            siswa={students}
+            statusDari={(id) => getStatus(id)}
+          />
+        )}
 
         {kelasLocked && (
           <div className="bg-[#fef3c7] border border-[#fbbf24] rounded-xl p-3 mb-3 flex items-center gap-2 text-[0.74rem] text-[#78350f]">
