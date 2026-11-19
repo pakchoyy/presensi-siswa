@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { MessageCircle, Pencil, X } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { getWali, setWali, waNomor } from "@/lib/wali-kelas";
+import { getWali, waNomor } from "@/lib/wali-kelas";
+import { classroomRepo } from "@/repositories/dexie/classroom.repo";
+import { useApp } from "@/contexts/AppContext";
+import type { Classroom } from "@/types/entities";
 import { formatTanggalPanjang } from "@/lib/utils";
 
 interface Props {
-  kelasId: number;
+  kelas: Classroom;
   namaKelas: string;
   namaSekolah?: string;
   tanggal: string;
@@ -17,24 +20,22 @@ interface Props {
 const LABEL: Record<string, string> = { H: "Hadir", T: "Terlambat", S: "Sakit", I: "Izin", A: "Alpha" };
 
 /** Kirim ringkasan presensi hari ini ke wali kelas lewat WhatsApp (nomor disimpan di perangkat ini). */
-export function LaporWali({ kelasId, namaKelas, namaSekolah, tanggal, siswa, statusDari }: Props) {
+export function LaporWali({ kelas, namaKelas, namaSekolah, tanggal, siswa, statusDari }: Props) {
   const { toast } = useToast();
-  const [wali, setWaliState] = useState(() => getWali(kelasId));
+  const { refreshClassrooms } = useApp();
+  // Sumber utama: data kelas (ikut sinkron). Cadangan: isian lama yang tersimpan di perangkat ini.
+  const lama = getWali(kelas.id);
+  const wali = { nama: kelas.waliKelas ?? lama.nama, wa: kelas.waliKelasWa ?? lama.wa };
   const [edit, setEdit] = useState(false);
   const [nama, setNama] = useState("");
   const [wa, setWa] = useState("");
 
-  // Ganti kelas: muat wali kelas itu.
-  const [kelasTampil, setKelasTampil] = useState(kelasId);
-  if (kelasTampil !== kelasId) { setKelasTampil(kelasId); setWaliState(getWali(kelasId)); }
-
   const buka = () => { setNama(wali.nama); setWa(wali.wa); setEdit(true); };
 
-  const simpan = () => {
+  const simpan = async () => {
     if (wa.trim() && !waNomor(wa)) { toast("Nomor WhatsApp tidak valid"); return; }
-    const w = { nama: nama.trim(), wa: wa.trim() };
-    setWali(kelasId, w);
-    setWaliState(w);
+    await classroomRepo.save({ ...kelas, waliKelas: nama.trim(), waliKelasWa: wa.trim(), diubahPada: Date.now() });
+    await refreshClassrooms();
     setEdit(false);
   };
 
@@ -86,7 +87,7 @@ export function LaporWali({ kelasId, namaKelas, namaSekolah, tanggal, siswa, sta
             <input value={nama} onChange={(e) => setNama(e.target.value)} maxLength={60} placeholder="Contoh: Bu Fenti" className="w-full mt-1 mb-3 px-3 py-[10px] rounded-[10px] border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] text-[0.88rem]" />
             <label className="text-[0.72rem] font-semibold text-[var(--text-light)]">Nomor WhatsApp</label>
             <input value={wa} onChange={(e) => setWa(e.target.value)} inputMode="tel" placeholder="08xxxxxxxxxx" className="w-full mt-1 mb-1 px-3 py-[10px] rounded-[10px] border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] text-[0.88rem]" />
-            <p className="text-[0.66rem] text-[var(--text-light)] mt-1 mb-3">Tersimpan di HP ini saja. Laporan dikirim lewat WhatsApp dari HP Bapak/Ibu.</p>
+            <p className="text-[0.66rem] text-[var(--text-light)] mt-1 mb-3">Ikut tersimpan di cloud bila sinkron aktif. Laporan dikirim lewat WhatsApp dari HP Bapak/Ibu.</p>
             <button onClick={simpan} className="w-full min-h-[44px] rounded-xl text-white font-bold text-[0.88rem] border-none cursor-pointer" style={{ background: "linear-gradient(135deg, #0ea5a0, #0d7a8a)" }}>Simpan</button>
           </div>
         </div>

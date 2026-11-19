@@ -454,7 +454,7 @@ export function PresensiPage() {
 
         {activeClassroom && !isLibur && !diLuarPeriode && !loading && students.length > 0 && (
           <LaporWali
-            kelasId={activeClassroom.id}
+            kelas={activeClassroom}
             namaKelas={/^kelas/i.test(activeClassroom.nama) ? activeClassroom.nama : `Kelas ${activeClassroom.nama}`}
             namaSekolah={school?.nama}
             tanggal={tanggalAktif}

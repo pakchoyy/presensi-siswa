@@ -39,6 +39,9 @@ export interface Classroom {
   guruId: number;
   statusAktif: boolean;
   allowSiswaAbsenMandiri?: boolean;
+  /** Wali kelas (untuk kirim laporan harian lewat WhatsApp). Ikut sinkron setelah kolom cloud tersedia. */
+  waliKelas?: string;
+  waliKelasWa?: string;
   dibuatPada: number;
   diubahPada: number;
 }

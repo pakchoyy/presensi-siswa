@@ -521,6 +521,7 @@ export const syncService = {
 
   async syncAll(email: string): Promise<{ uploaded: number; downloaded: number }> {
     await pullHariAktif(email).catch(() => {});
+    await probeWaliKolom().catch(() => {});
     const lastSync = getLastSyncTimestamp();
     if (lastSync === 0) {
       return await this.fullSync(email);
@@ -540,6 +541,14 @@ export const syncService = {
     _userIdCache = null;
   },
 };
+
+/** Cek sekali per sesi apakah kolom wali kelas sudah ada di cloud_classrooms; hanya bila ada, datanya ikut dikirim. */
+async function probeWaliKolom(): Promise<void> {
+  if (localStorage.getItem("bgy_wali_cloud") === "1" || sessionStorage.getItem("bgy_wali_probe")) return;
+  sessionStorage.setItem("bgy_wali_probe", "1");
+  const { error } = await supabase.from("cloud_classrooms").select("wali_kelas").limit(1);
+  if (!error) localStorage.setItem("bgy_wali_cloud", "1");
+}
 
 /** Hari aktif disimpan per akun di teacher_settings (tabel guru tidak ikut sinkron); terapkan ke HP ini. */
 export async function pullHariAktif(email: string): Promise<void> {
@@ -601,6 +610,8 @@ function buildCloudRow(table: string, row: any, now: number): Record<string, any
         nama: row.nama,
         status_aktif: !!row.statusAktif,
         allow_siswa_absen_mandiri: !!row.allowSiswaAbsenMandiri,
+        // Hanya dikirim bila kolomnya sudah ada di cloud (lihat probeWaliKolom), supaya sinkron kelas tidak gagal.
+        ...(localStorage.getItem("bgy_wali_cloud") === "1" ? { wali_kelas: row.waliKelas || null, wali_kelas_wa: row.waliKelasWa || null } : {}),
         dibuat_pada: row.dibuatPada || now,
         diubah_pada: row.diubahPada || now,
         last_synced_at: now,
