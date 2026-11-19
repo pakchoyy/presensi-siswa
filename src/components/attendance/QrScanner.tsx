@@ -90,13 +90,14 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
         });
         scannerRef.current = scanner;
 
-        const viewport = Math.min(window.innerWidth, window.innerHeight) - 40;
-        const boxSize = Math.min(viewport * 0.9, 400);
         await scanner.start(
           { facingMode: "environment" },
           {
             fps: 25,
-            qrbox: { width: boxSize, height: boxSize },
+            qrbox: (w: number, h: number) => {
+              const side = Math.floor(Math.min(w, h) * 0.9);
+              return { width: side, height: side };
+            },
             aspectRatio: 1,
             disableFlip: true,
           },
@@ -115,9 +116,9 @@ export function QrScanner({ onScan, onClose, lastScanned, pickerMode = false, si
           },
           () => {}
         );
-        // Fokus otomatis berkelanjutan + resolusi lebih tinggi membantu QR kecil/kurang tajam; tidak semua HP mendukung.
+        // Fokus otomatis berkelanjutan membantu QR kecil/kurang tajam; tidak semua HP mendukung.
         try {
-          await scanner.applyVideoConstraints({ width: { ideal: 1280 }, advanced: [{ focusMode: "continuous" } as any] });
+          await scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" } as any] });
         } catch { /* abaikan */ }
         try {
           const caps: any = scanner.getRunningTrackCapabilities();
