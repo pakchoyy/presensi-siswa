@@ -1,3 +1,4 @@
+import { isDemoMode } from "@/services/demo.service";
 import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/components/shared/Toast";
@@ -148,7 +149,7 @@ export function PengaturanPage() {
   // First-time PRO sync reminder
   useEffect(() => {
     const reminded = localStorage.getItem("bgy_pro_sync_reminded");
-    if (isPaid && !isCloudConnected && !reminded && localStorage.getItem("bgy_demo_mode") !== "1") {
+    if (isPaid && !isCloudConnected && !reminded && !isDemoMode()) {
       const timer = setTimeout(() => setShowSyncPrompt(true), 800);
       return () => clearTimeout(timer);
     }
@@ -427,7 +428,7 @@ export function PengaturanPage() {
         await syncService.incrementalSync(cloudUser.email);
       }
       // Selalu simpan backup (file Download + salinan di HP) sebelum data dihapus — jangan bergantung pada status cloud.
-      if (localStorage.getItem("bgy_demo_mode") !== "1") {
+      if (!isDemoMode()) {
         await saveLogoutBackup();
         toast("✅ File backup disimpan di folder Download");
         await new Promise((r) => setTimeout(r, 1200));

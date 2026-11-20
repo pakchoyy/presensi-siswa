@@ -18,6 +18,7 @@ export async function connectDevice(teacher: Teacher, result: ConnectInfo, email
   const foundTier = result.tier === Tier.PLUS ? Tier.PLUS : Tier.PRO;
   if (result.trial && result.tanggalBerakhir) setTrialMulai(result.tanggalBerakhir - TRIAL_DAYS * 86400000);
   localStorage.setItem("presensi_cloud_email", emailAddress);
+  localStorage.removeItem("bgy_demo_mode"); // tersambung ke akun = data asli, bukan Mode Contoh
 
   let message: string;
   try {

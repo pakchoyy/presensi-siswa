@@ -26,7 +26,9 @@ function toDateStr(d: Date): string {
 }
 
 export function isDemoMode(): boolean {
-  try { return localStorage.getItem(DEMO_KEY) === "1"; } catch { return false; }
+  // Perangkat yang sudah tersambung ke akun cloud berisi data asli: jangan pernah dianggap Mode Contoh,
+  // supaya tombol "Hapus contoh" (yang menghapus semua data di HP) tidak muncul untuk data sungguhan.
+  try { return localStorage.getItem(DEMO_KEY) === "1" && !localStorage.getItem("presensi_cloud_email"); } catch { return false; }
 }
 
 export const demoService = {

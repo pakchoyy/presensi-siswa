@@ -1,3 +1,4 @@
+import { isDemoMode } from "@/services/demo.service";
 import { useState } from "react";
 import { CloudOff, X } from "lucide-react";
 import { useCloudAuth } from "@/contexts/CloudAuthContext";
@@ -30,7 +31,7 @@ export function CloudVerifyBanner() {
     return true;
   });
 
-  if (read("bgy_demo_mode") === "1") return null;
+  if (isDemoMode()) return null;
   const belumCloud = !cloudEmail && tier !== Tier.FREE;
   if (!(needsVerify && cloudEmail) && !belumCloud) return null;
 
