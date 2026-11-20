@@ -418,7 +418,7 @@ export const syncService = {
 
         for (const tomb of localTombstones) {
           const cloudTable = CLOUD_TABLE_MAP[tomb.entityType];
-          if (!cloudTable) continue;
+          if (!cloudTable || PROTECTED_TABLES.has(tomb.entityType)) continue;
           // Guard: kalau data masih ada di lokal (dibuat ulang setelah tombstone
           // tercatat, mis. re-add siswa senama), tombstone basi — jangan hapus cloud.
           const localRow = await db.table(tomb.entityType).get(tomb.localId).catch(() => undefined);
@@ -481,6 +481,9 @@ export const syncService = {
         if (cloudTombstones && cloudTombstones.length > 0) {
           for (const tomb of cloudTombstones) {
             if (!tomb.local_id || typeof tomb.local_id !== "number" || isNaN(tomb.local_id)) continue;
+            // Data guru & sekolah tidak ikut sinkron: tombstone-nya jangan pernah menghapus data lokal
+            // (tanpa ini, data guru di HP terhapus dan aplikasi kembali ke wizard setiap dibuka).
+            if (PROTECTED_TABLES.has(tomb.entity_type)) continue;
             const cloudTable = CLOUD_TABLE_MAP[tomb.entity_type];
             // Guard tombstone basi (data di-create ulang) — jangan hapus data lokal
             if (cloudTable && (await cloudDataExists(cloudTable, userId, tomb.local_id))) {
